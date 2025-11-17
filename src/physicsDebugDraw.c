@@ -1,77 +1,110 @@
 #include "raylib.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
 #include <math.h>
-#include <chipmunk.h>
 #include "constants.h"
+#include <stddef.h>
 #include "physicsDebugDraw.h"
 
-static inline cpSpaceDebugColor RGBAColor(float r, float g, float b, float a){
-	cpSpaceDebugColor color = {r, g, b, a};
-	return color;
+
+// Convert our generic DebugColor into a raylib Color
+static inline Color DebugColorToRaylib(DebugColor c) {
+    unsigned char r = (unsigned char)fminf(fmaxf(c.r * 255.0f, 0.0f), 255.0f);
+    unsigned char g = (unsigned char)fminf(fmaxf(c.g * 255.0f, 0.0f), 255.0f);
+    unsigned char b = (unsigned char)fminf(fmaxf(c.b * 255.0f, 0.0f), 255.0f);
+    unsigned char a = (unsigned char)fminf(fmaxf(c.a * 255.0f, 0.0f), 255.0f);
+    return (Color){ r, g, b, a };
 }
 
-static inline cpSpaceDebugColor LAColor(float l, float a){
-	cpSpaceDebugColor color = {l, l, l, a};
-	return color;
+// Basic stand‑in: we ignore the shape/data details for now and
+// just give everything a neutral gray color.
+DebugColor ChipmunkDebugGetColorForShape(void *shape, void *data) {
+    (void)shape;
+    (void)data;
+
+    DebugColor color;
+    color.r = 0x93 / 255.0f;
+    color.g = 0xa1 / 255.0f;
+    color.b = 0xa1 / 255.0f;
+    color.a = 1.0f;
+    return color;
 }
 
-static inline Color ChipmunkToRaylibColor(cpSpaceDebugColor color){
-    return (Color){(int)(color.r * 255.0f),(int)(color.g * 255.0f),(int)(color.b * 255.0f),(int)(color.a * 255.0f)};
+void ChipmunkDebugDrawCircle(Vec2 pos, float angle, float radius,
+                             DebugColor outlineColor, DebugColor fillColor) {
+    (void)angle; // not used, but kept for signature compatibility
+
+    float sx = pos.x * worldToScreen;
+    float sy = pos.y * worldToScreen;
+    float rr = radius * worldToScreen;
+
+    DrawCircle((int)sx, (int)sy, rr, DebugColorToRaylib(fillColor));
+    DrawCircleLines((int)sx, (int)sy, rr, DebugColorToRaylib(outlineColor));
 }
 
-cpSpaceDebugColor ChipmunkDebugGetColorForShape(cpShape *shape, cpDataPointer data){
-	if(cpShapeGetSensor(shape)){
-		return LAColor(1.0f, 0.1f);
-	} else {
-		cpBody *body = cpShapeGetBody(shape);
+void ChipmunkDebugDrawSegment(Vec2 a, Vec2 b, DebugColor color) {
+    Vector2 pa = { a.x * worldToScreen, a.y * worldToScreen };
+    Vector2 pb = { b.x * worldToScreen, b.y * worldToScreen };
 
-		if(cpBodyIsSleeping(body)){
-			return RGBAColor(0x58/255.0f, 0x6e/255.0f, 0x75/255.0f, 1.0f);
-		} else {
-			return RGBAColor(0x93/255.0f, 0xa1/255.0f, 0xa1/255.0f, 1.0f);
-		}
-	}
+    // Use a small thickness so segments remain visible at all zoom levels.
+    DrawLineEx(pa, pb, 1.0f, DebugColorToRaylib(color));
 }
 
+void ChipmunkDebugDrawFatSegment(Vec2 a, Vec2 b, float radius,
+                                 DebugColor outlineColor, DebugColor fillColor) {
+    Vector2 pa = { a.x * worldToScreen, a.y * worldToScreen };
+    Vector2 pb = { b.x * worldToScreen, b.y * worldToScreen };
+    float thickness = radius * worldToScreen;
 
-void ChipmunkDebugDrawCircle(cpVect pos, cpFloat angle, cpFloat radius, cpSpaceDebugColor outlineColor, cpSpaceDebugColor fillColor){
-    DrawCircle(pos.x * worldToScreen,pos.y* worldToScreen, radius* worldToScreen, ChipmunkToRaylibColor(fillColor));
-    DrawCircleLines(pos.x* worldToScreen,pos.y* worldToScreen, radius* worldToScreen, ChipmunkToRaylibColor(outlineColor));
+    // Filled "tube"
+    DrawLineEx(pa, pb, thickness, DebugColorToRaylib(fillColor));
+
+    // Caps at each end
+    DrawCircle((int)pa.x, (int)pa.y, thickness * 0.5f, DebugColorToRaylib(fillColor));
+    DrawCircle((int)pb.x, (int)pb.y, thickness * 0.5f, DebugColorToRaylib(fillColor));
+
+    // Outline rings for the caps
+    DrawCircleLines((int)pa.x, (int)pa.y, thickness * 0.5f, DebugColorToRaylib(outlineColor));
+    DrawCircleLines((int)pb.x, (int)pb.y, thickness * 0.5f, DebugColorToRaylib(outlineColor));
 }
 
-void ChipmunkDebugDrawSegment(cpVect a, cpVect b, cpSpaceDebugColor color){
-    DrawLine(a.x* worldToScreen,a.y* worldToScreen,b.x* worldToScreen,b.y* worldToScreen,ChipmunkToRaylibColor(color));
-}
+void ChipmunkDebugDrawPolygon(int count, const Vec2 *verts, float radius,
+                              DebugColor outlineColor, DebugColor fillColor) {
+    if (count <= 0 || verts == NULL) return;
 
-void ChipmunkDebugDrawFatSegment(cpVect a, cpVect b, cpFloat radius, cpSpaceDebugColor outlineColor, cpSpaceDebugColor fillColor){
-    DrawLineEx((Vector2){a.x* worldToScreen,a.y* worldToScreen},(Vector2){b.x* worldToScreen,b.y* worldToScreen},(radius* worldToScreen) / 2.0f,ChipmunkToRaylibColor(fillColor));
-    DrawCircle(a.x* worldToScreen,a.y* worldToScreen,radius* worldToScreen,ChipmunkToRaylibColor(fillColor));
-    DrawCircle(b.x* worldToScreen,b.y* worldToScreen,radius* worldToScreen,ChipmunkToRaylibColor(fillColor));
-    DrawCircleLines(a.x* worldToScreen,a.y* worldToScreen,radius* worldToScreen,ChipmunkToRaylibColor(outlineColor));
-    DrawCircleLines(b.x* worldToScreen,b.y* worldToScreen,radius* worldToScreen,ChipmunkToRaylibColor(outlineColor));
-}
+    // Fill: draw as a triangle fan around vertex 0
+    if (count >= 3) {
+        for (int i = 1; i < count - 1; ++i) {
+            Vector2 p0 = { verts[0].x * worldToScreen, verts[0].y * worldToScreen };
+            Vector2 p1 = { verts[i].x * worldToScreen, verts[i].y * worldToScreen };
+            Vector2 p2 = { verts[i + 1].x * worldToScreen, verts[i + 1].y * worldToScreen };
 
-void ChipmunkDebugDrawPolygon(int count, const cpVect *verts, cpFloat radius, cpSpaceDebugColor outlineColor, cpSpaceDebugColor fillColor){
-    //Vector2* points = malloc(sizeof(Vector2) * count);
-    float prevPointX = 0;
-    float prevPointY = 0;
-    for (int i = 0; i < count; i++){
-        //points[i].x = verts[i].x;
-        //points[i].y = verts[i].y;
-        if (i > 0){
-            ChipmunkDebugDrawSegment(cpv(prevPointX,prevPointY),cpv(verts[i].x,verts[i].y),outlineColor);
+            Vector2 tri[3] = { p0, p1, p2 };
+            DrawTriangleFan(tri, 3, DebugColorToRaylib(fillColor));
         }
-        prevPointX = verts[i].x;
-        prevPointY = verts[i].y;
     }
-    ChipmunkDebugDrawSegment(cpv(verts[count - 1].x,verts[count - 1].y),cpv(verts[0].x,verts[0].y),outlineColor);
-    for (int i = 0; i < count; i++){
-        ChipmunkDebugDrawDot(1.0f,verts[i],outlineColor);
+
+    // Outline segments
+    for (int i = 0; i < count; ++i) {
+        int j = (i + 1) % count;
+        Vec2 a = verts[i];
+        Vec2 b = verts[j];
+
+        Vector2 pa = { a.x * worldToScreen, a.y * worldToScreen };
+        Vector2 pb = { b.x * worldToScreen, b.y * worldToScreen };
+
+        DrawLineEx(pa, pb, fmaxf(radius * worldToScreen, 1.0f), DebugColorToRaylib(outlineColor));
+    }
+
+    // Optional: draw small dots at each vertex for clarity
+    for (int i = 0; i < count; ++i) {
+        Vec2 v = verts[i];
+        ChipmunkDebugDrawDot(1.0f, v, outlineColor);
     }
 }
 
-void ChipmunkDebugDrawDot(cpFloat size, cpVect pos, cpSpaceDebugColor fillColor){
-    DrawCircle(pos.x* worldToScreen,pos.y* worldToScreen,size* worldToScreen / 2.0f,ChipmunkToRaylibColor(fillColor));
+void ChipmunkDebugDrawDot(float size, Vec2 pos, DebugColor fillColor) {
+    float sx = pos.x * worldToScreen;
+    float sy = pos.y * worldToScreen;
+    float r  = (size * worldToScreen) * 0.5f;
+
+    DrawCircle((int)sx, (int)sy, r, DebugColorToRaylib(fillColor));
 }

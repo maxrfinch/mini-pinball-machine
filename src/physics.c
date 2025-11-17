@@ -53,18 +53,6 @@ typedef enum {
     BUMPER_TYPE_WATER_POWERUP = 4   // Small bumpers that enable water powerup
 } BumperType;
 
-/* -------------------------------------------------------------------------- */
-/*  Collision type identifiers (mirroring Chipmunk's collision types)        */
-/* -------------------------------------------------------------------------- */
-enum CollisionTypes {
-    COLLISION_WALL = 0,
-    COLLISION_BALL = 1,
-    COLLISION_BUMPER = 2,
-    COLLISION_PADDLE = 3,
-    COLLISION_LEFT_LOWER_BUMPER = 4,
-    COLLISION_RIGHT_LOWER_BUMPER = 5,
-    COLLISION_ONE_WAY = 6
-};
 
 /* -------------------------------------------------------------------------- */
 /*  Local animation state (driven by collision handlers, read by renderer)    */
@@ -288,11 +276,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     // Initialize physics simulation
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = pb2_v(0, 100);
-    
-    // Set up custom contact callback for collision handling
-    worldDef.preSolveFcn = PreSolveCallback;
-    worldDef.contactEventCapacity = 1024; // Reserve space for contact events
-    
+
     game->world = b2CreateWorld(&worldDef);
 
     // Create static body for walls
@@ -306,12 +290,13 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
         b2Segment segment;
         segment.point1 = pb2_v(walls[i][0], walls[i][1]);
         segment.point2 = pb2_v(walls[i][2], walls[i][3]);
-        
+
         b2ShapeDef shapeDef = b2DefaultShapeDef();
-        shapeDef.friction = 0.5f;
-        shapeDef.restitution = 0.5f;
+        shapeDef.material.friction = 0.5f;
+        shapeDef.material.restitution = 0.5f;
         shapeDef.filter.categoryBits = COLLISION_WALL;
-        
+        shapeDef.filter.maskBits     = COLLISION_BALL;
+
         b2CreateSegmentShape(staticBody, &shapeDef, &segment);
     }
 
@@ -330,15 +315,17 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     rightBouncer.point2 = pb2_v(69.200005, 125.200005);
     
     b2ShapeDef leftBouncerDef = b2DefaultShapeDef();
-    leftBouncerDef.friction = 0.0f;
-    leftBouncerDef.restitution = 1.2f;
+    leftBouncerDef.material.friction = 0.0f;
+    leftBouncerDef.material.restitution = 1.2f;
     leftBouncerDef.filter.categoryBits = COLLISION_LEFT_LOWER_BUMPER;
+    leftBouncerDef.filter.maskBits     = COLLISION_BALL;
     b2CreateSegmentShape(staticBody, &leftBouncerDef, &leftBouncer);
 
     b2ShapeDef rightBouncerDef = b2DefaultShapeDef();
-    rightBouncerDef.friction = 0.0f;
-    rightBouncerDef.restitution = 1.2f;
+    rightBouncerDef.material.friction = 0.0f;
+    rightBouncerDef.material.restitution = 1.2f;
     rightBouncerDef.filter.categoryBits = COLLISION_RIGHT_LOWER_BUMPER;
+    rightBouncerDef.filter.maskBits     = COLLISION_BALL;
     b2CreateSegmentShape(staticBody, &rightBouncerDef, &rightBouncer);
 
     // Bouncer guards
@@ -349,9 +336,10 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     guard2.point2 = pb2_v(76.000000, 110.800003);
     
     b2ShapeDef guardDef = b2DefaultShapeDef();
-    guardDef.friction = 0.0f;
-    guardDef.restitution = 0.9f;
+    guardDef.material.friction = 0.0f;
+    guardDef.material.restitution = 0.9f;
     guardDef.filter.categoryBits = COLLISION_WALL;
+    guardDef.filter.maskBits     = COLLISION_BALL;
     b2CreateSegmentShape(staticBody, &guardDef, &guard1);
     b2CreateSegmentShape(staticBody, &guardDef, &guard2);
 
@@ -373,8 +361,9 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
         circle.radius = bumperSize / 2.0f;
 
         b2ShapeDef bumperShapeDef = b2DefaultShapeDef();
-        bumperShapeDef.restitution = bumperBounciness;
+        bumperShapeDef.material.restitution = bumperBounciness;
         bumperShapeDef.filter.categoryBits = COLLISION_BUMPER;
+        bumperShapeDef.filter.maskBits     = COLLISION_BALL;
         bumperShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &bumperShapeDef, &circle);
@@ -393,8 +382,9 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     slowMoCircle.radius = 2.0f;
 
     b2ShapeDef slowMoShapeDef = b2DefaultShapeDef();
-    slowMoShapeDef.restitution = bumperBounciness;
+    slowMoShapeDef.material.restitution = bumperBounciness;
     slowMoShapeDef.filter.categoryBits = COLLISION_BUMPER;
+    slowMoShapeDef.filter.maskBits     = COLLISION_BALL;
     slowMoShapeDef.userData = &bumpers[3];
 
     bumpers[3].shape = b2CreateCircleShape(bumpers[3].body, &slowMoShapeDef, &slowMoCircle);
@@ -438,8 +428,9 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
         laneCircle.radius = 2.0f;
 
         b2ShapeDef laneShapeDef = b2DefaultShapeDef();
-        laneShapeDef.restitution = 0.0f;
+        laneShapeDef.material.restitution = 0.0f;
         laneShapeDef.filter.categoryBits = COLLISION_BUMPER;
+        laneShapeDef.filter.maskBits     = COLLISION_BALL;
         laneShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &laneShapeDef, &laneCircle);
@@ -468,8 +459,9 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
         waterCircle.radius = smallBumperSize / 2.0f;
 
         b2ShapeDef waterShapeDef = b2DefaultShapeDef();
-        waterShapeDef.restitution = bumperBounciness;
+        waterShapeDef.material.restitution = bumperBounciness;
         waterShapeDef.filter.categoryBits = COLLISION_BUMPER;
+        waterShapeDef.filter.maskBits     = COLLISION_BALL;
         waterShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &waterShapeDef, &waterCircle);
@@ -485,9 +477,10 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     oneWaySegment.point2 = pb2_v(73.4, 4.6);
     
     b2ShapeDef oneWayDef = b2DefaultShapeDef();
-    oneWayDef.restitution = 0.5f;
-    oneWayDef.friction = 0.0f;
+    oneWayDef.material.restitution = 0.5f;
+    oneWayDef.material.friction = 0.0f;
     oneWayDef.filter.categoryBits = COLLISION_ONE_WAY;
+    oneWayDef.filter.maskBits     = COLLISION_BALL;
     b2CreateSegmentShape(staticBody, &oneWayDef, &oneWaySegment);
 
     // Additional static segments
@@ -500,9 +493,10 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     tempSegments[2].point2 = pb2_v(8.600000, 68.800003);
 
     b2ShapeDef tempDef = b2DefaultShapeDef();
-    tempDef.restitution = 0.5f;
-    tempDef.friction = 0.5f;
+    tempDef.material.restitution = 0.5f;
+    tempDef.material.friction = 0.5f;
     tempDef.filter.categoryBits = COLLISION_WALL;
+    tempDef.filter.maskBits     = COLLISION_BALL;
 
     for (int i = 0; i < 3; i++) {
         b2CreateSegmentShape(staticBody, &tempDef, &tempSegments[i]);
@@ -538,16 +532,18 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
     // Create left flipper shape
     b2ShapeDef leftFlipperShapeDef = b2DefaultShapeDef();
-    leftFlipperShapeDef.friction = 0.8f;
-    leftFlipperShapeDef.restitution = 0.2f;
+    leftFlipperShapeDef.material.friction = 0.8f;
+    leftFlipperShapeDef.material.restitution = 0.2f;
     leftFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
+    leftFlipperShapeDef.filter.maskBits     = COLLISION_BALL;
     b2CreatePolygonShape(leftFlipperBodyStatic, &leftFlipperShapeDef, &flipperPoly);
 
     // Create right flipper shape
     b2ShapeDef rightFlipperShapeDef = b2DefaultShapeDef();
-    rightFlipperShapeDef.friction = 0.8f;
-    rightFlipperShapeDef.restitution = 0.2f;
+    rightFlipperShapeDef.material.friction = 0.8f;
+    rightFlipperShapeDef.material.restitution = 0.2f;
     rightFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
+    rightFlipperShapeDef.filter.maskBits     = COLLISION_BALL;
     b2CreatePolygonShape(rightFlipperBodyStatic, &rightFlipperShapeDef, &flipperPoly);
 
     // Return bumpers and flipper bodies to caller
@@ -630,10 +626,17 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         ballCircle.radius = radius;
 
         b2ShapeDef ballShapeDef = b2DefaultShapeDef();
-        ballShapeDef.friction = 0.0f;
-        ballShapeDef.restitution = 0.7f;
+        ballShapeDef.material.friction = 0.0f;
+        ballShapeDef.material.restitution = 0.7f;
         ballShapeDef.density = density;
         ballShapeDef.filter.categoryBits = COLLISION_BALL;
+        ballShapeDef.filter.maskBits =
+            COLLISION_WALL |
+            COLLISION_BUMPER |
+            COLLISION_PADDLE |
+            COLLISION_LEFT_LOWER_BUMPER |
+            COLLISION_RIGHT_LOWER_BUMPER |
+            COLLISION_ONE_WAY;
         ballShapeDef.userData = &(game->balls[ballIndex]);
 
         game->balls[ballIndex].shape = b2CreateCircleShape(game->balls[ballIndex].body, &ballShapeDef, &ballCircle);
