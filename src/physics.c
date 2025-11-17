@@ -62,6 +62,20 @@ static float leftLowerBumperAnim  = 0.0f;
 static float rightLowerBumperAnim = 0.0f;
 
 /* -------------------------------------------------------------------------- */
+/*  Debug draw state - stores references to bodies and shapes for rendering  */
+/* -------------------------------------------------------------------------- */
+
+typedef struct {
+    b2BodyId staticBody;      // The main static body holding all walls
+    b2BodyId *leftFlipper;    // Left flipper body pointer
+    b2BodyId *rightFlipper;   // Right flipper body pointer
+    Bumper *bumpers;          // Pointer to bumpers array
+    int numBumpers;           // Number of bumpers
+} PhysicsDebugState;
+
+static PhysicsDebugState debugState = {0};
+
+/* -------------------------------------------------------------------------- */
 /*  Helper function to create a b2Vec2                                        */
 /* -------------------------------------------------------------------------- */
 static inline b2Vec2 pb2_v(float x, float y) {
@@ -91,11 +105,11 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
     b2ShapeId otherShapeId = b2_nullShapeId;
     uint32_t otherCategory = 0;
     
-    if (catA == COLLISION_BALL) {
+    if (catA == CATEGORY_BALL) {
         ballShapeId = shapeIdA;
         otherShapeId = shapeIdB;
         otherCategory = catB;
-    } else if (catB == COLLISION_BALL) {
+    } else if (catB == CATEGORY_BALL) {
         ballShapeId = shapeIdB;
         otherShapeId = shapeIdA;
         otherCategory = catA;
@@ -111,7 +125,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
     }
     
     // Handle different collision types
-    if (otherCategory == COLLISION_BUMPER) {
+    if (otherCategory == CATEGORY_BUMPER) {
         // Ball-Bumper collision
         Bumper *bumper = (Bumper *)b2Shape_GetUserData(otherShapeId);
         if (!bumper) {
@@ -168,11 +182,11 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             bumper->enabled = 0;
             return true;
         }
-    } else if (otherCategory == COLLISION_PADDLE) {
+    } else if (otherCategory == CATEGORY_PADDLE) {
         // Ball-Flipper collision
         ball->killCounter = 0;
         return true;
-    } else if (otherCategory == COLLISION_LEFT_LOWER_BUMPER) {
+    } else if (otherCategory == CATEGORY_LEFT_LOWER_BUMPER) {
         // Left lower slingshot
         leftLowerBumperAnim = 1.0f;
         (ball->game)->gameScore += 25;
@@ -181,7 +195,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         }
         playBounce2((ball->game)->sound);
         return true;
-    } else if (otherCategory == COLLISION_RIGHT_LOWER_BUMPER) {
+    } else if (otherCategory == CATEGORY_RIGHT_LOWER_BUMPER) {
         // Right lower slingshot
         rightLowerBumperAnim = 1.0f;
         (ball->game)->gameScore += 25;
@@ -190,7 +204,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         }
         playBounce2((ball->game)->sound);
         return true;
-    } else if (otherCategory == COLLISION_ONE_WAY) {
+    } else if (otherCategory == CATEGORY_ONE_WAY) {
         // One-way gate - check normal direction
         // Allow collision only if the normal has a positive y component
         if (manifold->normal.y < 0) {
@@ -278,6 +292,9 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     worldDef.gravity = pb2_v(0, 100);
 
     game->world = b2CreateWorld(&worldDef);
+    
+    // Register the PreSolve callback for collision handling
+    b2World_SetPreSolveCallback(game->world, PreSolveCallback, NULL);
 
     // Create static body for walls
     b2BodyDef staticBodyDef = b2DefaultBodyDef();
@@ -294,8 +311,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
         b2ShapeDef shapeDef = b2DefaultShapeDef();
         shapeDef.material.friction = 0.5f;
         shapeDef.material.restitution = 0.5f;
-        shapeDef.filter.categoryBits = COLLISION_WALL;
-        shapeDef.filter.maskBits     = COLLISION_BALL;
+        shapeDef.filter.categoryBits = CATEGORY_WALL;
+        shapeDef.filter.maskBits     = CATEGORY_BALL;
 
         b2CreateSegmentShape(staticBody, &shapeDef, &segment);
     }
@@ -317,15 +334,15 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef leftBouncerDef = b2DefaultShapeDef();
     leftBouncerDef.material.friction = 0.0f;
     leftBouncerDef.material.restitution = 1.2f;
-    leftBouncerDef.filter.categoryBits = COLLISION_LEFT_LOWER_BUMPER;
-    leftBouncerDef.filter.maskBits     = COLLISION_BALL;
+    leftBouncerDef.filter.categoryBits = CATEGORY_LEFT_LOWER_BUMPER;
+    leftBouncerDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &leftBouncerDef, &leftBouncer);
 
     b2ShapeDef rightBouncerDef = b2DefaultShapeDef();
     rightBouncerDef.material.friction = 0.0f;
     rightBouncerDef.material.restitution = 1.2f;
-    rightBouncerDef.filter.categoryBits = COLLISION_RIGHT_LOWER_BUMPER;
-    rightBouncerDef.filter.maskBits     = COLLISION_BALL;
+    rightBouncerDef.filter.categoryBits = CATEGORY_RIGHT_LOWER_BUMPER;
+    rightBouncerDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &rightBouncerDef, &rightBouncer);
 
     // Bouncer guards
@@ -338,8 +355,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef guardDef = b2DefaultShapeDef();
     guardDef.material.friction = 0.0f;
     guardDef.material.restitution = 0.9f;
-    guardDef.filter.categoryBits = COLLISION_WALL;
-    guardDef.filter.maskBits     = COLLISION_BALL;
+    guardDef.filter.categoryBits = CATEGORY_WALL;
+    guardDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &guardDef, &guard1);
     b2CreateSegmentShape(staticBody, &guardDef, &guard2);
 
@@ -362,8 +379,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
         b2ShapeDef bumperShapeDef = b2DefaultShapeDef();
         bumperShapeDef.material.restitution = bumperBounciness;
-        bumperShapeDef.filter.categoryBits = COLLISION_BUMPER;
-        bumperShapeDef.filter.maskBits     = COLLISION_BALL;
+        bumperShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+        bumperShapeDef.filter.maskBits     = CATEGORY_BALL;
         bumperShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &bumperShapeDef, &circle);
@@ -383,8 +400,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
     b2ShapeDef slowMoShapeDef = b2DefaultShapeDef();
     slowMoShapeDef.material.restitution = bumperBounciness;
-    slowMoShapeDef.filter.categoryBits = COLLISION_BUMPER;
-    slowMoShapeDef.filter.maskBits     = COLLISION_BALL;
+    slowMoShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+    slowMoShapeDef.filter.maskBits     = CATEGORY_BALL;
     slowMoShapeDef.userData = &bumpers[3];
 
     bumpers[3].shape = b2CreateCircleShape(bumpers[3].body, &slowMoShapeDef, &slowMoCircle);
@@ -429,8 +446,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
         b2ShapeDef laneShapeDef = b2DefaultShapeDef();
         laneShapeDef.material.restitution = 0.0f;
-        laneShapeDef.filter.categoryBits = COLLISION_BUMPER;
-        laneShapeDef.filter.maskBits     = COLLISION_BALL;
+        laneShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+        laneShapeDef.filter.maskBits     = CATEGORY_BALL;
         laneShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &laneShapeDef, &laneCircle);
@@ -460,8 +477,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
         b2ShapeDef waterShapeDef = b2DefaultShapeDef();
         waterShapeDef.material.restitution = bumperBounciness;
-        waterShapeDef.filter.categoryBits = COLLISION_BUMPER;
-        waterShapeDef.filter.maskBits     = COLLISION_BALL;
+        waterShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+        waterShapeDef.filter.maskBits     = CATEGORY_BALL;
         waterShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &waterShapeDef, &waterCircle);
@@ -479,8 +496,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef oneWayDef = b2DefaultShapeDef();
     oneWayDef.material.restitution = 0.5f;
     oneWayDef.material.friction = 0.0f;
-    oneWayDef.filter.categoryBits = COLLISION_ONE_WAY;
-    oneWayDef.filter.maskBits     = COLLISION_BALL;
+    oneWayDef.filter.categoryBits = CATEGORY_ONE_WAY;
+    oneWayDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &oneWayDef, &oneWaySegment);
 
     // Additional static segments
@@ -495,8 +512,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef tempDef = b2DefaultShapeDef();
     tempDef.material.restitution = 0.5f;
     tempDef.material.friction = 0.5f;
-    tempDef.filter.categoryBits = COLLISION_WALL;
-    tempDef.filter.maskBits     = COLLISION_BALL;
+    tempDef.filter.categoryBits = CATEGORY_WALL;
+    tempDef.filter.maskBits     = CATEGORY_BALL;
 
     for (int i = 0; i < 3; i++) {
         b2CreateSegmentShape(staticBody, &tempDef, &tempSegments[i]);
@@ -534,17 +551,24 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef leftFlipperShapeDef = b2DefaultShapeDef();
     leftFlipperShapeDef.material.friction = 0.8f;
     leftFlipperShapeDef.material.restitution = 0.2f;
-    leftFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
-    leftFlipperShapeDef.filter.maskBits     = COLLISION_BALL;
+    leftFlipperShapeDef.filter.categoryBits = CATEGORY_PADDLE;
+    leftFlipperShapeDef.filter.maskBits     = CATEGORY_BALL;
     b2CreatePolygonShape(leftFlipperBodyStatic, &leftFlipperShapeDef, &flipperPoly);
 
     // Create right flipper shape
     b2ShapeDef rightFlipperShapeDef = b2DefaultShapeDef();
     rightFlipperShapeDef.material.friction = 0.8f;
     rightFlipperShapeDef.material.restitution = 0.2f;
-    rightFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
-    rightFlipperShapeDef.filter.maskBits     = COLLISION_BALL;
+    rightFlipperShapeDef.filter.categoryBits = CATEGORY_PADDLE;
+    rightFlipperShapeDef.filter.maskBits     = CATEGORY_BALL;
     b2CreatePolygonShape(rightFlipperBodyStatic, &rightFlipperShapeDef, &flipperPoly);
+
+    // Store references for debug drawing
+    debugState.staticBody = staticBody;
+    debugState.leftFlipper = &leftFlipperBodyStatic;
+    debugState.rightFlipper = &rightFlipperBodyStatic;
+    debugState.bumpers = bumpers;
+    debugState.numBumpers = numBumpers;
 
     // Return bumpers and flipper bodies to caller
     *out_bumpers = bumpers;
@@ -629,14 +653,14 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         ballShapeDef.material.friction = 0.0f;
         ballShapeDef.material.restitution = 0.7f;
         ballShapeDef.density = density;
-        ballShapeDef.filter.categoryBits = COLLISION_BALL;
+        ballShapeDef.filter.categoryBits = CATEGORY_BALL;
         ballShapeDef.filter.maskBits =
-            COLLISION_WALL |
-            COLLISION_BUMPER |
-            COLLISION_PADDLE |
-            COLLISION_LEFT_LOWER_BUMPER |
-            COLLISION_RIGHT_LOWER_BUMPER |
-            COLLISION_ONE_WAY;
+            CATEGORY_WALL |
+            CATEGORY_BUMPER |
+            CATEGORY_PADDLE |
+            CATEGORY_LEFT_LOWER_BUMPER |
+            CATEGORY_RIGHT_LOWER_BUMPER |
+            CATEGORY_ONE_WAY;
         ballShapeDef.userData = &(game->balls[ballIndex]);
 
         game->balls[ballIndex].shape = b2CreateCircleShape(game->balls[ballIndex].body, &ballShapeDef, &ballCircle);
@@ -656,5 +680,118 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         }
 
         playLaunch(game->sound);
+    }
+}
+
+/*
+ * Helper to draw a Box2D body and its shapes for debug visualization
+ */
+static void debug_draw_body(b2BodyId bodyId, DebugColor outlineColor, DebugColor fillColor) {
+    #include "physicsDebugDraw.h"
+    
+    if (B2_IS_NULL(bodyId)) {
+        return;
+    }
+    
+    b2Vec2 pos = b2Body_GetPosition(bodyId);
+    b2Rot rot = b2Body_GetRotation(bodyId);
+    float angle = b2Rot_GetAngle(rot);
+    
+    // Get shape IDs for this body
+    // Box2D 3.x requires iterating through shape IDs
+    // We'll use b2Body_GetShapes to get all shapes
+    int shapeCount = b2Body_GetShapeCount(bodyId);
+    if (shapeCount == 0) {
+        return;
+    }
+    
+    b2ShapeId shapeIds[16]; // Max shapes per body
+    int actualCount = b2Body_GetShapes(bodyId, shapeIds, 16);
+    
+    for (int i = 0; i < actualCount; i++) {
+        b2ShapeId shapeId = shapeIds[i];
+        if (B2_IS_NULL(shapeId)) {
+            continue;
+        }
+        
+        b2ShapeType shapeType = b2Shape_GetType(shapeId);
+        
+        if (shapeType == b2_circleShape) {
+            b2Circle circle = b2Shape_GetCircle(shapeId);
+            Vec2 debugPos = {pos.x + circle.center.x, pos.y + circle.center.y};
+            ChipmunkDebugDrawCircle(debugPos, angle, circle.radius, outlineColor, fillColor);
+        } else if (shapeType == b2_segmentShape) {
+            b2Segment segment = b2Shape_GetSegment(shapeId);
+            // Transform segment points to world space
+            float cosA = cosf(angle);
+            float sinA = sinf(angle);
+            Vec2 p1 = {
+                pos.x + (segment.point1.x * cosA - segment.point1.y * sinA),
+                pos.y + (segment.point1.x * sinA + segment.point1.y * cosA)
+            };
+            Vec2 p2 = {
+                pos.x + (segment.point2.x * cosA - segment.point2.y * sinA),
+                pos.y + (segment.point2.x * sinA + segment.point2.y * cosA)
+            };
+            ChipmunkDebugDrawSegment(p1, p2, outlineColor);
+        } else if (shapeType == b2_polygonShape) {
+            b2Polygon polygon = b2Shape_GetPolygon(shapeId);
+            Vec2 verts[B2_MAX_POLYGON_VERTICES];
+            float cosA = cosf(angle);
+            float sinA = sinf(angle);
+            for (int v = 0; v < polygon.count; v++) {
+                verts[v].x = pos.x + (polygon.vertices[v].x * cosA - polygon.vertices[v].y * sinA);
+                verts[v].y = pos.y + (polygon.vertices[v].x * sinA + polygon.vertices[v].y * cosA);
+            }
+            ChipmunkDebugDrawPolygon(polygon.count, verts, 0.5f, outlineColor, fillColor);
+        }
+    }
+}
+
+/*
+ * physics_debug_draw
+ *  - Iterates through all bodies and shapes in the Box2D world and draws them
+ *    using the debug draw API defined in physicsDebugDraw.h
+ *  - This provides a visual representation of the physics simulation for debugging
+ */
+void physics_debug_draw(GameStruct *game) {
+    #include "physicsDebugDraw.h"
+    
+    if (B2_IS_NULL(game->world)) {
+        return;
+    }
+    
+    // Define colors for different shape types
+    DebugColor wallColor = {0.6f, 0.6f, 0.6f, 1.0f};      // Light gray
+    DebugColor bumperColor = {1.0f, 0.4f, 0.4f, 1.0f};    // Red
+    DebugColor paddleColor = {0.4f, 1.0f, 0.4f, 1.0f};    // Green
+    DebugColor ballColor = {0.4f, 0.4f, 1.0f, 1.0f};      // Blue
+    DebugColor fillColor = {0.2f, 0.2f, 0.2f, 0.3f};      // Semi-transparent fill
+    
+    // Draw static body (walls and static geometry)
+    if (B2_IS_NON_NULL(debugState.staticBody)) {
+        debug_draw_body(debugState.staticBody, wallColor, fillColor);
+    }
+    
+    // Draw bumpers
+    for (int i = 0; i < debugState.numBumpers; i++) {
+        if (B2_IS_NON_NULL(debugState.bumpers[i].body)) {
+            debug_draw_body(debugState.bumpers[i].body, bumperColor, fillColor);
+        }
+    }
+    
+    // Draw flippers
+    if (debugState.leftFlipper && B2_IS_NON_NULL(*debugState.leftFlipper)) {
+        debug_draw_body(*debugState.leftFlipper, paddleColor, fillColor);
+    }
+    if (debugState.rightFlipper && B2_IS_NON_NULL(*debugState.rightFlipper)) {
+        debug_draw_body(*debugState.rightFlipper, paddleColor, fillColor);
+    }
+    
+    // Draw all active balls
+    for (int i = 0; i < maxBalls; i++) {
+        if (game->balls[i].active && B2_IS_NON_NULL(game->balls[i].body)) {
+            debug_draw_body(game->balls[i].body, ballColor, fillColor);
+        }
     }
 }

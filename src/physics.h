@@ -16,4 +16,7 @@ void physics_shutdown(GameStruct *game);
 // Add a ball to the physics simulation
 void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, int type);
 
+// Draw physics debug visualization (walls, bodies, shapes)
+void physics_debug_draw(GameStruct *game);
+
 #endif // PHYSICS_H

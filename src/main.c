@@ -278,6 +278,9 @@ int main(void){
     inputSetGameState(input,STATE_MENU);
     TraceLog(LOG_INFO, "START");
 
+    // Debug draw toggle state
+    int debugDrawEnabled = 0;
+
     while (!WindowShouldClose()){
         endTime = millis();
         accumulatedTime += (endTime - startTime);
@@ -1029,6 +1032,12 @@ int main(void){
                 }
             }
 
+            // Toggle debug draw with F1 key
+            if (IsKeyPressed(KEY_F1)) {
+                debugDrawEnabled = !debugDrawEnabled;
+                TraceLog(LOG_INFO, "Debug draw %s", debugDrawEnabled ? "enabled" : "disabled");
+            }
+
             // Debug Rendering
             if (IsKeyDown(KEY_TAB)){
                 DrawFPS(10, 10);
@@ -1038,9 +1047,11 @@ int main(void){
                 if (IsMouseButtonPressed(0)){
                     printf("{%f,%f,,},\n",(float)(mouseX * screenToWorld),(float)(mouseY * screenToWorld));
                 }
+            }
 
-                // TODO: Implement Box2D debug draw
-                // b2World_Draw(game.world, &drawOptions);
+            // Draw physics debug visualization if enabled
+            if (debugDrawEnabled) {
+                physics_debug_draw(&game);
             }
         }
         if (game.gameState == 2){

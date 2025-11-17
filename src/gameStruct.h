@@ -75,6 +75,18 @@ enum CollisionTypes {
     COLLISION_ONE_WAY = 6
 };
 
+// Box2D collision category bits (bit flags for filtering)
+// These map the Chipmunk collision types to Box2D's bit-based system
+enum CollisionCategoryBits {
+    CATEGORY_WALL = (1 << 0),              // 0x0001
+    CATEGORY_BALL = (1 << 1),              // 0x0002
+    CATEGORY_BUMPER = (1 << 2),            // 0x0004
+    CATEGORY_PADDLE = (1 << 3),            // 0x0008
+    CATEGORY_LEFT_LOWER_BUMPER = (1 << 4), // 0x0010
+    CATEGORY_RIGHT_LOWER_BUMPER = (1 << 5),// 0x0020
+    CATEGORY_ONE_WAY = (1 << 6)            // 0x0040
+};
+
 struct GameStructData {
     b2WorldId world;
     int numBalls;
