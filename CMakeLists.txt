@@ -37,6 +37,9 @@ set(SOURCES
     src/sqlite3.c 
 )
 
+# Note: physics_old.c, physicsDebugDraw_old.c are reference implementations
+# and are NOT included in the build. They exist for comparing behavior.
+
 set(HEADERS_PRIVATE
     src/constants.h 
     src/gameStruct.h
@@ -97,42 +100,37 @@ if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIB)
     message(FATAL_ERROR "raylib not found. Install with 'brew install raylib' or adjust paths in CMakeLists.txt")
 endif()
 
-# Chipmunk-Physics from Homebrew
-# Look directly in the 'chipmunk' subdir so CHIPMUNK_INCLUDE_DIR
-# is the directory that actually contains chipmunk.h
-find_path(CHIPMUNK_INCLUDE_DIR
-    NAMES chipmunk.h
+# Box2D from Homebrew (3.x C API)
+find_path(BOX2D_INCLUDE_DIR
+    NAMES box2d/box2d.h
     PATHS
-        /opt/homebrew/include/chipmunk
-        /usr/local/include/chipmunk
+        /opt/homebrew/include
+        /usr/local/include
 )
 
-find_library(CHIPMUNK_LIB
-    NAMES chipmunk
+find_library(BOX2D_LIB
+    NAMES box2d
     PATHS
         /opt/homebrew/lib
         /usr/local/lib
 )
 
-if(NOT CHIPMUNK_INCLUDE_DIR OR NOT CHIPMUNK_LIB)
-    message(FATAL_ERROR "Chipmunk physics library not found. Install with 'brew install chipmunk-physics' (or 'chipmunk') and adjust paths if needed.")
+if(NOT BOX2D_INCLUDE_DIR OR NOT BOX2D_LIB)
+    message(FATAL_ERROR "Box2D physics library not found. Install with 'brew install box2d' and adjust paths if needed.")
 endif()
 
+message(STATUS "BOX2D_INCLUDE_DIR = ${BOX2D_INCLUDE_DIR}")
+message(STATUS "BOX2D_LIB         = ${BOX2D_LIB}")
+
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${RAYLIB_INCLUDE_DIR}
-    ${CHIPMUNK_INCLUDE_DIR}
+    ${BOX2D_INCLUDE_DIR}
 )
 
-# Add Homebrew include directories
-target_include_directories(${PROJECT_NAME} PRIVATE
-    ${RAYLIB_INCLUDE_DIR}
-    ${CHIPMUNK_INCLUDE_DIR}
-)
-
-# Link against Homebrew raylib and chipmunk
+# Link against Homebrew raylib and box2d
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${RAYLIB_LIB}
-    ${CHIPMUNK_LIB}
+    ${BOX2D_LIB}
 )
 
 #--------------- RPATH FOR HOMEBREW DYLIBS ON MAC --------------------
@@ -144,15 +142,15 @@ if(APPLE)
     # Try to query Homebrew prefixes at configure time
     find_program(HOMEBREW_EXECUTABLE brew)
     if(HOMEBREW_EXECUTABLE)
-        # Chipmunk
+        # Box2D
         execute_process(
-            COMMAND "${HOMEBREW_EXECUTABLE}" --prefix chipmunk-physics
-            OUTPUT_VARIABLE CHIPMUNK_PREFIX
+            COMMAND "${HOMEBREW_EXECUTABLE}" --prefix box2d
+            OUTPUT_VARIABLE BOX2D_PREFIX
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
         )
-        if(CHIPMUNK_PREFIX)
-            list(APPEND HOMEBREW_RPATHS "${CHIPMUNK_PREFIX}/lib")
+        if(BOX2D_PREFIX)
+            list(APPEND HOMEBREW_RPATHS "${BOX2D_PREFIX}/lib")
         endif()
 
         # raylib
