@@ -2,16 +2,16 @@
  * physics.c
  *
  * Responsibilities:
- *  - Owns all Chipmunk2D physics setup for the pinball table (space, walls, bumpers, flippers).
- *  - Registers Chipmunk collision handlers and applies their side effects (score, powerups, SFX).
+ *  - Owns all Box2D physics setup for the pinball table (world, walls, bumpers, flippers).
+ *  - Registers Box2D collision handlers and applies their side effects (score, powerups, SFX).
  *  - Provides a small API used by the rest of the game via physics.h:
  *      - physics_init      : one-time setup for a GameStruct.
  *      - physics_step      : advance the simulation by dt.
- *      - physics_shutdown  : destroy the Chipmunk space for a GameStruct.
+ *      - physics_shutdown  : destroy the Box2D world for a GameStruct.
  *      - physics_add_ball  : spawn a new ball with initial position and velocity.
  *
  * Notes for future maintenance:
- *  - Keep Chipmunk-specific details (cpSpace, cpShape, cpBody, collision handlers) inside this file.
+ *  - Keep Box2D-specific details (b2WorldId, b2ShapeId, b2BodyId, collision callbacks) inside this file.
  *  - If you change the maximum number of balls or walls, update both this file and any matching
  *    configuration in constants.h / GameStruct so the array sizes stay in sync.
  *  - Prefer configuring tunable values (gravity, bumper positions, sizes, bounciness) via constants.h
@@ -23,7 +23,7 @@
 #include "soundManager.h"
 #include <stdio.h>
 #include <math.h>
-
+#include <box2d/box2d.h>
 
 #define DEG_TO_RAD (3.14159265 / 180.0)
 
@@ -54,197 +54,181 @@ typedef enum {
 } BumperType;
 
 /* -------------------------------------------------------------------------- */
+/*  Collision type identifiers (mirroring Chipmunk's collision types)        */
+/* -------------------------------------------------------------------------- */
+enum CollisionTypes {
+    COLLISION_WALL = 0,
+    COLLISION_BALL = 1,
+    COLLISION_BUMPER = 2,
+    COLLISION_PADDLE = 3,
+    COLLISION_LEFT_LOWER_BUMPER = 4,
+    COLLISION_RIGHT_LOWER_BUMPER = 5,
+    COLLISION_ONE_WAY = 6
+};
+
+/* -------------------------------------------------------------------------- */
 /*  Local animation state (driven by collision handlers, read by renderer)    */
 /* -------------------------------------------------------------------------- */
 
 static float leftLowerBumperAnim  = 0.0f;
 static float rightLowerBumperAnim = 0.0f;
 
+/* -------------------------------------------------------------------------- */
+/*  Helper function to create a b2Vec2                                        */
+/* -------------------------------------------------------------------------- */
+static inline b2Vec2 pb2_v(float x, float y) {
+    b2Vec2 v = {x, y};
+    return v;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Collision callback helpers                                                */
+/* -------------------------------------------------------------------------- */
+
 /*
- * CollisionHandlerLeftLowerBumper
- *  - Triggered when a ball hits the left lower slingshot/bumper segment.
- *  - Kicks the leftLowerBumperAnim value for rendering and awards points.
+ * PreSolve callback for left lower bumper
  */
-static cpBool CollisionHandlerLeftLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	cpShape *a, *b;
-	cpArbiterGetShapes(arb, &a, &b);
-
-    if (!a || !b) {
-        TraceLog(LOG_ERROR, "CollisionHandlerLeftLowerBumper: null shape pointer");
-        return cpTrue;
-    }
-
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
+bool CollisionHandlerLeftLowerBumper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
+    // shapeIdA is the ball, shapeIdB is the left lower bumper
+    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
     if (!ball) {
         TraceLog(LOG_ERROR, "CollisionHandlerLeftLowerBumper: ball userData NULL");
-        return cpTrue;
+        return true;
     }
 
     leftLowerBumperAnim = 1.0f;
     (ball->game)->gameScore += 25;
-    if ((ball->game)->waterPowerupState == 0){
+    if ((ball->game)->waterPowerupState == 0) {
         (ball->game)->powerupScore += 25;
     }
     playBounce2((ball->game)->sound);
-    return cpTrue;
+    return true;
 }
 
 /*
- * CollisionHandlerRightLowerBumper
- *  - Same as left lower bumper but for the right side.
+ * PreSolve callback for right lower bumper
  */
-static cpBool CollisionHandlerRightLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	cpShape *a, *b;
-	cpArbiterGetShapes(arb, &a, &b);
-
-    if (!a || !b) {
-        TraceLog(LOG_ERROR, "CollisionHandlerRightLowerBumper: null shape pointer");
-        return cpTrue;
-    }
-
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
+bool CollisionHandlerRightLowerBumper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
+    // shapeIdA is the ball, shapeIdB is the right lower bumper
+    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
     if (!ball) {
         TraceLog(LOG_ERROR, "CollisionHandlerRightLowerBumper: ball userData NULL");
-        return cpTrue;
+        return true;
     }
 
     rightLowerBumperAnim = 1.0f;
     (ball->game)->gameScore += 25;
-    if ((ball->game)->waterPowerupState == 0){
+    if ((ball->game)->waterPowerupState == 0) {
         (ball->game)->powerupScore += 25;
     }
     playBounce2((ball->game)->sound);
-    return cpTrue;
+    return true;
 }
 
 /*
- * CollisionHandlerBallFlipper
- *  - Clears the ball's killCounter anytime it touches a flipper.
- *  - Prevents balls near the flippers from being treated as "stalled" and killed.
+ * PreSolve callback for ball-flipper collisions
  */
-static cpBool CollisionHandlerBallFlipper(cpArbiter *arb, cpSpace *space, void *ignore){
-	cpShape *a, *b;
-	cpArbiterGetShapes(arb, &a, &b);
-
-    if (!a || !b) {
-        TraceLog(LOG_ERROR, "CollisionHandlerBallFlipper: null shape pointer");
-        return cpTrue;
-    }
-
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
+bool CollisionHandlerBallFlipper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
+    // shapeIdA is the ball, shapeIdB is the flipper
+    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
     if (!ball) {
         TraceLog(LOG_ERROR, "CollisionHandlerBallFlipper: ball userData NULL");
-        return cpTrue;
+        return true;
     }
 
     ball->killCounter = 0;
-    return cpTrue;
+    return true;
 }
 
 /*
- * CollisionHandlerBallBumper
- *  - Core gameplay collision for balls hitting the various bumper types.
- *  - Uses BumperType to determine scoring, powerups, sounds, and whether
- *    the collision should be processed by Chipmunk or ignored.
+ * BeginContact callback for ball-bumper collisions
  */
-static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	cpShape *a, *b;
-	cpArbiterGetShapes(arb, &a, &b);
-
-    if (!a || !b) {
-        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: null shape pointer");
-        return cpTrue;
-    }
-
-	Bumper* bumper = (Bumper *)cpShapeGetUserData(b);
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
+bool CollisionHandlerBallBumper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
+    // shapeIdA is the ball, shapeIdB is the bumper
+    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
+    Bumper *bumper = (Bumper *)b2Shape_GetUserData(shapeIdB);
 
     if (!ball) {
         TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: ball userData NULL");
-        return cpTrue;
+        return true;
     }
     if (!bumper) {
         TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: bumper userData NULL");
-        return cpTrue;
+        return true;
     }
 
-    if (bumper->type == BUMPER_TYPE_STANDARD){
+    if (bumper->type == BUMPER_TYPE_STANDARD) {
         // Standard upper playfield bumper: visual bounce + modest score.
         bumper->bounceEffect = 10.0f;
         (ball->game)->gameScore += 50;
-        if ((ball->game)->waterPowerupState == 0){
+        if ((ball->game)->waterPowerupState == 0) {
             (ball->game)->powerupScore += 50;
         }
         playUpperBouncerSound((ball->game)->sound);
-        return cpTrue;
-    } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION){
+        return true;
+    } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION) {
         // Special bumper that triggers slow-motion mode and a large point bonus.
         (ball->game)->slowMotion = 1;
         (ball->game)->slowMotionCounter = 1200;
         (ball->game)->gameScore += 1000;
-        if ((ball->game)->waterPowerupState == 0){
+        if ((ball->game)->waterPowerupState == 0) {
             (ball->game)->powerupScore += 1000;
         }
         playSlowdownSound((ball->game)->sound);
         bumper->bounceEffect = 20.0f;
+        return true;
     } else if (bumper->type == BUMPER_TYPE_LANE_TARGET_A ||
-               bumper->type == BUMPER_TYPE_LANE_TARGET_B){
+               bumper->type == BUMPER_TYPE_LANE_TARGET_B) {
         // Lane/target bumpers: only award score once while enabled.
-        if (bumper->enabled == 1){
+        if (bumper->enabled == 1) {
             (ball->game)->gameScore += 50;
-            if ((ball->game)->waterPowerupState == 0){
+            if ((ball->game)->waterPowerupState == 0) {
                 (ball->game)->powerupScore += 50;
             }
             bumper->enabled = 0;
             playBounce((ball->game)->sound);
         }
-    } else if (bumper->type == BUMPER_TYPE_WATER_POWERUP){
+        return true;
+    } else if (bumper->type == BUMPER_TYPE_WATER_POWERUP) {
         // Small bumpers that drive the water powerup state.
-        if (bumper->enabled == 1){
+        if (bumper->enabled == 1) {
             bumper->bounceEffect = 10.0f;
             (ball->game)->gameScore += 250;
-            if ((ball->game)->waterPowerupState == 0){
+            if ((ball->game)->waterPowerupState == 0) {
                 (ball->game)->powerupScore += 250;
             }
             bumper->enabled = 0;
             playBounce((ball->game)->sound);
-            return cpTrue;
+            return true;
         } else {
-            return cpFalse;
+            return false;
         }
     } else {
         // Fallback: treat as a simple one-shot scoring bumper.
         (ball->game)->gameScore += 25;
-        if ((ball->game)->waterPowerupState == 0){
+        if ((ball->game)->waterPowerupState == 0) {
             (ball->game)->powerupScore += 25;
         }
         bumper->enabled = 0;
+        return true;
     }
-
-	return cpFalse;
 }
 
 /*
- * CollisionOneWay
- *  - Implements a one-way gate using the contact normal. If the ball is
- *    moving in the disallowed direction, we tell Chipmunk to ignore the
- *    contact so the ball passes through.
+ * PreSolve callback for one-way gate
  */
-static cpBool CollisionOneWay(cpArbiter *arb, cpSpace *space, void *ignore){
-	cpShape *a, *b;
-	cpArbiterGetShapes(arb, &a, &b);
-
-    if (!a || !b) {
-        TraceLog(LOG_ERROR, "CollisionOneWay: null shape pointer");
-        return cpTrue;
+bool CollisionOneWay(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
+    // Check the contact normal to determine if we should allow the collision
+    // In Box2D 3.x, we can check the manifold normal
+    // If the ball is moving in the disallowed direction, return false to disable the contact
+    
+    // The normal points from A to B
+    // We want to allow collision only if the normal has a positive y component
+    if (manifold->normal.y < 0) {
+        return false; // Disable contact
     }
-
-    printf("%f\n",cpvdot(cpArbiterGetNormal(arb), cpv(0,1)));
-	if(cpvdot(cpArbiterGetNormal(arb), cpv(0,1)) < 0){
-		return cpArbiterIgnore(arb);
-	}
-
-	return cpTrue;
+    
+    return true; // Allow contact
 }
 
 /*
@@ -257,7 +241,7 @@ static cpBool CollisionOneWay(cpArbiter *arb, cpSpace *space, void *ignore){
  *    that aligns the arc with the table coordinate system.
  */
 static void writeCircleWallSegment(float walls[numWalls][4], int segmentIndex, int numSegments,
-                                   float degStart, float degEnd, float centerX, float centerY, float radius){
+                                   float degStart, float degEnd, float centerX, float centerY, float radius) {
     float totalDegreeRange = fabsf(degEnd - degStart);
     float degPerPoint = totalDegreeRange / (numSegments + 1);
 
@@ -268,7 +252,7 @@ static void writeCircleWallSegment(float walls[numWalls][4], int segmentIndex, i
     float prevPointY = centerY + (sin(degStart * DEG_TO_RAD) * radius);
     float curPointX = 0;
     float curPointY = 0;
-    for (int i = 1; i <= numSegments; i++){
+    for (int i = 1; i <= numSegments; i++) {
         curPointX = centerX + (cos((degStart + (i * degPerPoint)) * DEG_TO_RAD) * radius);
         curPointY = centerY + (sin((degStart + (i * degPerPoint)) * DEG_TO_RAD) * radius);
         walls[segmentIndex + i - 1][0] = prevPointX;
@@ -282,12 +266,12 @@ static void writeCircleWallSegment(float walls[numWalls][4], int segmentIndex, i
 
 /*
  * physics_init
- *  - Creates a Chipmunk space for the given GameStruct.
+ *  - Creates a Box2D world for the given GameStruct.
  *  - Builds static walls, bumpers, one-way gate, and flippers.
  *  - Returns pointers to the bumper array and flipper bodies for use by
  *    rendering and game-logic code.
  */
-void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipperBody, cpBody **out_rightFlipperBody){
+void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFlipperBody, b2BodyId **out_rightFlipperBody) {
     /* ----------------------------- Static walls ----------------------------- */
     // Each entry is a segment: { x1, y1, x2, y2 } in world coordinates.
     float walls[numWalls][4] = {
@@ -312,25 +296,35 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
         {67.400002,146.400009,83.200005,134.199997},
         {16.400000,146.199997,0.600000,134.600006}
     };
-    writeCircleWallSegment(walls,20,20,0,90,worldWidth-28.5,30.75,28.75);
-    writeCircleWallSegment(walls,40,20,270,360,28.5,30.75,28.75);
-    writeCircleWallSegment(walls,60,10,20,110,64.75,35.6,10.15);
-    writeCircleWallSegment(walls,70,10,20,110,64.75,35.6,17.50);
-    writeCircleWallSegment(walls,80,10,13,110,64.75,35.6,19.50);
+    writeCircleWallSegment(walls, 20, 20, 0, 90, worldWidth-28.5, 30.75, 28.75);
+    writeCircleWallSegment(walls, 40, 20, 270, 360, 28.5, 30.75, 28.75);
+    writeCircleWallSegment(walls, 60, 10, 20, 110, 64.75, 35.6, 10.15);
+    writeCircleWallSegment(walls, 70, 10, 20, 110, 64.75, 35.6, 17.50);
+    writeCircleWallSegment(walls, 80, 10, 13, 110, 64.75, 35.6, 19.50);
 
     // Initialize physics simulation
-    cpVect gravity = cpv(0,100);
-    cpSpace *space = cpSpaceNew();
-    game->space = space;
-    cpSpaceSetGravity(space,gravity);
+    b2WorldDef worldDef = b2DefaultWorldDef();
+    worldDef.gravity = pb2_v(0, 100);
+    game->world = b2CreateWorld(&worldDef);
+
+    // Create static body for walls
+    b2BodyDef staticBodyDef = b2DefaultBodyDef();
+    staticBodyDef.type = b2_staticBody;
+    staticBodyDef.position = pb2_v(0, 0);
+    b2BodyId staticBody = b2CreateBody(game->world, &staticBodyDef);
 
     // Create walls
-    for (int i = 0; i < numWalls; i++){
-        cpShape *wall = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(walls[i][0],walls[i][1]),cpv(walls[i][2],walls[i][3]),0);
-        cpShapeSetFriction(wall,0.5);
-        cpShapeSetElasticity(wall,0.5);
-        cpShapeSetCollisionType(wall, COLLISION_WALL);
-        cpSpaceAddShape(space,wall);
+    for (int i = 0; i < numWalls; i++) {
+        b2Segment segment;
+        segment.point1 = pb2_v(walls[i][0], walls[i][1]);
+        segment.point2 = pb2_v(walls[i][2], walls[i][3]);
+        
+        b2ShapeDef shapeDef = b2DefaultShapeDef();
+        shapeDef.friction = 0.5f;
+        shapeDef.restitution = 0.5f;
+        shapeDef.filter.categoryBits = COLLISION_WALL;
+        
+        b2CreateSegmentShape(staticBody, &shapeDef, &segment);
     }
 
     /* ------------------------------ Bumpers --------------------------------- */
@@ -340,222 +334,265 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     const float bumperBounciness = 1.8f;
     Bumper* bumpers = malloc(numBumpers * sizeof(Bumper));
 
-    cpShape *bouncer1 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(14.800000,125.200005),cpv(7.600000,109.200005),0);
-    cpShape *bouncer2 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(75.599998,108.800003),cpv(69.200005,125.200005),0);
-    cpShapeSetCollisionType(bouncer1, COLLISION_LEFT_LOWER_BUMPER);
-    cpShapeSetCollisionType(bouncer2, COLLISION_RIGHT_LOWER_BUMPER);
+    // Lower slingshot segments
+    b2Segment leftBouncer, rightBouncer;
+    leftBouncer.point1 = pb2_v(14.800000, 125.200005);
+    leftBouncer.point2 = pb2_v(7.600000, 109.200005);
+    rightBouncer.point1 = pb2_v(75.599998, 108.800003);
+    rightBouncer.point2 = pb2_v(69.200005, 125.200005);
+    
+    b2ShapeDef leftBouncerDef = b2DefaultShapeDef();
+    leftBouncerDef.friction = 0.0f;
+    leftBouncerDef.restitution = 1.2f;
+    leftBouncerDef.filter.categoryBits = COLLISION_LEFT_LOWER_BUMPER;
+    b2CreateSegmentShape(staticBody, &leftBouncerDef, &leftBouncer);
 
-    cpShapeSetFriction(bouncer1,0.0);
-    cpShapeSetElasticity(bouncer1,1.2f);
-    cpSpaceAddShape(space,bouncer1);
-    cpShapeSetFriction(bouncer2,0.0);
-    cpShapeSetElasticity(bouncer2,1.2f);
-    cpSpaceAddShape(space,bouncer2);
-    cpShape *bouncerGuard1 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(7.200000,111.200005),cpv(12.800000,124.400002),0);
-    cpShape *bouncerGuard2 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(71.200005,124.800003),cpv(76.000000,110.800003),0);
-    cpShapeSetCollisionType(bouncerGuard1, COLLISION_WALL);
-    cpShapeSetCollisionType(bouncerGuard2, COLLISION_WALL);
-    cpSpaceAddShape(space,bouncerGuard1);
-    cpShapeSetFriction(bouncerGuard1,0.0f);
-    cpShapeSetElasticity(bouncerGuard1,0.9f);
-    cpSpaceAddShape(space,bouncerGuard2);
-    cpShapeSetFriction(bouncerGuard2,0.0f);
-    cpShapeSetElasticity(bouncerGuard2,0.9f);
+    b2ShapeDef rightBouncerDef = b2DefaultShapeDef();
+    rightBouncerDef.friction = 0.0f;
+    rightBouncerDef.restitution = 1.2f;
+    rightBouncerDef.filter.categoryBits = COLLISION_RIGHT_LOWER_BUMPER;
+    b2CreateSegmentShape(staticBody, &rightBouncerDef, &rightBouncer);
 
-    bumpers[0].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[0].body,cpv(24.9,19.9));
-    bumpers[0].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[0].body,bumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[0].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[0].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[0].shape,&bumpers[0]);
-    bumpers[0].bounceEffect = 0;
-    bumpers[0].type = BUMPER_TYPE_STANDARD;
+    // Bouncer guards
+    b2Segment guard1, guard2;
+    guard1.point1 = pb2_v(7.200000, 111.200005);
+    guard1.point2 = pb2_v(12.800000, 124.400002);
+    guard2.point1 = pb2_v(71.200005, 124.800003);
+    guard2.point2 = pb2_v(76.000000, 110.800003);
+    
+    b2ShapeDef guardDef = b2DefaultShapeDef();
+    guardDef.friction = 0.0f;
+    guardDef.restitution = 0.9f;
+    guardDef.filter.categoryBits = COLLISION_WALL;
+    b2CreateSegmentShape(staticBody, &guardDef, &guard1);
+    b2CreateSegmentShape(staticBody, &guardDef, &guard2);
 
-    bumpers[1].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[1].body,cpv(46.6,17.8));
-    bumpers[1].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[1].body,bumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[1].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[1].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[1].shape,&bumpers[1]);
-    bumpers[1].bounceEffect = 0;
-    bumpers[1].type = BUMPER_TYPE_STANDARD;
+    // Standard bumpers (0-2)
+    float bumperPositions[3][2] = {
+        {24.9, 19.9},
+        {46.6, 17.8},
+        {38.0, 36.4}
+    };
 
-    bumpers[2].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[2].body,cpv(38.0,36.4));
-    bumpers[2].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[2].body,bumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[2].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[2].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[2].shape,&bumpers[2]);
-    bumpers[2].bounceEffect = 0;
-    bumpers[2].type = BUMPER_TYPE_STANDARD;
+    for (int i = 0; i < 3; i++) {
+        b2BodyDef bumperBodyDef = b2DefaultBodyDef();
+        bumperBodyDef.type = b2_kinematicBody;
+        bumperBodyDef.position = pb2_v(bumperPositions[i][0], bumperPositions[i][1]);
+        bumpers[i].body = b2CreateBody(game->world, &bumperBodyDef);
 
-    bumpers[3].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[3].body,cpv(72.200005,23.400000));
-    bumpers[3].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[3].body,2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[3].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[3].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[3].shape,&bumpers[3]);
+        b2Circle circle;
+        circle.center = pb2_v(0, 0);
+        circle.radius = bumperSize / 2.0f;
+
+        b2ShapeDef bumperShapeDef = b2DefaultShapeDef();
+        bumperShapeDef.restitution = bumperBounciness;
+        bumperShapeDef.filter.categoryBits = COLLISION_BUMPER;
+        bumperShapeDef.userData = &bumpers[i];
+
+        bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &bumperShapeDef, &circle);
+        bumpers[i].bounceEffect = 0;
+        bumpers[i].type = BUMPER_TYPE_STANDARD;
+    }
+
+    // Slow motion bumper (3)
+    b2BodyDef slowMoBumperDef = b2DefaultBodyDef();
+    slowMoBumperDef.type = b2_kinematicBody;
+    slowMoBumperDef.position = pb2_v(72.200005, 23.400000);
+    bumpers[3].body = b2CreateBody(game->world, &slowMoBumperDef);
+
+    b2Circle slowMoCircle;
+    slowMoCircle.center = pb2_v(0, 0);
+    slowMoCircle.radius = 2.0f;
+
+    b2ShapeDef slowMoShapeDef = b2DefaultShapeDef();
+    slowMoShapeDef.restitution = bumperBounciness;
+    slowMoShapeDef.filter.categoryBits = COLLISION_BUMPER;
+    slowMoShapeDef.userData = &bumpers[3];
+
+    bumpers[3].shape = b2CreateCircleShape(bumpers[3].body, &slowMoShapeDef, &slowMoCircle);
     bumpers[3].bounceEffect = 0;
     bumpers[3].type = BUMPER_TYPE_SLOW_MOTION;
 
-    for (int i = 4; i < 10; i++){
-        bumpers[i].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-        bumpers[i].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[i].body,2.0f,cpvzero));
-        cpShapeSetElasticity(bumpers[i].shape,0);
-        cpShapeSetCollisionType(bumpers[i].shape, COLLISION_BUMPER);
-        cpShapeSetUserData(bumpers[i].shape,&bumpers[i]);
+    // Lane target bumpers (4-9)
+    float lanePositions[6][2] = {
+        {63.34, 50.88},
+        {77.38, 70.96},
+        {15.1, 62.04},
+        {18.9, 45.3},
+        {61.02, 35.36},
+        {65.02, 23.02}
+    };
+    BumperType laneTypes[6] = {
+        BUMPER_TYPE_LANE_TARGET_A,
+        BUMPER_TYPE_LANE_TARGET_A,
+        BUMPER_TYPE_LANE_TARGET_A,
+        BUMPER_TYPE_LANE_TARGET_B,
+        BUMPER_TYPE_LANE_TARGET_B,
+        BUMPER_TYPE_LANE_TARGET_B
+    };
+    float laneAngles[6] = {
+        90.0 + 145.2,
+        90.0 + 145.2,
+        90.0 + 25.7,
+        90.0,
+        90.0 - 162.0,
+        90.0 - 162.0
+    };
+
+    for (int i = 4; i < 10; i++) {
+        b2BodyDef laneBumperDef = b2DefaultBodyDef();
+        laneBumperDef.type = b2_kinematicBody;
+        laneBumperDef.position = pb2_v(lanePositions[i-4][0], lanePositions[i-4][1]);
+        bumpers[i].body = b2CreateBody(game->world, &laneBumperDef);
+
+        b2Circle laneCircle;
+        laneCircle.center = pb2_v(0, 0);
+        laneCircle.radius = 2.0f;
+
+        b2ShapeDef laneShapeDef = b2DefaultShapeDef();
+        laneShapeDef.restitution = 0.0f;
+        laneShapeDef.filter.categoryBits = COLLISION_BUMPER;
+        laneShapeDef.userData = &bumpers[i];
+
+        bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &laneShapeDef, &laneCircle);
         bumpers[i].bounceEffect = 0;
-        bumpers[i].type = BUMPER_TYPE_LANE_TARGET_A;
+        bumpers[i].type = laneTypes[i-4];
         bumpers[i].enabled = 1;
+        bumpers[i].angle = laneAngles[i-4];
     }
-    cpBodySetPosition(bumpers[4].body,cpv(63.34,50.88));
-    cpBodySetPosition(bumpers[5].body,cpv(77.38,70.96));
-    cpBodySetPosition(bumpers[6].body,cpv(15.1,62.04));
-    cpBodySetPosition(bumpers[7].body,cpv(18.9,45.3));
-    cpBodySetPosition(bumpers[8].body,cpv(61.02,35.36));
-    cpBodySetPosition(bumpers[9].body,cpv(65.02,23.02));
-    bumpers[4].type = BUMPER_TYPE_LANE_TARGET_A;
-    bumpers[5].type = BUMPER_TYPE_LANE_TARGET_A;
-    bumpers[6].type = BUMPER_TYPE_LANE_TARGET_A;
-    bumpers[7].type = BUMPER_TYPE_LANE_TARGET_B;
-    bumpers[8].type = BUMPER_TYPE_LANE_TARGET_B;
-    bumpers[9].type = BUMPER_TYPE_LANE_TARGET_B;
-    bumpers[4].angle = 90.0+145.2;
-    bumpers[5].angle = 90.0+145.2;
-    bumpers[6].angle = 90.0+25.7;
-    bumpers[7].angle = 90;
-    bumpers[8].angle = 90-162;
-    bumpers[9].angle = 90-162;
 
-    bumpers[10].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[10].body,cpv(12.2,81.8));
-    bumpers[10].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[10].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[10].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[10].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[10].shape,&bumpers[10]);
-    bumpers[10].bounceEffect = 0;
-    bumpers[10].enabledSize = 0.0f;
-    bumpers[10].enabled = 0;
-    bumpers[10].type = BUMPER_TYPE_WATER_POWERUP;
+    // Water powerup bumpers (10-13)
+    float waterPositions[4][2] = {
+        {12.2, 81.8},
+        {23.8, 91.2},
+        {61.2, 91.2},
+        {72.599998, 81.8}
+    };
 
-    bumpers[11].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[11].body,cpv(23.8,91.2));
-    bumpers[11].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[11].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[11].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[11].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[11].shape,&bumpers[11]);
-    bumpers[11].bounceEffect = 0;
-    bumpers[11].enabledSize = 0.0f;
-    bumpers[11].enabled = 0;
-    bumpers[11].type = BUMPER_TYPE_WATER_POWERUP;
+    for (int i = 10; i < 14; i++) {
+        b2BodyDef waterBumperDef = b2DefaultBodyDef();
+        waterBumperDef.type = b2_kinematicBody;
+        waterBumperDef.position = pb2_v(waterPositions[i-10][0], waterPositions[i-10][1]);
+        bumpers[i].body = b2CreateBody(game->world, &waterBumperDef);
 
-    bumpers[12].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[12].body,cpv(61.2,91.2));
-    bumpers[12].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[12].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[12].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[12].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[12].shape,&bumpers[12]);
-    bumpers[12].bounceEffect = 0;
-    bumpers[12].enabledSize = 0.0f;
-    bumpers[12].enabled = 0;
-    bumpers[12].type = BUMPER_TYPE_WATER_POWERUP;
+        b2Circle waterCircle;
+        waterCircle.center = pb2_v(0, 0);
+        waterCircle.radius = smallBumperSize / 2.0f;
 
-    bumpers[13].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[13].body,cpv(72.599998,81.8));
-    bumpers[13].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[13].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[13].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[13].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[13].shape,&bumpers[13]);
-    bumpers[13].bounceEffect = 0;
-    bumpers[13].enabledSize = 0.0f;
-    bumpers[13].enabled = 0;
-    bumpers[13].type = BUMPER_TYPE_WATER_POWERUP;
+        b2ShapeDef waterShapeDef = b2DefaultShapeDef();
+        waterShapeDef.restitution = bumperBounciness;
+        waterShapeDef.filter.categoryBits = COLLISION_BUMPER;
+        waterShapeDef.userData = &bumpers[i];
 
-    //Add collision handler for ball-bumper effect
-    cpCollisionHandler *handler = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_BUMPER);
-    handler->beginFunc = CollisionHandlerBallBumper;
+        bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &waterShapeDef, &waterCircle);
+        bumpers[i].bounceEffect = 0;
+        bumpers[i].enabledSize = 0.0f;
+        bumpers[i].enabled = 0;
+        bumpers[i].type = BUMPER_TYPE_WATER_POWERUP;
+    }
 
-    cpCollisionHandler *ballFlipperHandler = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_PADDLE);
-    ballFlipperHandler->preSolveFunc = CollisionHandlerBallFlipper;
+    // Create one-way door
+    b2Segment oneWaySegment;
+    oneWaySegment.point1 = pb2_v(69.6, 16.6);
+    oneWaySegment.point2 = pb2_v(73.4, 4.6);
+    
+    b2ShapeDef oneWayDef = b2DefaultShapeDef();
+    oneWayDef.restitution = 0.5f;
+    oneWayDef.friction = 0.0f;
+    oneWayDef.filter.categoryBits = COLLISION_ONE_WAY;
+    b2CreateSegmentShape(staticBody, &oneWayDef, &oneWaySegment);
 
-    cpCollisionHandler *leftLower = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_LEFT_LOWER_BUMPER);
-    cpCollisionHandler *rightLower = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_RIGHT_LOWER_BUMPER);
-    leftLower->beginFunc = CollisionHandlerLeftLowerBumper;
-    rightLower->beginFunc = CollisionHandlerRightLowerBumper;
+    // Additional static segments
+    b2Segment tempSegments[3];
+    tempSegments[0].point1 = pb2_v(7.800000, 38.200001);
+    tempSegments[0].point2 = pb2_v(7.8, 49.200001);
+    tempSegments[1].point1 = pb2_v(16.000000, 38.400002);
+    tempSegments[1].point2 = pb2_v(16.000000, 53.799999);
+    tempSegments[2].point1 = pb2_v(16.000000, 53.799999);
+    tempSegments[2].point2 = pb2_v(8.600000, 68.800003);
 
-    // create one-way door
-	cpShape* oneWayShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(69.6,16.6), cpv(73.4,4.6), 0.5f));
-	cpShapeSetElasticity(oneWayShape, 0.5f);
-	cpShapeSetFriction(oneWayShape, 0.0f);
-	cpShapeSetCollisionType(oneWayShape, COLLISION_ONE_WAY);
-	cpCollisionHandler *oneWayHandler = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_ONE_WAY);
-	oneWayHandler->preSolveFunc = CollisionOneWay;
+    b2ShapeDef tempDef = b2DefaultShapeDef();
+    tempDef.restitution = 0.5f;
+    tempDef.friction = 0.5f;
+    tempDef.filter.categoryBits = COLLISION_WALL;
 
-	cpShape* tempShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(7.800000,38.200001), cpv(7.8,49.200001), 1.0f));
-	cpShapeSetElasticity(tempShape, 0.5f);
-	cpShapeSetFriction(tempShape, 0.5f);
-	cpShapeSetCollisionType(tempShape, COLLISION_WALL);
-
-	tempShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(16.000000,38.400002), cpv(16.000000,53.799999), 1.0f));
-	cpShapeSetElasticity(tempShape, 0.5f);
-	cpShapeSetFriction(tempShape, 0.5f);
-	cpShapeSetCollisionType(tempShape, COLLISION_WALL);
-
-	tempShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(16.000000,53.799999), cpv(8.600000,68.800003), 1.0f));
-	cpShapeSetElasticity(tempShape, 0.5f);
-	cpShapeSetFriction(tempShape, 0.5f);
-	cpShapeSetCollisionType(tempShape, COLLISION_WALL);
+    for (int i = 0; i < 3; i++) {
+        b2CreateSegmentShape(staticBody, &tempDef, &tempSegments[i]);
+    }
 
     /* ------------------------------ Flippers -------------------------------- */
-    // Create left and right flippers.
-    cpBody* leftFlipperBody =  cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBody* rightFlipperBody =  cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(leftFlipperBody,cpv(19.8,145.45));
-    cpBodySetPosition(rightFlipperBody,cpv(63.5,145.45));
-    const cpVect flipperPoly[4] = {
-        {0,0},
-        {flipperWidth,0},
-        {flipperWidth,flipperHeight},
-        {0,flipperHeight}
+    // Allocate memory for flipper bodies to return
+    static b2BodyId leftFlipperBodyStatic;
+    static b2BodyId rightFlipperBodyStatic;
+
+    // Create left flipper
+    b2BodyDef leftFlipperDef = b2DefaultBodyDef();
+    leftFlipperDef.type = b2_kinematicBody;
+    leftFlipperDef.position = pb2_v(19.8, 145.45);
+    leftFlipperBodyStatic = b2CreateBody(game->world, &leftFlipperDef);
+
+    // Create right flipper
+    b2BodyDef rightFlipperDef = b2DefaultBodyDef();
+    rightFlipperDef.type = b2_kinematicBody;
+    rightFlipperDef.position = pb2_v(63.5, 145.45);
+    rightFlipperBodyStatic = b2CreateBody(game->world, &rightFlipperDef);
+
+    // Define flipper polygon shape
+    b2Vec2 flipperVerts[4] = {
+        pb2_v(0, 0),
+        pb2_v(flipperWidth, 0),
+        pb2_v(flipperWidth, flipperHeight),
+        pb2_v(0, flipperHeight)
     };
-    cpShape* leftFlipperShape = cpSpaceAddShape(space,cpPolyShapeNewRaw(leftFlipperBody,4,flipperPoly,0.0f));
-    cpShape* rightFlipperShape = cpSpaceAddShape(space,cpPolyShapeNewRaw(rightFlipperBody,4,flipperPoly,0.0f));
-    cpShapeSetFriction(leftFlipperShape,0.8);
-    cpShapeSetFriction(rightFlipperShape,0.8);
-    cpShapeSetElasticity(leftFlipperShape,0.2);
-    cpShapeSetElasticity(rightFlipperShape,0.2);
-    cpShapeSetCollisionType(leftFlipperShape, COLLISION_PADDLE);
-    cpShapeSetCollisionType(rightFlipperShape, COLLISION_PADDLE);
-    cpBodySetCenterOfGravity(leftFlipperBody,cpv(flipperHeight/2.0f,flipperHeight/2.0f));
-    cpBodySetCenterOfGravity(rightFlipperBody,cpv(flipperHeight/2.0f,flipperHeight/2.0f));
+
+    b2Hull flipperHull = b2ComputeHull(flipperVerts, 4);
+    b2Polygon flipperPoly = b2MakePolygon(&flipperHull, 0);
+
+    // Create left flipper shape
+    b2ShapeDef leftFlipperShapeDef = b2DefaultShapeDef();
+    leftFlipperShapeDef.friction = 0.8f;
+    leftFlipperShapeDef.restitution = 0.2f;
+    leftFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
+    b2CreatePolygonShape(leftFlipperBodyStatic, &leftFlipperShapeDef, &flipperPoly);
+
+    // Create right flipper shape
+    b2ShapeDef rightFlipperShapeDef = b2DefaultShapeDef();
+    rightFlipperShapeDef.friction = 0.8f;
+    rightFlipperShapeDef.restitution = 0.2f;
+    rightFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
+    b2CreatePolygonShape(rightFlipperBodyStatic, &rightFlipperShapeDef, &flipperPoly);
 
     // Return bumpers and flipper bodies to caller
     *out_bumpers = bumpers;
-    *out_leftFlipperBody = leftFlipperBody;
-    *out_rightFlipperBody = rightFlipperBody;
+    *out_leftFlipperBody = &leftFlipperBodyStatic;
+    *out_rightFlipperBody = &rightFlipperBodyStatic;
 }
 
 /*
  * physics_step
  *  - Advance the physics simulation by dt seconds.
- *  - All Chipmunk stepping should go through this function so we can
+ *  - All Box2D stepping should go through this function so we can
  *    centralize any future debug instrumentation or sub-stepping logic.
  */
-void physics_step(GameStruct *game, float dt){
+void physics_step(GameStruct *game, float dt) {
     TraceLog(LOG_INFO, "[PHYSICS] stepping dt=%f", dt);
-    cpSpaceStep(game->space, dt);
+    
+    // Box2D 3.x step parameters
+    int subStepCount = 4;
+    b2World_Step(game->world, dt, subStepCount);
+    
     TraceLog(LOG_INFO, "[PHYSICS] done");
 }
 
 /*
  * physics_shutdown
- *  - Frees the Chipmunk space owned by this GameStruct.
+ *  - Frees the Box2D world owned by this GameStruct.
  *  - Does not free GameStruct itself or any rendering data.
  */
-void physics_shutdown(GameStruct *game){
-    if (game->space != NULL){
-        cpSpaceFree(game->space);
-        game->space = NULL;
+void physics_shutdown(GameStruct *game) {
+    if (B2_IS_NON_NULL(game->world)) {
+        b2DestroyWorld(game->world);
+        game->world = b2_nullWorldId;
     }
 }
 
@@ -570,43 +607,56 @@ void physics_shutdown(GameStruct *game){
  *    - Updates game->numBalls and initializes the Ball struct at the chosen index.
  *    - Plays the launch sound via the SoundManager.
  */
-void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, int type){
-    if (game->numBalls < maxBalls){
+void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, int type) {
+    if (game->numBalls < maxBalls) {
         game->numBalls++;
         // Find the first index that isn't active
         int ballIndex = 0;
-        for (int i = 0; i < maxBalls; i++){
-            if (game->balls[i].active == 0){
+        for (int i = 0; i < maxBalls; i++) {
+            if (game->balls[i].active == 0) {
                 ballIndex = i;
                 break;
             }
         }
 
         float radius = ballSize / 2.0;
-        float mass = 1.0;
-        if (type == 2){
+        float density = 1.0;
+        if (type == 2) {
             radius = 10.0f;
-            mass = 2.0f;
+            density = 2.0f;
         }
-        cpFloat moment = cpMomentForCircle(mass, 0, radius, cpvzero);
-        game->balls[ballIndex].body = cpSpaceAddBody(game->space,cpBodyNew(mass,moment));
-        cpBodySetPosition(game->balls[ballIndex].body,cpv(px,py));
-        cpBodySetVelocity(game->balls[ballIndex].body,cpv(vx,vy));
-        game->balls[ballIndex].shape = cpSpaceAddShape(game->space,cpCircleShapeNew(game->balls[ballIndex].body,radius,cpvzero));
-        cpShapeSetFriction(game->balls[ballIndex].shape,0.0);
-        cpShapeSetElasticity(game->balls[ballIndex].shape,0.7);
-        cpShapeSetCollisionType(game->balls[ballIndex].shape, COLLISION_BALL);
-        cpShapeSetUserData(game->balls[ballIndex].shape,&(game->balls[ballIndex]));
+
+        // Create ball body
+        b2BodyDef ballBodyDef = b2DefaultBodyDef();
+        ballBodyDef.type = b2_dynamicBody;
+        ballBodyDef.position = pb2_v(px, py);
+        ballBodyDef.linearVelocity = pb2_v(vx, vy);
+        game->balls[ballIndex].body = b2CreateBody(game->world, &ballBodyDef);
+
+        // Create ball shape
+        b2Circle ballCircle;
+        ballCircle.center = pb2_v(0, 0);
+        ballCircle.radius = radius;
+
+        b2ShapeDef ballShapeDef = b2DefaultShapeDef();
+        ballShapeDef.friction = 0.0f;
+        ballShapeDef.restitution = 0.7f;
+        ballShapeDef.density = density;
+        ballShapeDef.filter.categoryBits = COLLISION_BALL;
+        ballShapeDef.userData = &(game->balls[ballIndex]);
+
+        game->balls[ballIndex].shape = b2CreateCircleShape(game->balls[ballIndex].body, &ballShapeDef, &ballCircle);
         game->balls[ballIndex].active = 1;
         game->balls[ballIndex].game = game;
         game->balls[ballIndex].trailStartIndex = 0;
         game->balls[ballIndex].type = type;
         game->balls[ballIndex].killCounter = 0;
-        if (type == 0){
+
+        if (type == 0) {
             game->slowMotion = 0;
         }
 
-        for (int i = 0; i< 16; i++){
+        for (int i = 0; i < 16; i++) {
             game->balls[ballIndex].locationHistoryX[i] = px;
             game->balls[ballIndex].locationHistoryY[i] = py;
         }

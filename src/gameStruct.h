@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
-#include <chipmunk.h>
+#include <box2d/box2d.h>
 #include "inputManager.h"
 
 typedef struct GameStructData GameStruct;
@@ -30,8 +30,8 @@ typedef struct SoundManagerObject {
 
 typedef struct {
     int active;
-    cpShape *shape;
-    cpBody *body;
+    b2ShapeId shape;
+    b2BodyId body;
     GameStruct *game;
     float locationHistoryX[16];
     float locationHistoryY[16];
@@ -48,8 +48,8 @@ typedef enum {
 } TransitionAction;
 
 typedef struct {
-    cpShape *shape;
-    cpBody *body;
+    b2ShapeId shape;
+    b2BodyId body;
     float bounceEffect;
     int type;
     int enabled;
@@ -76,7 +76,7 @@ enum CollisionTypes {
 };
 
 struct GameStructData {
-    cpSpace *space;
+    b2WorldId world;
     int numBalls;
     Ball *balls;
     int active;
