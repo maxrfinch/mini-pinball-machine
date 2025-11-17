@@ -1,21 +1,68 @@
+/*
+ * physics.c
+ *
+ * Responsibilities:
+ *  - Owns all Chipmunk2D physics setup for the pinball table (space, walls, bumpers, flippers).
+ *  - Registers Chipmunk collision handlers and applies their side effects (score, powerups, SFX).
+ *  - Provides a small API used by the rest of the game via physics.h:
+ *      - physics_init      : one-time setup for a GameStruct.
+ *      - physics_step      : advance the simulation by dt.
+ *      - physics_shutdown  : destroy the Chipmunk space for a GameStruct.
+ *      - physics_add_ball  : spawn a new ball with initial position and velocity.
+ *
+ * Notes for future maintenance:
+ *  - Keep Chipmunk-specific details (cpSpace, cpShape, cpBody, collision handlers) inside this file.
+ *  - If you change the maximum number of balls or walls, update both this file and any matching
+ *    configuration in constants.h / GameStruct so the array sizes stay in sync.
+ *  - Prefer configuring tunable values (gravity, bumper positions, sizes, bounciness) via constants.h
+ *    or a table at the top of this file rather than hardcoding them inline.
+ */
+
 #include "physics.h"
 #include "constants.h"
 #include "soundManager.h"
 #include <stdio.h>
 #include <math.h>
 
+
 #define DEG_TO_RAD (3.14159265 / 180.0)
 
-// Constants
-static const int numWalls = 128;
-static const int maxBalls = 256;
-static const float ballSize = 5;
+// Local geometry/limit constants for this module.
+//
+// numWalls   : number of static wall segments we create in physics_init().
+// maxBalls   : must match the size of game->balls allocated/owned by GameStruct.
+// ballSize   : default ball diameter (in world units) for type==0 balls.
+//              If this changes, make sure any rendering code that assumes the
+//              same size is updated as well.
+static const int   numWalls  = 128;
+static const int   maxBalls  = 256;
+static const float ballSize  = 5.0f;
 
-// Static variables for animation (used by collision handlers)
-static float leftLowerBumperAnim = 0.0f;
+/*
+ * BumperType:
+ *  - Encodes gameplay semantics for bumpers so we avoid magic numbers.
+ *  - Values must stay in sync with any rendering/UI code that branches on bumper->type.
+ */
+typedef enum {
+    BUMPER_TYPE_STANDARD      = 0,  // Upper playfield round bumpers (score + powerup meter)
+    BUMPER_TYPE_SLOW_MOTION   = 1,  // Special bumper that triggers slow motion + big score
+    BUMPER_TYPE_LANE_TARGET_A = 2,  // Lane/target bumpers, group A
+    BUMPER_TYPE_LANE_TARGET_B = 3,  // Lane/target bumpers, group B
+    BUMPER_TYPE_WATER_POWERUP = 4   // Small bumpers that enable water powerup
+} BumperType;
+
+/* -------------------------------------------------------------------------- */
+/*  Local animation state (driven by collision handlers, read by renderer)    */
+/* -------------------------------------------------------------------------- */
+
+static float leftLowerBumperAnim  = 0.0f;
 static float rightLowerBumperAnim = 0.0f;
 
-// Collision handler functions
+/*
+ * CollisionHandlerLeftLowerBumper
+ *  - Triggered when a ball hits the left lower slingshot/bumper segment.
+ *  - Kicks the leftLowerBumperAnim value for rendering and awards points.
+ */
 static cpBool CollisionHandlerLeftLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
 	CP_ARBITER_GET_SHAPES(arb, a, b);
     Ball *ball = (Ball *)cpShapeGetUserData(a);
@@ -28,6 +75,10 @@ static cpBool CollisionHandlerLeftLowerBumper(cpArbiter *arb, cpSpace *space, vo
     return cpTrue;
 }
 
+/*
+ * CollisionHandlerRightLowerBumper
+ *  - Same as left lower bumper but for the right side.
+ */
 static cpBool CollisionHandlerRightLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
 	CP_ARBITER_GET_SHAPES(arb, a, b);
     Ball *ball = (Ball *)cpShapeGetUserData(a);
@@ -40,6 +91,11 @@ static cpBool CollisionHandlerRightLowerBumper(cpArbiter *arb, cpSpace *space, v
     return cpTrue;
 }
 
+/*
+ * CollisionHandlerBallFlipper
+ *  - Clears the ball's killCounter anytime it touches a flipper.
+ *  - Prevents balls near the flippers from being treated as "stalled" and killed.
+ */
 static cpBool CollisionHandlerBallFlipper(cpArbiter *arb, cpSpace *space, void *ignore){
 	CP_ARBITER_GET_SHAPES(arb, a, b);
     Ball *ball = (Ball *)cpShapeGetUserData(a);
@@ -47,26 +103,28 @@ static cpBool CollisionHandlerBallFlipper(cpArbiter *arb, cpSpace *space, void *
     return cpTrue;
 }
 
+/*
+ * CollisionHandlerBallBumper
+ *  - Core gameplay collision for balls hitting the various bumper types.
+ *  - Uses BumperType to determine scoring, powerups, sounds, and whether
+ *    the collision should be processed by Chipmunk or ignored.
+ */
 static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *ignore){
 	CP_ARBITER_GET_SHAPES(arb, a, b);
 	Bumper* bumper = (Bumper *)cpShapeGetUserData(b);
     Ball *ball = (Ball *)cpShapeGetUserData(a);
 
-    if (bumper->type == 0){
-        // On the bumper object, set the collision effect
+    if (bumper->type == BUMPER_TYPE_STANDARD){
+        // Standard upper playfield bumper: visual bounce + modest score.
         bumper->bounceEffect = 10.0f;
-        //if (ball->type == 0){
         (ball->game)->gameScore += 50;
         if ((ball->game)->waterPowerupState == 0){
             (ball->game)->powerupScore += 50;
         }
         playUpperBouncerSound((ball->game)->sound);
-        //}
-
-        // On the ball object, add a random velocity
-        //cpBodyApplyImpulseAtLocalPoint(ball->body,cpv(rand() % 20 - 10, rand() % 20 - 10),cpvzero);
-    	return cpTrue;
-    } else if (bumper->type == 1){
+        return cpTrue;
+    } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION){
+        // Special bumper that triggers slow-motion mode and a large point bonus.
         (ball->game)->slowMotion = 1;
         (ball->game)->slowMotionCounter = 1200;
         (ball->game)->gameScore += 1000;
@@ -75,7 +133,9 @@ static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *i
         }
         playSlowdownSound((ball->game)->sound);
         bumper->bounceEffect = 20.0f;
-    } else if (bumper->type == 2){
+    } else if (bumper->type == BUMPER_TYPE_LANE_TARGET_A ||
+               bumper->type == BUMPER_TYPE_LANE_TARGET_B){
+        // Lane/target bumpers: only award score once while enabled.
         if (bumper->enabled == 1){
             (ball->game)->gameScore += 50;
             if ((ball->game)->waterPowerupState == 0){
@@ -84,16 +144,8 @@ static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *i
             bumper->enabled = 0;
             playBounce((ball->game)->sound);
         }
-    } else if (bumper->type == 3){
-        if (bumper->enabled == 1){
-            (ball->game)->gameScore += 50;
-            if ((ball->game)->waterPowerupState == 0){
-                (ball->game)->powerupScore += 50;
-            }
-            bumper->enabled = 0;
-            playBounce((ball->game)->sound);
-        }
-    } else if (bumper->type == 4){
+    } else if (bumper->type == BUMPER_TYPE_WATER_POWERUP){
+        // Small bumpers that drive the water powerup state.
         if (bumper->enabled == 1){
             bumper->bounceEffect = 10.0f;
             (ball->game)->gameScore += 250;
@@ -107,6 +159,7 @@ static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *i
             return cpFalse;
         }
     } else {
+        // Fallback: treat as a simple one-shot scoring bumper.
         (ball->game)->gameScore += 25;
         if ((ball->game)->waterPowerupState == 0){
             (ball->game)->powerupScore += 25;
@@ -117,6 +170,12 @@ static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *i
 	return cpFalse;
 }
 
+/*
+ * CollisionOneWay
+ *  - Implements a one-way gate using the contact normal. If the ball is
+ *    moving in the disallowed direction, we tell Chipmunk to ignore the
+ *    contact so the ball passes through.
+ */
 static cpBool CollisionOneWay(cpArbiter *arb, cpSpace *space, void *ignore){
 	CP_ARBITER_GET_SHAPES(arb, a, b);
     printf("%f\n",cpvdot(cpArbiterGetNormal(arb), cpv(0,1)));
@@ -127,8 +186,17 @@ static cpBool CollisionOneWay(cpArbiter *arb, cpSpace *space, void *ignore){
 	return cpTrue;
 }
 
-// Helper function to write circle wall segments
-static void writeCircleWallSegment(float walls[numWalls][4],int segmentIndex,int numSegments,float degStart,float degEnd,float centerX, float centerY, float radius){
+/*
+ * writeCircleWallSegment
+ *  - Fills a contiguous range of entries in the walls[][] array with short line
+ *    segments that approximate a circular arc.
+ *  - segmentIndex: starting index in the walls array to write into.
+ *  - numSegments : how many segments to generate (uses numSegments+1 points).
+ *  - degStart/degEnd: arc range in degrees, before the internal -90° offset
+ *    that aligns the arc with the table coordinate system.
+ */
+static void writeCircleWallSegment(float walls[numWalls][4], int segmentIndex, int numSegments,
+                                   float degStart, float degEnd, float centerX, float centerY, float radius){
     float totalDegreeRange = fabsf(degEnd - degStart);
     float degPerPoint = totalDegreeRange / (numSegments + 1);
 
@@ -151,9 +219,17 @@ static void writeCircleWallSegment(float walls[numWalls][4],int segmentIndex,int
     }
 }
 
+/*
+ * physics_init
+ *  - Creates a Chipmunk space for the given GameStruct.
+ *  - Builds static walls, bumpers, one-way gate, and flippers.
+ *  - Returns pointers to the bumper array and flipper bodies for use by
+ *    rendering and game-logic code.
+ */
 void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipperBody, cpBody **out_rightFlipperBody){
-    // Define walls
-    float walls[128][4] = {
+    /* ----------------------------- Static walls ----------------------------- */
+    // Each entry is a segment: { x1, y1, x2, y2 } in world coordinates.
+    float walls[numWalls][4] = {
         {0,0,worldWidth,0},
         {0,0,0,worldHeight},
         {worldWidth,0,worldWidth,worldHeight},
@@ -196,7 +272,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
         cpSpaceAddShape(space,wall);
     }
 
-    // Create bumpers
+    /* ------------------------------ Bumpers --------------------------------- */
+    // numBumpers and type assignments must stay in sync with rendering code.
     const int numBumpers = 14;
     const float bumperSize = 10.0f;
     const float smallBumperSize = 4.0f;
@@ -232,7 +309,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     cpShapeSetCollisionType(bumpers[0].shape, COLLISION_BUMPER);
     cpShapeSetUserData(bumpers[0].shape,&bumpers[0]);
     bumpers[0].bounceEffect = 0;
-    bumpers[0].type = 0;
+    bumpers[0].type = BUMPER_TYPE_STANDARD;
 
     bumpers[1].body = cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBodySetPosition(bumpers[1].body,cpv(46.6,17.8));
@@ -241,7 +318,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     cpShapeSetCollisionType(bumpers[1].shape, COLLISION_BUMPER);
     cpShapeSetUserData(bumpers[1].shape,&bumpers[1]);
     bumpers[1].bounceEffect = 0;
-    bumpers[1].type = 0;
+    bumpers[1].type = BUMPER_TYPE_STANDARD;
 
     bumpers[2].body = cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBodySetPosition(bumpers[2].body,cpv(38.0,36.4));
@@ -250,7 +327,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     cpShapeSetCollisionType(bumpers[2].shape, COLLISION_BUMPER);
     cpShapeSetUserData(bumpers[2].shape,&bumpers[2]);
     bumpers[2].bounceEffect = 0;
-    bumpers[2].type = 0;
+    bumpers[2].type = BUMPER_TYPE_STANDARD;
 
     bumpers[3].body = cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBodySetPosition(bumpers[3].body,cpv(72.200005,23.400000));
@@ -259,7 +336,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     cpShapeSetCollisionType(bumpers[3].shape, COLLISION_BUMPER);
     cpShapeSetUserData(bumpers[3].shape,&bumpers[3]);
     bumpers[3].bounceEffect = 0;
-    bumpers[3].type = 1;
+    bumpers[3].type = BUMPER_TYPE_SLOW_MOTION;
 
     for (int i = 4; i < 10; i++){
         bumpers[i].body = cpSpaceAddBody(space,cpBodyNewKinematic());
@@ -268,7 +345,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
         cpShapeSetCollisionType(bumpers[i].shape, COLLISION_BUMPER);
         cpShapeSetUserData(bumpers[i].shape,&bumpers[i]);
         bumpers[i].bounceEffect = 0;
-        bumpers[i].type = 2;
+        bumpers[i].type = BUMPER_TYPE_LANE_TARGET_A;
         bumpers[i].enabled = 1;
     }
     cpBodySetPosition(bumpers[4].body,cpv(63.34,50.88));
@@ -277,12 +354,12 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     cpBodySetPosition(bumpers[7].body,cpv(18.9,45.3));
     cpBodySetPosition(bumpers[8].body,cpv(61.02,35.36));
     cpBodySetPosition(bumpers[9].body,cpv(65.02,23.02));
-    bumpers[4].type = 2;
-    bumpers[5].type = 2;
-    bumpers[6].type = 2;
-    bumpers[7].type = 3;
-    bumpers[8].type = 3;
-    bumpers[9].type = 3;
+    bumpers[4].type = BUMPER_TYPE_LANE_TARGET_A;
+    bumpers[5].type = BUMPER_TYPE_LANE_TARGET_A;
+    bumpers[6].type = BUMPER_TYPE_LANE_TARGET_A;
+    bumpers[7].type = BUMPER_TYPE_LANE_TARGET_B;
+    bumpers[8].type = BUMPER_TYPE_LANE_TARGET_B;
+    bumpers[9].type = BUMPER_TYPE_LANE_TARGET_B;
     bumpers[4].angle = 90.0+145.2;
     bumpers[5].angle = 90.0+145.2;
     bumpers[6].angle = 90.0+25.7;
@@ -299,7 +376,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     bumpers[10].bounceEffect = 0;
     bumpers[10].enabledSize = 0.0f;
     bumpers[10].enabled = 0;
-    bumpers[10].type = 4;
+    bumpers[10].type = BUMPER_TYPE_WATER_POWERUP;
 
     bumpers[11].body = cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBodySetPosition(bumpers[11].body,cpv(23.8,91.2));
@@ -310,7 +387,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     bumpers[11].bounceEffect = 0;
     bumpers[11].enabledSize = 0.0f;
     bumpers[11].enabled = 0;
-    bumpers[11].type = 4;
+    bumpers[11].type = BUMPER_TYPE_WATER_POWERUP;
 
     bumpers[12].body = cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBodySetPosition(bumpers[12].body,cpv(61.2,91.2));
@@ -321,7 +398,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     bumpers[12].bounceEffect = 0;
     bumpers[12].enabledSize = 0.0f;
     bumpers[12].enabled = 0;
-    bumpers[12].type = 4;
+    bumpers[12].type = BUMPER_TYPE_WATER_POWERUP;
 
     bumpers[13].body = cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBodySetPosition(bumpers[13].body,cpv(72.599998,81.8));
@@ -332,7 +409,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     bumpers[13].bounceEffect = 0;
     bumpers[13].enabledSize = 0.0f;
     bumpers[13].enabled = 0;
-    bumpers[13].type = 4;
+    bumpers[13].type = BUMPER_TYPE_WATER_POWERUP;
 
     //Add collision handler for ball-bumper effect
     cpCollisionHandler *handler = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_BUMPER);
@@ -369,7 +446,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
 	cpShapeSetFriction(tempShape, 0.5f);
 	cpShapeSetCollisionType(tempShape, COLLISION_WALL);
 
-    // Create left and right flippers
+    /* ------------------------------ Flippers -------------------------------- */
+    // Create left and right flippers.
     cpBody* leftFlipperBody =  cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBody* rightFlipperBody =  cpSpaceAddBody(space,cpBodyNewKinematic());
     cpBodySetPosition(leftFlipperBody,cpv(19.8,145.45));
@@ -397,10 +475,21 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
     *out_rightFlipperBody = rightFlipperBody;
 }
 
+/*
+ * physics_step
+ *  - Advance the physics simulation by dt seconds.
+ *  - All Chipmunk stepping should go through this function so we can
+ *    centralize any future debug instrumentation or sub-stepping logic.
+ */
 void physics_step(GameStruct *game, float dt){
     cpSpaceStep(game->space, dt);
 }
 
+/*
+ * physics_shutdown
+ *  - Frees the Chipmunk space owned by this GameStruct.
+ *  - Does not free GameStruct itself or any rendering data.
+ */
 void physics_shutdown(GameStruct *game){
     if (game->space != NULL){
         cpSpaceFree(game->space);
@@ -408,6 +497,17 @@ void physics_shutdown(GameStruct *game){
     }
 }
 
+/*
+ * physics_add_ball
+ *  - Spawns a new ball into the physics world, if there is capacity.
+ *  - (px, py) : initial position in world units.
+ *  - (vx, vy) : initial velocity.
+ *  - type     : gameplay type (0 = normal, 2 = large, etc.).
+ *
+ *  Notes:
+ *    - Updates game->numBalls and initializes the Ball struct at the chosen index.
+ *    - Plays the launch sound via the SoundManager.
+ */
 void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, int type){
     if (game->numBalls < maxBalls){
         game->numBalls++;

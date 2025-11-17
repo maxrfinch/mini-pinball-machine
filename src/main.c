@@ -31,6 +31,14 @@ long long millis() {
 const int maxBalls = 256;
 const float ballSize = 5;
 
+const int numBumpers = 14;
+const float bumperSize = 10.0f;
+const float smallBumperSize = 4.0f;
+const float bumperBounciness = 1.8f;
+
+// global pointer to the bumpers array
+Bumper* bumpers = NULL;
+
 static float slowMotionFactor = 1.0f;
 static float iceOverlayAlpha = 0.0f;
 
@@ -173,7 +181,6 @@ int main(void){
     TraceLog(LOG_INFO, "HELLO");
 
     // Initialize physics simulation
-    Bumper* bumpers = NULL;
     cpBody* leftFlipperBody = NULL;
     cpBody* rightFlipperBody = NULL;
     physics_init(&game, &bumpers, &leftFlipperBody, &rightFlipperBody);
