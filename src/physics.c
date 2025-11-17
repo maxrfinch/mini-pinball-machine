@@ -21,6 +21,7 @@
 #include "physics.h"
 #include "constants.h"
 #include "soundManager.h"
+#include "physicsDebugDraw.h"
 #include <stdio.h>
 #include <math.h>
 #include <box2d/box2d.h>
@@ -687,8 +688,6 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
  * Helper to draw a Box2D body and its shapes for debug visualization
  */
 static void debug_draw_body(b2BodyId bodyId, DebugColor outlineColor, DebugColor fillColor) {
-    #include "physicsDebugDraw.h"
-    
     if (B2_IS_NULL(bodyId)) {
         return;
     }
@@ -755,8 +754,6 @@ static void debug_draw_body(b2BodyId bodyId, DebugColor outlineColor, DebugColor
  *  - This provides a visual representation of the physics simulation for debugging
  */
 void physics_debug_draw(GameStruct *game) {
-    #include "physicsDebugDraw.h"
-    
     if (B2_IS_NULL(game->world)) {
         return;
     }
@@ -781,11 +778,17 @@ void physics_debug_draw(GameStruct *game) {
     }
     
     // Draw flippers
-    if (debugState.leftFlipper && B2_IS_NON_NULL(*debugState.leftFlipper)) {
-        debug_draw_body(*debugState.leftFlipper, paddleColor, fillColor);
+    if (debugState.leftFlipper != NULL) {
+        b2BodyId leftFlipperBody = *debugState.leftFlipper;
+        if (B2_IS_NON_NULL(leftFlipperBody)) {
+            debug_draw_body(leftFlipperBody, paddleColor, fillColor);
+        }
     }
-    if (debugState.rightFlipper && B2_IS_NON_NULL(*debugState.rightFlipper)) {
-        debug_draw_body(*debugState.rightFlipper, paddleColor, fillColor);
+    if (debugState.rightFlipper != NULL) {
+        b2BodyId rightFlipperBody = *debugState.rightFlipper;
+        if (B2_IS_NON_NULL(rightFlipperBody)) {
+            debug_draw_body(rightFlipperBody, paddleColor, fillColor);
+        }
     }
     
     // Draw all active balls
