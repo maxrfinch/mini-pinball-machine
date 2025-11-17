@@ -286,11 +286,20 @@ int main(void){
         // Poll input
         inputUpdate(input);
 
+        // Validate slowMotionFactor to prevent bad timesteps
+        if (!isfinite(slowMotionFactor) || slowMotionFactor <= 0.0f) {
+            TraceLog(LOG_WARNING, "slowMotionFactor invalid (%f), resetting", slowMotionFactor);
+            slowMotionFactor = 1.0f;
+        }
+
         game.slowMotionFactor = slowMotionFactor;
 
-        // STEP SIMULATION AT FIXED RATE
-        while (accumulatedTime > timestep){
+        // STEP SIMULATION AT FIXED RATE with safety cap
+        const int MAX_PHYSICS_STEPS_PER_FRAME = 16;
+        int stepCount = 0;
+        while (accumulatedTime > timestep && stepCount < MAX_PHYSICS_STEPS_PER_FRAME){
             accumulatedTime -= timestep;
+            stepCount++;
 
             updateSound(sound,&game);
 
@@ -778,6 +787,14 @@ int main(void){
             }
         }
 
+        // Check if physics fell behind and clamp accumulated time
+        if (stepCount == MAX_PHYSICS_STEPS_PER_FRAME && accumulatedTime > timestep) {
+            TraceLog(LOG_WARNING,
+                     "Physics fell behind: accumulatedTime=%lld, clamping",
+                     accumulatedTime);
+            accumulatedTime = 0;
+        }
+
         // RENDER AT SPEED GOVERNED BY RAYLIB
         BeginDrawing();
         if (game.gameState == 0){
@@ -1074,6 +1091,11 @@ int main(void){
     inputShutdown(input);
     shutdownSound(sound);
     physics_shutdown(&game);
+    
+    // Free allocated memory
+    free(game.balls);
+    free(menuPinballs);
+    
     CloseWindow();
 
     return 0;
