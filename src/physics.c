@@ -168,11 +168,6 @@ static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *i
         return cpTrue;
     }
 
-    if (bumper->index < 0 || bumper->index >= numBumpers) {
-        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: invalid bumper index %d", bumper->index);
-        return cpTrue;
-    }
-
     if (bumper->type == BUMPER_TYPE_STANDARD){
         // Standard upper playfield bumper: visual bounce + modest score.
         bumper->bounceEffect = 10.0f;
