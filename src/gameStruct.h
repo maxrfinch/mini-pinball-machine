@@ -5,8 +5,13 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
-#include <chipmunk.h>
 #include "inputManager.h"
+
+// Forward declarations for Box2D types
+typedef struct b2World b2World;
+typedef struct b2Body b2Body;
+typedef struct b2Shape b2Shape;
+typedef struct b2Fixture b2Fixture;
 
 typedef struct GameStructData GameStruct;
 
@@ -30,8 +35,8 @@ typedef struct SoundManagerObject {
 
 typedef struct {
     int active;
-    cpShape *shape;
-    cpBody *body;
+    b2Fixture *fixture;
+    b2Body *body;
     GameStruct *game;
     float locationHistoryX[16];
     float locationHistoryY[16];
@@ -48,8 +53,8 @@ typedef enum {
 } TransitionAction;
 
 typedef struct {
-    cpShape *shape;
-    cpBody *body;
+    b2Fixture *fixture;
+    b2Body *body;
     float bounceEffect;
     int type;
     int enabled;
@@ -76,7 +81,7 @@ enum CollisionTypes {
 };
 
 struct GameStructData {
-    cpSpace *space;
+    b2World *world;
     int numBalls;
     Ball *balls;
     int active;
