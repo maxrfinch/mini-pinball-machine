@@ -10,6 +10,7 @@
 #include "scores.h"
 #include "soundManager.h"
 #include "gameStruct.h"
+#include "physics.h"
 
 #define DEG_TO_RAD (3.14159265 / 180.0)
 #define RAD_TO_DEG (180.0 / 3.14159265)
@@ -27,197 +28,18 @@ long long millis() {
     return milliseconds;
 }
 
-const int numWalls = 128;
 const int maxBalls = 256;
 const float ballSize = 5;
 
 static float slowMotionFactor = 1.0f;
 static float iceOverlayAlpha = 0.0f;
-// Collision handlers
 
 static float leftLowerBumperAnim = 0.0f;
 static float rightLowerBumperAnim = 0.0f;
 
 static float multiballOverlayY = 0.0f;
 
-static cpBool CollisionHandlerLeftLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
-    leftLowerBumperAnim = 1.0f;
-    (ball->game)->gameScore += 25;
-    if ((ball->game)->waterPowerupState == 0){
-        (ball->game)->powerupScore += 25;
-    }
-    playBounce2((ball->game)->sound);
-    return cpTrue;
-}
-static cpBool CollisionHandlerRightLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
-    rightLowerBumperAnim = 1.0f;
-    (ball->game)->gameScore += 25;
-    if ((ball->game)->waterPowerupState == 0){
-        (ball->game)->powerupScore += 25;
-    }
-    playBounce2((ball->game)->sound);
-    return cpTrue;
-}
-static cpBool CollisionHandlerBallFlipper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
-    ball->killCounter = 0;
-    return cpTrue;
-}
 
-static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
-	Bumper* bumper = (Bumper *)cpShapeGetUserData(b);
-    Ball *ball = (Ball *)cpShapeGetUserData(a);
-
-    if (bumper->type == 0){
-        // On the bumper object, set the collision effect
-        bumper->bounceEffect = 10.0f;
-        //if (ball->type == 0){
-        (ball->game)->gameScore += 50;
-        if ((ball->game)->waterPowerupState == 0){
-            (ball->game)->powerupScore += 50;
-        }
-        playUpperBouncerSound((ball->game)->sound);
-        //}
-
-        // On the ball object, add a random velocity
-        //cpBodyApplyImpulseAtLocalPoint(ball->body,cpv(rand() % 20 - 10, rand() % 20 - 10),cpvzero);
-    	return cpTrue;
-    } else if (bumper->type == 1){
-        (ball->game)->slowMotion = 1;
-        (ball->game)->slowMotionCounter = 1200;
-        (ball->game)->gameScore += 1000;
-        if ((ball->game)->waterPowerupState == 0){
-            (ball->game)->powerupScore += 1000;
-        }
-        playSlowdownSound((ball->game)->sound);
-        bumper->bounceEffect = 20.0f;
-    } else if (bumper->type == 2){
-        if (bumper->enabled == 1){
-            (ball->game)->gameScore += 50;
-            if ((ball->game)->waterPowerupState == 0){
-                (ball->game)->powerupScore += 50;
-            }
-            bumper->enabled = 0;
-            playBounce((ball->game)->sound);
-        }
-    } else if (bumper->type == 3){
-        if (bumper->enabled == 1){
-            (ball->game)->gameScore += 50;
-            if ((ball->game)->waterPowerupState == 0){
-                (ball->game)->powerupScore += 50;
-            }
-            bumper->enabled = 0;
-            playBounce((ball->game)->sound);
-        }
-    } else if (bumper->type == 4){
-        if (bumper->enabled == 1){
-            bumper->bounceEffect = 10.0f;
-            (ball->game)->gameScore += 250;
-            if ((ball->game)->waterPowerupState == 0){
-                (ball->game)->powerupScore += 250;
-            }
-            bumper->enabled = 0;
-            playBounce((ball->game)->sound);
-            return cpTrue;
-        } else {
-            return cpFalse;
-        }
-    } else {
-        (ball->game)->gameScore += 25;
-        if ((ball->game)->waterPowerupState == 0){
-            (ball->game)->powerupScore += 25;
-        }
-        bumper->enabled = 0;
-    }
-
-	return cpFalse;
-}
-
-static cpBool CollisionOneWay(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
-    printf("%f\n",cpvdot(cpArbiterGetNormal(arb), cpv(0,1)));
-	if(cpvdot(cpArbiterGetNormal(arb), cpv(0,1)) < 0){
-		return cpArbiterIgnore(arb);
-	}
-
-	return cpTrue;
-}
-
-// Add ball function
-void addBall(GameStruct *game, float px, float py, float vx, float vy,int type){
-    if (game->numBalls < maxBalls){
-        game->numBalls++;
-        // Find the first index that isn't active
-        int ballIndex = 0;
-        for (int i = 0; i < maxBalls; i++){
-            if (game->balls[i].active == 0){
-                ballIndex = i;
-                break;
-            }
-        }
-
-        float radius = ballSize / 2.0;
-        float mass = 1.0;
-        if (type == 2){
-            radius = 10.0f;
-            mass = 2.0f;
-        }
-        cpFloat moment = cpMomentForCircle(mass, 0, radius, cpvzero);
-        game->balls[ballIndex].body = cpSpaceAddBody(game->space,cpBodyNew(mass,moment));
-        cpBodySetPosition(game->balls[ballIndex].body,cpv(px,py));
-        cpBodySetVelocity(game->balls[ballIndex].body,cpv(vx,vy));
-        game->balls[ballIndex].shape = cpSpaceAddShape(game->space,cpCircleShapeNew(game->balls[ballIndex].body,radius,cpvzero));
-        cpShapeSetFriction(game->balls[ballIndex].shape,0.0);
-        cpShapeSetElasticity(game->balls[ballIndex].shape,0.7);
-        cpShapeSetCollisionType(game->balls[ballIndex].shape, COLLISION_BALL);
-        cpShapeSetUserData(game->balls[ballIndex].shape,&(game->balls[ballIndex]));
-        game->balls[ballIndex].active = 1;
-        game->balls[ballIndex].game = game;
-        game->balls[ballIndex].trailStartIndex = 0;
-        game->balls[ballIndex].type = type;
-        game->balls[ballIndex].killCounter = 0;
-        if (type == 0){
-            game->slowMotion = 0;
-        }
-
-        for (int i = 0; i< 16; i++){
-            game->balls[ballIndex].locationHistoryX[i] = px;
-            game->balls[ballIndex].locationHistoryY[i] = py;
-        }
-
-        playLaunch(game->sound);
-    }
-}
-
-// Write circle wall segments in a clockwise direction starting at degStart and ending at degEnd
-void writeCircleWallSegment(float walls[numWalls][4],int segmentIndex,int numSegments,float degStart,float degEnd,float centerX, float centerY, float radius){
-    float totalDegreeRange = fabsf(degEnd - degStart);
-    float degPerPoint = totalDegreeRange / (numSegments + 1);
-
-    degStart -= 90;
-
-    // Iterate through numSegments + 1 points.
-    float prevPointX = centerX + (cos(degStart * DEG_TO_RAD) * radius);
-    float prevPointY = centerY + (sin(degStart * DEG_TO_RAD) * radius);
-    float curPointX = 0;
-    float curPointY = 0;
-    for (int i = 1; i <= numSegments; i++){
-        curPointX = centerX + (cos((degStart + (i * degPerPoint)) * DEG_TO_RAD) * radius);
-        curPointY = centerY + (sin((degStart + (i * degPerPoint)) * DEG_TO_RAD) * radius);
-        walls[segmentIndex + i - 1][0] = prevPointX;
-        walls[segmentIndex + i - 1][1] = prevPointY;
-        walls[segmentIndex + i - 1][2] = curPointX;
-        walls[segmentIndex + i - 1][3] = curPointY;
-        prevPointX = curPointX;
-        prevPointY = curPointY;
-    }
-}
 
 
 
@@ -272,34 +94,6 @@ int main(void){
     GameStruct game;
     game.gameState = 0;
 
-
-    float walls[128][4] = {
-        {0,0,worldWidth,0},
-        {0,0,0,worldHeight},
-        {worldWidth,0,worldWidth,worldHeight},
-        {worldWidth - 6,56,worldWidth - 6,worldHeight},
-        {worldWidth - 7,56,worldWidth - 7,worldHeight},
-        {worldWidth-6,56,worldWidth-7,56},
-        {0,128,19,142},
-        {worldWidth - 7,128,worldWidth - 26,142},
-        {0,2.1,worldWidth,2.1},
-        {40.4,1.6,41.2,4.0},
-        {41.2,4.0,65.2,1.6},
-        {69.2,16.4,60.4,43.2},
-        {60.4,43.2,68.8,55.6},
-        {74.8,63.6,83.2,76.0},
-        {84.0,56.7,84.0,37.2},
-        {70.8,18.4,68,26.8},
-        {74.8,37.6,68.8,55.6},
-        {82.0,39.2,74.8,63.6},
-        {67.400002,146.400009,83.200005,134.199997},
-        {16.400000,146.199997,0.600000,134.600006}
-    };
-    writeCircleWallSegment(walls,20,20,0,90,worldWidth-28.5,30.75,28.75);
-    writeCircleWallSegment(walls,40,20,270,360,28.5,30.75,28.75);
-    writeCircleWallSegment(walls,60,10,20,110,64.75,35.6,10.15);
-    writeCircleWallSegment(walls,70,10,20,110,64.75,35.6,17.50);
-    writeCircleWallSegment(walls,80,10,13,110,64.75,35.6,19.50);
 
     SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(screenWidth, screenHeight, "Mini Pinball by Chris Dalke!");
@@ -378,226 +172,16 @@ int main(void){
 
     TraceLog(LOG_INFO, "HELLO");
 
-
     // Initialize physics simulation
-    cpVect gravity = cpv(0,100);
-    cpSpace *space = cpSpaceNew();
-    game.space = space;
-    cpSpaceSetGravity(space,gravity);
+    Bumper* bumpers = NULL;
+    cpBody* leftFlipperBody = NULL;
+    cpBody* rightFlipperBody = NULL;
+    physics_init(&game, &bumpers, &leftFlipperBody, &rightFlipperBody);
     cpFloat timeStep = 1.0/60.0;
 
-    TraceLog(LOG_INFO, "WALLS");
+    TraceLog(LOG_INFO, "PHYSICS INITIALIZED");
 
-    // create walls
-    for (int i = 0; i < numWalls; i++){
-        cpShape *wall = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(walls[i][0],walls[i][1]),cpv(walls[i][2],walls[i][3]),0);
-        cpShapeSetFriction(wall,0.5);
-        cpShapeSetElasticity(wall,0.5);
-        cpShapeSetCollisionType(wall, COLLISION_WALL);
-        cpSpaceAddShape(space,wall);
-    }
-
-    TraceLog(LOG_INFO, "BUMPERS");
-
-
-    // Create bumpers
-    const int numBumpers = 14;
-    const float bumperSize = 10.0f;
-    const float smallBumperSize = 4.0f;
-    const float bumperBounciness = 1.8f;
-    Bumper* bumpers = malloc(numBumpers * sizeof(Bumper));
-
-
-    cpShape *bouncer1 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(14.800000,125.200005),cpv(7.600000,109.200005),0);
-    cpShape *bouncer2 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(75.599998,108.800003),cpv(69.200005,125.200005),0);
-    cpShapeSetCollisionType(bouncer1, COLLISION_LEFT_LOWER_BUMPER);
-    cpShapeSetCollisionType(bouncer2, COLLISION_RIGHT_LOWER_BUMPER);
-
-    cpShapeSetFriction(bouncer1,0.0);
-    cpShapeSetElasticity(bouncer1,1.2f);
-    cpSpaceAddShape(space,bouncer1);
-    cpShapeSetFriction(bouncer2,0.0);
-    cpShapeSetElasticity(bouncer2,1.2f);
-    cpSpaceAddShape(space,bouncer2);
-    cpShape *bouncerGuard1 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(7.200000,111.200005),cpv(12.800000,124.400002),0);
-    cpShape *bouncerGuard2 = cpSegmentShapeNew(cpSpaceGetStaticBody(space),cpv(71.200005,124.800003),cpv(76.000000,110.800003),0);
-    cpShapeSetCollisionType(bouncerGuard1, COLLISION_WALL);
-    cpShapeSetCollisionType(bouncerGuard2, COLLISION_WALL);
-    cpSpaceAddShape(space,bouncerGuard1);
-    cpShapeSetFriction(bouncerGuard1,0.0f);
-    cpShapeSetElasticity(bouncerGuard1,0.9f);
-    cpSpaceAddShape(space,bouncerGuard2);
-    cpShapeSetFriction(bouncerGuard2,0.0f);
-    cpShapeSetElasticity(bouncerGuard2,0.9f);
-
-
-    bumpers[0].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[0].body,cpv(24.9,19.9));
-    bumpers[0].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[0].body,bumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[0].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[0].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[0].shape,&bumpers[0]);
-    bumpers[0].bounceEffect = 0;
-    bumpers[0].type = 0;
-
-    bumpers[1].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[1].body,cpv(46.6,17.8));
-    bumpers[1].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[1].body,bumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[1].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[1].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[1].shape,&bumpers[1]);
-    bumpers[1].bounceEffect = 0;
-    bumpers[1].type = 0;
-
-    bumpers[2].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[2].body,cpv(38.0,36.4));
-    bumpers[2].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[2].body,bumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[2].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[2].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[2].shape,&bumpers[2]);
-    bumpers[2].bounceEffect = 0;
-    bumpers[2].type = 0;
-
-    bumpers[3].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[3].body,cpv(72.200005,23.400000));
-    bumpers[3].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[3].body,2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[3].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[3].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[3].shape,&bumpers[3]);
-    bumpers[3].bounceEffect = 0;
-    bumpers[3].type = 1;
-
-    for (int i = 4; i < 10; i++){
-        bumpers[i].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-        bumpers[i].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[i].body,2.0f,cpvzero));
-        cpShapeSetElasticity(bumpers[i].shape,0);
-        cpShapeSetCollisionType(bumpers[i].shape, COLLISION_BUMPER);
-        cpShapeSetUserData(bumpers[i].shape,&bumpers[i]);
-        bumpers[i].bounceEffect = 0;
-        bumpers[i].type = 2;
-        bumpers[i].enabled = 1;
-    }
-    cpBodySetPosition(bumpers[4].body,cpv(63.34,50.88));
-    cpBodySetPosition(bumpers[5].body,cpv(77.38,70.96));
-    cpBodySetPosition(bumpers[6].body,cpv(15.1,62.04));
-    cpBodySetPosition(bumpers[7].body,cpv(18.9,45.3));
-    cpBodySetPosition(bumpers[8].body,cpv(61.02,35.36));
-    cpBodySetPosition(bumpers[9].body,cpv(65.02,23.02));
-    bumpers[4].type = 2;
-    bumpers[5].type = 2;
-    bumpers[6].type = 2;
-    bumpers[7].type = 3;
-    bumpers[8].type = 3;
-    bumpers[9].type = 3;
-    bumpers[4].angle = 90.0+145.2;
-    bumpers[5].angle = 90.0+145.2;
-    bumpers[6].angle = 90.0+25.7;
-    bumpers[7].angle = 90;
-    bumpers[8].angle = 90-162;
-    bumpers[9].angle = 90-162;
-
-    bumpers[10].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[10].body,cpv(12.2,81.8));
-    bumpers[10].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[10].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[10].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[10].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[10].shape,&bumpers[10]);
-    bumpers[10].bounceEffect = 0;
-    bumpers[10].enabledSize = 0.0f;
-    bumpers[10].enabled = 0;
-    bumpers[10].type = 4;
-
-    bumpers[11].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[11].body,cpv(23.8,91.2));
-    bumpers[11].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[11].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[11].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[11].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[11].shape,&bumpers[11]);
-    bumpers[11].bounceEffect = 0;
-    bumpers[11].enabledSize = 0.0f;
-    bumpers[11].enabled = 0;
-    bumpers[11].type = 4;
-
-    bumpers[12].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[12].body,cpv(61.2,91.2));
-    bumpers[12].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[12].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[12].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[12].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[12].shape,&bumpers[12]);
-    bumpers[12].bounceEffect = 0;
-    bumpers[12].enabledSize = 0.0f;
-    bumpers[12].enabled = 0;
-    bumpers[12].type = 4;
-
-    bumpers[13].body = cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(bumpers[13].body,cpv(72.599998,81.8));
-    bumpers[13].shape = cpSpaceAddShape(space,cpCircleShapeNew(bumpers[13].body,smallBumperSize/2.0f,cpvzero));
-    cpShapeSetElasticity(bumpers[13].shape,bumperBounciness);
-    cpShapeSetCollisionType(bumpers[13].shape, COLLISION_BUMPER);
-    cpShapeSetUserData(bumpers[13].shape,&bumpers[13]);
-    bumpers[13].bounceEffect = 0;
-    bumpers[13].enabledSize = 0.0f;
-    bumpers[13].enabled = 0;
-    bumpers[13].type = 4;
-
-
-    //Add collision handler for ball-bumper effect
-    cpCollisionHandler *handler = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_BUMPER);
-    handler->beginFunc = CollisionHandlerBallBumper;
-
-    cpCollisionHandler *ballFlipperHandler = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_PADDLE);
-    ballFlipperHandler->preSolveFunc = CollisionHandlerBallFlipper;
-
-    cpCollisionHandler *leftLower = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_LEFT_LOWER_BUMPER);
-    cpCollisionHandler *rightLower = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_RIGHT_LOWER_BUMPER);
-    leftLower->beginFunc = CollisionHandlerLeftLowerBumper;
-    rightLower->beginFunc = CollisionHandlerRightLowerBumper;
-
-    // create one-way door
-	cpShape* oneWayShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(69.6,16.6), cpv(73.4,4.6), 0.5f));
-	cpShapeSetElasticity(oneWayShape, 0.5f);
-	cpShapeSetFriction(oneWayShape, 0.0f);
-	cpShapeSetCollisionType(oneWayShape, COLLISION_ONE_WAY);
-	cpCollisionHandler *oneWayHandler = cpSpaceAddCollisionHandler(space,COLLISION_BALL,COLLISION_ONE_WAY);
-	oneWayHandler->preSolveFunc = CollisionOneWay;
-    TraceLog(LOG_INFO, "DOOR");
-
-
-	cpShape* tempShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(7.800000,38.200001), cpv(7.8,49.200001), 1.0f));
-	cpShapeSetElasticity(tempShape, 0.5f);
-	cpShapeSetFriction(tempShape, 0.5f);
-	cpShapeSetCollisionType(tempShape, COLLISION_WALL);
-
-	tempShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(16.000000,38.400002), cpv(16.000000,53.799999), 1.0f));
-	cpShapeSetElasticity(tempShape, 0.5f);
-	cpShapeSetFriction(tempShape, 0.5f);
-	cpShapeSetCollisionType(tempShape, COLLISION_WALL);
-
-	tempShape = cpSpaceAddShape(space, cpSegmentShapeNew(cpSpaceGetStaticBody(space), cpv(16.000000,53.799999), cpv(8.600000,68.800003), 1.0f));
-	cpShapeSetElasticity(tempShape, 0.5f);
-	cpShapeSetFriction(tempShape, 0.5f);
-	cpShapeSetCollisionType(tempShape, COLLISION_WALL);
-    TraceLog(LOG_INFO, "FLIPPERS");
-
-    // Create left and right flippers
-    cpBody* leftFlipperBody =  cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBody* rightFlipperBody =  cpSpaceAddBody(space,cpBodyNewKinematic());
-    cpBodySetPosition(leftFlipperBody,cpv(19.8,145.45));
-    cpBodySetPosition(rightFlipperBody,cpv(63.5,145.45));
-    const cpVect flipperPoly[4] = {
-        {0,0},
-        {flipperWidth,0},
-        {flipperWidth,flipperHeight},
-        {0,flipperHeight}
-    };
-    cpShape* leftFlipperShape = cpSpaceAddShape(space,cpPolyShapeNewRaw(leftFlipperBody,4,flipperPoly,0.0f));
-    cpShape* rightFlipperShape = cpSpaceAddShape(space,cpPolyShapeNewRaw(rightFlipperBody,4,flipperPoly,0.0f));
-    cpShapeSetFriction(leftFlipperShape,0.8);
-    cpShapeSetFriction(rightFlipperShape,0.8);
-    cpShapeSetElasticity(leftFlipperShape,0.2);
-    cpShapeSetElasticity(rightFlipperShape,0.2);
-    cpBodySetCenterOfGravity(leftFlipperBody,cpv(flipperHeight/2.0f,flipperHeight/2.0f));
-    cpBodySetCenterOfGravity(rightFlipperBody,cpv(flipperHeight/2.0f,flipperHeight/2.0f));
+    // Flipper variables
     float flipperSpeed = 900.0f;
     float leftFlipperAngle = 33.0f;
     float rightFlipperAngle = 147.0f;
@@ -804,7 +388,7 @@ int main(void){
                  TraceLog(LOG_INFO, "STEP START accumulatedTime=%lld, effectiveTimestep=%f, slowMotionFactor=%f", 
                          accumulatedTime, effectiveTimestep, slowMotionFactor);
 
-                cpSpaceStep(space, effectiveTimestep);
+                physics_step(&game, effectiveTimestep);
 
                 // TraceLog(LOG_INFO, "STEP END accumulatedTime=%lld", accumulatedTime);
 
@@ -816,7 +400,7 @@ int main(void){
                 if (game.ballPowerupState == 0 && !bumpers[7].enabled && !bumpers[8].enabled && !bumpers[9].enabled){
                     // spawn balls
                     for (int i =0; i < 3; i++){
-                        addBall(&game,89.5 - ballSize / 2,160 - (i * ballSize),0,-220,1);
+                        physics_add_ball(&game,89.5 - ballSize / 2,160 - (i * ballSize),0,-220,1);
                     }
                     playBluePowerupSound(sound);
                     game.bluePowerupOverlay = 1.0f;
@@ -861,7 +445,7 @@ int main(void){
                 if (game.numBalls == 0){
                     if (game.numLives >= 1){
                         if (inputCenterPressed(input)){
-                            addBall(&game,89.5 - ballSize / 2,160,0,-220,0);
+                            physics_add_ball(&game,89.5 - ballSize / 2,160,0,-220,0);
                         }
                     } else {
                         // game over condition
@@ -874,7 +458,7 @@ int main(void){
                 }
 
                 if (IsMouseButtonPressed(0)){
-                    addBall(&game,(mouseX) * screenToWorld,(mouseY) * screenToWorld,0,0,1);
+                    physics_add_ball(&game,(mouseX) * screenToWorld,(mouseY) * screenToWorld,0,0,1);
                 }
 
                 float oldAngleLeft = leftFlipperAngle;
@@ -935,8 +519,8 @@ int main(void){
                 cpBodySetAngle(rightFlipperBody,rightFlipperAngle * DEG_TO_RAD);
                 cpBodySetAngularVelocity(leftFlipperBody,deltaAngularVelocityLeft * flipperSpeedScalar);
                 cpBodySetAngularVelocity(rightFlipperBody,deltaAngularVelocityRight * flipperSpeedScalar);
-                cpSpaceReindexShapesForBody(space,leftFlipperBody);
-                cpSpaceReindexShapesForBody(space,rightFlipperBody);
+                cpSpaceReindexShapesForBody(game.space,leftFlipperBody);
+                cpSpaceReindexShapesForBody(game.space,rightFlipperBody);
 
                 // Check if any balls have fallen outside the screen
                 // Remove them if they have.
@@ -1424,13 +1008,7 @@ int main(void){
                     printf("{%f,%f,,},\n",(float)(mouseX * screenToWorld),(float)(mouseY * screenToWorld));
                 }
 
-                for (int i = 0; i < numWalls; i++){
-                    DrawLineEx((Vector2){walls[i][0]*worldToScreen,walls[i][1]*worldToScreen},(Vector2){walls[i][2]*worldToScreen,walls[i][3]*worldToScreen},1,GREEN);
-                    DrawCircle(walls[i][0]*worldToScreen,walls[i][1]*worldToScreen,2,RED);
-                    DrawCircle(walls[i][2]*worldToScreen,walls[i][3]*worldToScreen,2,RED);
-                }
-
-                cpSpaceDebugDraw(space, &drawOptions);
+                cpSpaceDebugDraw(game.space, &drawOptions);
             }
         }
         if (game.gameState == 2){
@@ -1488,6 +1066,7 @@ int main(void){
     shutdownScores(scores);
     inputShutdown(input);
     shutdownSound(sound);
+    physics_shutdown(&game);
     CloseWindow();
 
     return 0;
