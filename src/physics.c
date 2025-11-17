@@ -34,9 +34,11 @@
 // ballSize   : default ball diameter (in world units) for type==0 balls.
 //              If this changes, make sure any rendering code that assumes the
 //              same size is updated as well.
-static const int   numWalls  = 128;
-static const int   maxBalls  = 256;
-static const float ballSize  = 5.0f;
+// numBumpers : number of bumpers we create in physics_init().
+static const int   numWalls   = 128;
+static const int   maxBalls   = 256;
+static const float ballSize   = 5.0f;
+static const int   numBumpers = 14;
 
 /*
  * BumperType:
@@ -64,8 +66,20 @@ static float rightLowerBumperAnim = 0.0f;
  *  - Kicks the leftLowerBumperAnim value for rendering and awards points.
  */
 static cpBool CollisionHandlerLeftLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
+	cpShape *a, *b;
+	cpArbiterGetShapes(arb, &a, &b);
+
+    if (!a || !b) {
+        TraceLog(LOG_ERROR, "CollisionHandlerLeftLowerBumper: null shape pointer");
+        return cpTrue;
+    }
+
     Ball *ball = (Ball *)cpShapeGetUserData(a);
+    if (!ball) {
+        TraceLog(LOG_ERROR, "CollisionHandlerLeftLowerBumper: ball userData NULL");
+        return cpTrue;
+    }
+
     leftLowerBumperAnim = 1.0f;
     (ball->game)->gameScore += 25;
     if ((ball->game)->waterPowerupState == 0){
@@ -80,8 +94,20 @@ static cpBool CollisionHandlerLeftLowerBumper(cpArbiter *arb, cpSpace *space, vo
  *  - Same as left lower bumper but for the right side.
  */
 static cpBool CollisionHandlerRightLowerBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
+	cpShape *a, *b;
+	cpArbiterGetShapes(arb, &a, &b);
+
+    if (!a || !b) {
+        TraceLog(LOG_ERROR, "CollisionHandlerRightLowerBumper: null shape pointer");
+        return cpTrue;
+    }
+
     Ball *ball = (Ball *)cpShapeGetUserData(a);
+    if (!ball) {
+        TraceLog(LOG_ERROR, "CollisionHandlerRightLowerBumper: ball userData NULL");
+        return cpTrue;
+    }
+
     rightLowerBumperAnim = 1.0f;
     (ball->game)->gameScore += 25;
     if ((ball->game)->waterPowerupState == 0){
@@ -97,8 +123,20 @@ static cpBool CollisionHandlerRightLowerBumper(cpArbiter *arb, cpSpace *space, v
  *  - Prevents balls near the flippers from being treated as "stalled" and killed.
  */
 static cpBool CollisionHandlerBallFlipper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
+	cpShape *a, *b;
+	cpArbiterGetShapes(arb, &a, &b);
+
+    if (!a || !b) {
+        TraceLog(LOG_ERROR, "CollisionHandlerBallFlipper: null shape pointer");
+        return cpTrue;
+    }
+
     Ball *ball = (Ball *)cpShapeGetUserData(a);
+    if (!ball) {
+        TraceLog(LOG_ERROR, "CollisionHandlerBallFlipper: ball userData NULL");
+        return cpTrue;
+    }
+
     ball->killCounter = 0;
     return cpTrue;
 }
@@ -110,9 +148,30 @@ static cpBool CollisionHandlerBallFlipper(cpArbiter *arb, cpSpace *space, void *
  *    the collision should be processed by Chipmunk or ignored.
  */
 static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
+	cpShape *a, *b;
+	cpArbiterGetShapes(arb, &a, &b);
+
+    if (!a || !b) {
+        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: null shape pointer");
+        return cpTrue;
+    }
+
 	Bumper* bumper = (Bumper *)cpShapeGetUserData(b);
     Ball *ball = (Ball *)cpShapeGetUserData(a);
+
+    if (!ball) {
+        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: ball userData NULL");
+        return cpTrue;
+    }
+    if (!bumper) {
+        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: bumper userData NULL");
+        return cpTrue;
+    }
+
+    if (bumper->index < 0 || bumper->index >= numBumpers) {
+        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: invalid bumper index %d", bumper->index);
+        return cpTrue;
+    }
 
     if (bumper->type == BUMPER_TYPE_STANDARD){
         // Standard upper playfield bumper: visual bounce + modest score.
@@ -177,7 +236,14 @@ static cpBool CollisionHandlerBallBumper(cpArbiter *arb, cpSpace *space, void *i
  *    contact so the ball passes through.
  */
 static cpBool CollisionOneWay(cpArbiter *arb, cpSpace *space, void *ignore){
-	CP_ARBITER_GET_SHAPES(arb, a, b);
+	cpShape *a, *b;
+	cpArbiterGetShapes(arb, &a, &b);
+
+    if (!a || !b) {
+        TraceLog(LOG_ERROR, "CollisionOneWay: null shape pointer");
+        return cpTrue;
+    }
+
     printf("%f\n",cpvdot(cpArbiterGetNormal(arb), cpv(0,1)));
 	if(cpvdot(cpArbiterGetNormal(arb), cpv(0,1)) < 0){
 		return cpArbiterIgnore(arb);
@@ -274,7 +340,6 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
 
     /* ------------------------------ Bumpers --------------------------------- */
     // numBumpers and type assignments must stay in sync with rendering code.
-    const int numBumpers = 14;
     const float bumperSize = 10.0f;
     const float smallBumperSize = 4.0f;
     const float bumperBounciness = 1.8f;
@@ -482,7 +547,9 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipp
  *    centralize any future debug instrumentation or sub-stepping logic.
  */
 void physics_step(GameStruct *game, float dt){
+    TraceLog(LOG_INFO, "[PHYSICS] stepping dt=%f", dt);
     cpSpaceStep(game->space, dt);
+    TraceLog(LOG_INFO, "[PHYSICS] done");
 }
 
 /*
