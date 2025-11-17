@@ -82,153 +82,136 @@ static inline b2Vec2 pb2_v(float x, float y) {
 }
 
 /* -------------------------------------------------------------------------- */
-/*  Collision callback helpers                                                */
+/*  Box2D 3.x Contact Event Handlers                                          */
 /* -------------------------------------------------------------------------- */
 
 /*
- * PreSolve callback for left lower bumper
+ * Box2D 3.x uses a custom PreSolve callback function.
+ * This function is called for each contact before the solver.
+ * We use it to implement collision logic and optionally disable contacts.
  */
-bool CollisionHandlerLeftLowerBumper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
-    // shapeIdA is the ball, shapeIdB is the left lower bumper
-    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
+static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
+    // Get the collision category bits to identify what's colliding
+    b2Filter filterA = b2Shape_GetFilter(shapeIdA);
+    b2Filter filterB = b2Shape_GetFilter(shapeIdB);
+    
+    uint32_t catA = filterA.categoryBits;
+    uint32_t catB = filterB.categoryBits;
+    
+    // Identify the ball and the other object
+    b2ShapeId ballShapeId = b2_nullShapeId;
+    b2ShapeId otherShapeId = b2_nullShapeId;
+    uint32_t otherCategory = 0;
+    
+    if (catA == COLLISION_BALL) {
+        ballShapeId = shapeIdA;
+        otherShapeId = shapeIdB;
+        otherCategory = catB;
+    } else if (catB == COLLISION_BALL) {
+        ballShapeId = shapeIdB;
+        otherShapeId = shapeIdA;
+        otherCategory = catA;
+    } else {
+        // Neither is a ball, allow collision
+        return true;
+    }
+    
+    // Get ball user data
+    Ball *ball = (Ball *)b2Shape_GetUserData(ballShapeId);
     if (!ball) {
-        TraceLog(LOG_ERROR, "CollisionHandlerLeftLowerBumper: ball userData NULL");
         return true;
     }
-
-    leftLowerBumperAnim = 1.0f;
-    (ball->game)->gameScore += 25;
-    if ((ball->game)->waterPowerupState == 0) {
-        (ball->game)->powerupScore += 25;
-    }
-    playBounce2((ball->game)->sound);
-    return true;
-}
-
-/*
- * PreSolve callback for right lower bumper
- */
-bool CollisionHandlerRightLowerBumper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
-    // shapeIdA is the ball, shapeIdB is the right lower bumper
-    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
-    if (!ball) {
-        TraceLog(LOG_ERROR, "CollisionHandlerRightLowerBumper: ball userData NULL");
-        return true;
-    }
-
-    rightLowerBumperAnim = 1.0f;
-    (ball->game)->gameScore += 25;
-    if ((ball->game)->waterPowerupState == 0) {
-        (ball->game)->powerupScore += 25;
-    }
-    playBounce2((ball->game)->sound);
-    return true;
-}
-
-/*
- * PreSolve callback for ball-flipper collisions
- */
-bool CollisionHandlerBallFlipper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
-    // shapeIdA is the ball, shapeIdB is the flipper
-    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
-    if (!ball) {
-        TraceLog(LOG_ERROR, "CollisionHandlerBallFlipper: ball userData NULL");
-        return true;
-    }
-
-    ball->killCounter = 0;
-    return true;
-}
-
-/*
- * BeginContact callback for ball-bumper collisions
- */
-bool CollisionHandlerBallBumper(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
-    // shapeIdA is the ball, shapeIdB is the bumper
-    Ball *ball = (Ball *)b2Shape_GetUserData(shapeIdA);
-    Bumper *bumper = (Bumper *)b2Shape_GetUserData(shapeIdB);
-
-    if (!ball) {
-        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: ball userData NULL");
-        return true;
-    }
-    if (!bumper) {
-        TraceLog(LOG_ERROR, "CollisionHandlerBallBumper: bumper userData NULL");
-        return true;
-    }
-
-    if (bumper->type == BUMPER_TYPE_STANDARD) {
-        // Standard upper playfield bumper: visual bounce + modest score.
-        bumper->bounceEffect = 10.0f;
-        (ball->game)->gameScore += 50;
-        if ((ball->game)->waterPowerupState == 0) {
-            (ball->game)->powerupScore += 50;
+    
+    // Handle different collision types
+    if (otherCategory == COLLISION_BUMPER) {
+        // Ball-Bumper collision
+        Bumper *bumper = (Bumper *)b2Shape_GetUserData(otherShapeId);
+        if (!bumper) {
+            return true;
         }
-        playUpperBouncerSound((ball->game)->sound);
-        return true;
-    } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION) {
-        // Special bumper that triggers slow-motion mode and a large point bonus.
-        (ball->game)->slowMotion = 1;
-        (ball->game)->slowMotionCounter = 1200;
-        (ball->game)->gameScore += 1000;
-        if ((ball->game)->waterPowerupState == 0) {
-            (ball->game)->powerupScore += 1000;
-        }
-        playSlowdownSound((ball->game)->sound);
-        bumper->bounceEffect = 20.0f;
-        return true;
-    } else if (bumper->type == BUMPER_TYPE_LANE_TARGET_A ||
-               bumper->type == BUMPER_TYPE_LANE_TARGET_B) {
-        // Lane/target bumpers: only award score once while enabled.
-        if (bumper->enabled == 1) {
+        
+        if (bumper->type == BUMPER_TYPE_STANDARD) {
+            bumper->bounceEffect = 10.0f;
             (ball->game)->gameScore += 50;
             if ((ball->game)->waterPowerupState == 0) {
                 (ball->game)->powerupScore += 50;
             }
-            bumper->enabled = 0;
-            playBounce((ball->game)->sound);
-        }
-        return true;
-    } else if (bumper->type == BUMPER_TYPE_WATER_POWERUP) {
-        // Small bumpers that drive the water powerup state.
-        if (bumper->enabled == 1) {
-            bumper->bounceEffect = 10.0f;
-            (ball->game)->gameScore += 250;
+            playUpperBouncerSound((ball->game)->sound);
+            return true;
+        } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION) {
+            (ball->game)->slowMotion = 1;
+            (ball->game)->slowMotionCounter = 1200;
+            (ball->game)->gameScore += 1000;
             if ((ball->game)->waterPowerupState == 0) {
-                (ball->game)->powerupScore += 250;
+                (ball->game)->powerupScore += 1000;
+            }
+            playSlowdownSound((ball->game)->sound);
+            bumper->bounceEffect = 20.0f;
+            return true;
+        } else if (bumper->type == BUMPER_TYPE_LANE_TARGET_A ||
+                   bumper->type == BUMPER_TYPE_LANE_TARGET_B) {
+            if (bumper->enabled == 1) {
+                (ball->game)->gameScore += 50;
+                if ((ball->game)->waterPowerupState == 0) {
+                    (ball->game)->powerupScore += 50;
+                }
+                bumper->enabled = 0;
+                playBounce((ball->game)->sound);
+            }
+            return true;
+        } else if (bumper->type == BUMPER_TYPE_WATER_POWERUP) {
+            if (bumper->enabled == 1) {
+                bumper->bounceEffect = 10.0f;
+                (ball->game)->gameScore += 250;
+                if ((ball->game)->waterPowerupState == 0) {
+                    (ball->game)->powerupScore += 250;
+                }
+                bumper->enabled = 0;
+                playBounce((ball->game)->sound);
+                return true;
+            } else {
+                return false; // Disable collision if bumper not enabled
+            }
+        } else {
+            (ball->game)->gameScore += 25;
+            if ((ball->game)->waterPowerupState == 0) {
+                (ball->game)->powerupScore += 25;
             }
             bumper->enabled = 0;
-            playBounce((ball->game)->sound);
             return true;
-        } else {
-            return false;
         }
-    } else {
-        // Fallback: treat as a simple one-shot scoring bumper.
+    } else if (otherCategory == COLLISION_PADDLE) {
+        // Ball-Flipper collision
+        ball->killCounter = 0;
+        return true;
+    } else if (otherCategory == COLLISION_LEFT_LOWER_BUMPER) {
+        // Left lower slingshot
+        leftLowerBumperAnim = 1.0f;
         (ball->game)->gameScore += 25;
         if ((ball->game)->waterPowerupState == 0) {
             (ball->game)->powerupScore += 25;
         }
-        bumper->enabled = 0;
+        playBounce2((ball->game)->sound);
+        return true;
+    } else if (otherCategory == COLLISION_RIGHT_LOWER_BUMPER) {
+        // Right lower slingshot
+        rightLowerBumperAnim = 1.0f;
+        (ball->game)->gameScore += 25;
+        if ((ball->game)->waterPowerupState == 0) {
+            (ball->game)->powerupScore += 25;
+        }
+        playBounce2((ball->game)->sound);
+        return true;
+    } else if (otherCategory == COLLISION_ONE_WAY) {
+        // One-way gate - check normal direction
+        // Allow collision only if the normal has a positive y component
+        if (manifold->normal.y < 0) {
+            return false; // Disable contact
+        }
         return true;
     }
-}
-
-/*
- * PreSolve callback for one-way gate
- */
-bool CollisionOneWay(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
-    // Check the contact normal to determine if we should allow the collision
-    // In Box2D 3.x, we can check the manifold normal
-    // If the ball is moving in the disallowed direction, return false to disable the contact
     
-    // The normal points from A to B
-    // We want to allow collision only if the normal has a positive y component
-    if (manifold->normal.y < 0) {
-        return false; // Disable contact
-    }
-    
-    return true; // Allow contact
+    return true; // Allow collision by default
 }
 
 /*
@@ -305,6 +288,11 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     // Initialize physics simulation
     b2WorldDef worldDef = b2DefaultWorldDef();
     worldDef.gravity = pb2_v(0, 100);
+    
+    // Set up custom contact callback for collision handling
+    worldDef.preSolveFcn = PreSolveCallback;
+    worldDef.contactEventCapacity = 1024; // Reserve space for contact events
+    
     game->world = b2CreateWorld(&worldDef);
 
     // Create static body for walls
@@ -580,6 +568,9 @@ void physics_step(GameStruct *game, float dt) {
     // Box2D 3.x step parameters
     int subStepCount = 4;
     b2World_Step(game->world, dt, subStepCount);
+    
+    // Contact events are processed during PreSolveCallback
+    // which is called automatically during b2World_Step
     
     TraceLog(LOG_INFO, "[PHYSICS] done");
 }
