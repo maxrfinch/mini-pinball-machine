@@ -5,6 +5,15 @@
 #include <math.h>
 #include "soundManager.h"
 
+// Forward declaration for older raylib versions that use IsMusicStreamPlaying()
+bool IsMusicStreamPlaying(Music music);
+
+// Small compatibility wrapper for this raylib version
+static bool IsMusicPlayingCompat(Music music) {
+    // Use the raylib function that exists in this raylib build
+    return IsMusicStreamPlaying(music);
+}
+
 
 SoundManager *initSound(){
     SoundManager *sound = malloc(sizeof(SoundManager));
@@ -42,13 +51,13 @@ SoundManager *initSound(){
 void updateSound(SoundManager *sound, GameStruct *game){
     // Play and transition music streams based on game mode.
     if (game->gameState == 0){
-        if (!IsMusicStreamPlaying(sound->menuMusic)){
+        if (!IsMusicPlayingCompat(sound->menuMusic)){
             PlayMusicStream(sound->menuMusic);
             StopMusicStream(sound->gameMusic);
         }
         UpdateMusicStream(sound->menuMusic);
     } else if (game->gameState == 1 || game->gameState == 2){
-        if (!IsMusicStreamPlaying(sound->gameMusic)){
+        if (!IsMusicPlayingCompat(sound->gameMusic)){
             PlayMusicStream(sound->gameMusic);
             StopMusicStream(sound->menuMusic);
         }

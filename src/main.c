@@ -13,8 +13,6 @@
 
 #define DEG_TO_RAD (3.14159265 / 180.0)
 #define RAD_TO_DEG (180.0 / 3.14159265)
-#define MAX(x, y) (((x) > (y)) ? (x) : (y))
-#define MIN(x, y) (((x) < (y)) ? (x) : (y))
 
 #if defined(PLATFORM_RPI)
     #define GLSL_VERSION            100
@@ -351,20 +349,31 @@ int main(void){
 	int ampYLoc = GetShaderLocation(swirlShader, "ampY");
 	int speedXLoc = GetShaderLocation(swirlShader, "speedX");
 	int speedYLoc = GetShaderLocation(swirlShader, "speedY");
-	float freqX = 25.0f;
-	float freqY = 25.0f;
-	float ampX = 5.0f;
-	float ampY = 5.0f;
-	float speedX = 8.0f;
-	float speedY = 8.0f;
-    float screenSize[2] = {screenWidth,screenHeight};
-	SetShaderValue(swirlShader, GetShaderLocation(swirlShader, "size"), &screenSize, SHADER_UNIFORM_VEC2);
-	SetShaderValue(swirlShader, freqXLoc, &freqX, SHADER_UNIFORM_FLOAT);
-	SetShaderValue(swirlShader, freqYLoc, &freqY, SHADER_UNIFORM_FLOAT);
-	SetShaderValue(swirlShader, ampXLoc, &ampX, SHADER_UNIFORM_FLOAT);
-	SetShaderValue(swirlShader, ampYLoc, &ampY, SHADER_UNIFORM_FLOAT);
-	SetShaderValue(swirlShader, speedXLoc, &speedX, SHADER_UNIFORM_FLOAT);
-	SetShaderValue(swirlShader, speedYLoc, &speedY, SHADER_UNIFORM_FLOAT);
+	
+    float freqX = 25.0f;
+    float freqY = 25.0f;
+    float ampX = 5.0f;
+    float ampY = 5.0f;
+    float speedX = 8.0f;
+    float speedY = 8.0f;
+    float screenSize[2] = {screenWidth, screenHeight};
+
+    // Pack scalars into vec2s (second component unused)
+    float freqXVec[2]   = { freqX,   0.0f };
+    float freqYVec[2]   = { freqY,   0.0f };
+    float ampXVec[2]    = { ampX,    0.0f };
+    float ampYVec[2]    = { ampY,    0.0f };
+    float speedXVec[2]  = { speedX,  0.0f };
+    float speedYVec[2]  = { speedY,  0.0f };
+
+    SetShaderValue(swirlShader, GetShaderLocation(swirlShader, "size"), &screenSize, SHADER_UNIFORM_VEC2);
+    SetShaderValue(swirlShader, freqXLoc,  freqXVec,  SHADER_UNIFORM_VEC2);
+    SetShaderValue(swirlShader, freqYLoc,  freqYVec,  SHADER_UNIFORM_VEC2);
+    SetShaderValue(swirlShader, ampXLoc,   ampXVec,   SHADER_UNIFORM_VEC2);
+    SetShaderValue(swirlShader, ampYLoc,   ampYVec,   SHADER_UNIFORM_VEC2);
+    SetShaderValue(swirlShader, speedXLoc, speedXVec, SHADER_UNIFORM_VEC2);
+    SetShaderValue(swirlShader, speedYLoc, speedYVec, SHADER_UNIFORM_VEC2);
+
     float shaderSeconds = 0.0f;
 
     TraceLog(LOG_INFO, "HELLO");
@@ -677,7 +686,8 @@ int main(void){
         accumulatedTime += (endTime - startTime);
         startTime = millis();
         shaderSeconds += GetFrameTime() / 2.0f;
-        SetShaderValue(swirlShader, secondsLoc, &shaderSeconds, SHADER_UNIFORM_FLOAT);
+        float secondsVec[2] = { shaderSeconds, 0.0f };
+        SetShaderValue(swirlShader, secondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
 
         float mouseX = GetMouseX();
         float mouseY = GetMouseY();
@@ -781,9 +791,22 @@ int main(void){
             float effectiveTimestep = (timeStep) * slowMotionFactor;
             if (game.gameState == 1){
                 // Game
-                cpSpaceStep(space, effectiveTimestep / 3.0f);
-                cpSpaceStep(space, effectiveTimestep / 3.0f);
-                cpSpaceStep(space, effectiveTimestep / 3.0f);
+
+                // Clamp effective timestep to a sane, non-zero range to avoid numerical issues.
+                if (effectiveTimestep < (1.0f / 600.0f)) {
+                    effectiveTimestep = 1.0f / 600.0f;
+                }
+                if (effectiveTimestep > (1.0f / 20.0f)) {
+                    effectiveTimestep = 1.0f / 20.0f;
+                }
+
+                // Optional: uncomment for verbose physics-step logging while debugging hangs
+                 TraceLog(LOG_INFO, "STEP START accumulatedTime=%lld, effectiveTimestep=%f, slowMotionFactor=%f", 
+                         accumulatedTime, effectiveTimestep, slowMotionFactor);
+
+                cpSpaceStep(space, effectiveTimestep);
+
+                // TraceLog(LOG_INFO, "STEP END accumulatedTime=%lld", accumulatedTime);
 
                 if (game.oldGameScore != game.gameScore){
                     inputSetScore(input,game.gameScore);
@@ -901,8 +924,13 @@ int main(void){
                     }
                 }
 
-                float deltaAngularVelocityLeft = ((leftFlipperAngle * DEG_TO_RAD) - (oldAngleLeft * DEG_TO_RAD)) / effectiveTimestep;
-                float deltaAngularVelocityRight = ((rightFlipperAngle * DEG_TO_RAD) - (oldAngleRight * DEG_TO_RAD)) / effectiveTimestep;
+                float deltaAngularVelocityLeft = 0.0f;
+                float deltaAngularVelocityRight = 0.0f;
+                if (effectiveTimestep > 0.0f) {
+                    deltaAngularVelocityLeft = ((leftFlipperAngle * DEG_TO_RAD) - (oldAngleLeft * DEG_TO_RAD)) / effectiveTimestep;
+                    deltaAngularVelocityRight = ((rightFlipperAngle * DEG_TO_RAD) - (oldAngleRight * DEG_TO_RAD)) / effectiveTimestep;
+                }
+
                 cpBodySetAngle(leftFlipperBody,leftFlipperAngle * DEG_TO_RAD);
                 cpBodySetAngle(rightFlipperBody,rightFlipperAngle * DEG_TO_RAD);
                 cpBodySetAngularVelocity(leftFlipperBody,deltaAngularVelocityLeft * flipperSpeedScalar);
@@ -1413,7 +1441,8 @@ int main(void){
             float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
             float width = screenWidth * 3;
             float height = screenHeight * 3;
-            SetShaderValue(swirlShader, secondsLoc, &shaderSeconds, SHADER_UNIFORM_FLOAT);
+            float secondsVec[2] = { shaderSeconds, 0.0f };
+            SetShaderValue(swirlShader, secondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
 			BeginShaderMode(swirlShader);
             DrawTexturePro(bgMenu,(Rectangle){0,0,bgMenu.width,bgMenu.height},(Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},(Vector2){width/2,height/2},angle,WHITE);
             EndShaderMode();
@@ -1446,7 +1475,8 @@ int main(void){
         }
 
         if (game.transitionState > 0){
-            SetShaderValue(swirlShader, secondsLoc, &shaderSeconds, SHADER_UNIFORM_FLOAT);
+            float secondsVec[2] = { shaderSeconds, 0.0f };
+            SetShaderValue(swirlShader, secondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
             float transitionAmount = ((game.transitionAlpha / 255.0f));
             DrawRectanglePro((Rectangle){screenWidth,screenHeight,screenWidth,screenHeight + 200}, (Vector2){0,screenHeight + 200}, -33.0f * transitionAmount, BLACK);
             DrawRectanglePro((Rectangle){0,0,screenWidth,screenHeight + 200}, (Vector2){screenWidth,0}, -33.0f * transitionAmount, BLACK);

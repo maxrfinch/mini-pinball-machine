@@ -50,7 +50,7 @@ add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS_PRIVATE})
 set_target_properties(${PROJECT_NAME} PROPERTIES
     OUTPUT_NAME "pinball"
     LINKER_LANGUAGE C
-    SKIP_BUILD_RPATH TRUE
+    MACOSX_RPATH TRUE
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
@@ -64,23 +64,116 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             ${CMAKE_SOURCE_DIR}/resources/assets
             $<TARGET_FILE_DIR:${PROJECT_NAME}>/Resources)
 
-#--------------- LOCAL LIBRARIES --------------------
+#--------------- HOMEBREW LIBRARIES --------------------
 
-set(CHIPMUNK_ROOT ${PROJECT_SOURCE_DIR}/lib/chipmunk_mac)
-set(RAYLIB_ROOT   ${PROJECT_SOURCE_DIR}/lib/raylib_mac)
+# Prefer Homebrew on Apple Silicon (M1/M2) but also fall back to /usr/local for Intel/macOS
+if(APPLE)
+    list(APPEND CMAKE_PREFIX_PATH "/opt/homebrew" "/usr/local")
+endif()
+
+# raylib from Homebrew
+find_path(RAYLIB_INCLUDE_DIR
+    NAMES raylib.h
+    PATHS
+        /opt/homebrew/opt/raylib/include
+        /opt/homebrew/include
+        /usr/local/include
+)
+
+find_library(RAYLIB_LIB
+    NAMES raylib
+    PATHS
+        /opt/homebrew/opt/raylib/lib
+        /opt/homebrew/lib
+        /usr/local/lib
+)
+
+message(STATUS "RAYLIB_INCLUDE_DIR = ${RAYLIB_INCLUDE_DIR}")
+message(STATUS "RAYLIB_LIB         = ${RAYLIB_LIB}")
+
+if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIB)
+    message(FATAL_ERROR "raylib not found. Install with 'brew install raylib' or adjust paths in CMakeLists.txt")
+endif()
+
+# Chipmunk-Physics from Homebrew
+# Look directly in the 'chipmunk' subdir so CHIPMUNK_INCLUDE_DIR
+# is the directory that actually contains chipmunk.h
+find_path(CHIPMUNK_INCLUDE_DIR
+    NAMES chipmunk.h
+    PATHS
+        /opt/homebrew/include/chipmunk
+        /usr/local/include/chipmunk
+)
+
+find_library(CHIPMUNK_LIB
+    NAMES chipmunk
+    PATHS
+        /opt/homebrew/lib
+        /usr/local/lib
+)
+
+if(NOT CHIPMUNK_INCLUDE_DIR OR NOT CHIPMUNK_LIB)
+    message(FATAL_ERROR "Chipmunk physics library not found. Install with 'brew install chipmunk-physics' (or 'chipmunk') and adjust paths if needed.")
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CHIPMUNK_ROOT}/include
-    ${RAYLIB_ROOT}/include
+    ${RAYLIB_INCLUDE_DIR}
+    ${CHIPMUNK_INCLUDE_DIR}
 )
 
-target_link_directories(${PROJECT_NAME} PRIVATE
-    ${CHIPMUNK_ROOT}/lib
-    ${RAYLIB_ROOT}/lib
+# Add Homebrew include directories
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${RAYLIB_INCLUDE_DIR}
+    ${CHIPMUNK_INCLUDE_DIR}
 )
 
-# link against the actual .a/.dylib names in those dirs
-target_link_libraries(${PROJECT_NAME} PRIVATE raylib chipmunk)
+# Link against Homebrew raylib and chipmunk
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    ${RAYLIB_LIB}
+    ${CHIPMUNK_LIB}
+)
+
+#--------------- RPATH FOR HOMEBREW DYLIBS ON MAC --------------------
+
+if(APPLE)
+    # Add Homebrew lib dirs to rpath so dylibs are found at runtime
+    set(HOMEBREW_RPATHS "")
+
+    # Try to query Homebrew prefixes at configure time
+    find_program(HOMEBREW_EXECUTABLE brew)
+    if(HOMEBREW_EXECUTABLE)
+        # Chipmunk
+        execute_process(
+            COMMAND "${HOMEBREW_EXECUTABLE}" --prefix chipmunk-physics
+            OUTPUT_VARIABLE CHIPMUNK_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(CHIPMUNK_PREFIX)
+            list(APPEND HOMEBREW_RPATHS "${CHIPMUNK_PREFIX}/lib")
+        endif()
+
+        # raylib
+        execute_process(
+            COMMAND "${HOMEBREW_EXECUTABLE}" --prefix raylib
+            OUTPUT_VARIABLE RAYLIB_PREFIX
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            ERROR_QUIET
+        )
+        if(RAYLIB_PREFIX)
+            list(APPEND HOMEBREW_RPATHS "${RAYLIB_PREFIX}/lib")
+        endif()
+    endif()
+
+    # Generic fallbacks in case execute_process failed or Homebrew is somewhere else
+    list(APPEND HOMEBREW_RPATHS "/opt/homebrew/lib" "/usr/local/lib")
+
+    # Apply rpaths to the target so dyld can find the dylibs at runtime
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        BUILD_RPATH "${HOMEBREW_RPATHS}"
+        INSTALL_RPATH "${HOMEBREW_RPATHS}"
+    )
+endif()
 
 #--------------- PLATFORM FLAGS --------------------
 
@@ -102,6 +195,6 @@ else()
     message(FATAL_ERROR "Unknown platform!")
 endif()
 
-source_group(TREE "${PROJECT_SOURCE_DIR}/include"
+source_group(TREE "${PROJECT_SOURCE_DIR}"
              PREFIX "Header Files"
              FILES ${HEADERS_PRIVATE})

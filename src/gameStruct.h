@@ -75,7 +75,7 @@ enum CollisionTypes {
     COLLISION_ONE_WAY = 6
 };
 
-typedef struct GameStructData {
+struct GameStructData {
     cpSpace *space;
     int numBalls;
     Ball *balls;
@@ -109,7 +109,6 @@ typedef struct GameStructData {
     int leftFlipperState;
     int rightFlipperState;
 
-} GameStruct;
-
+};
 
 #endif
