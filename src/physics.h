@@ -3,12 +3,9 @@
 
 #include "gameStruct.h"
 
-// Forward declare Box2D body pointer as opaque type for C compatibility
-typedef struct b2Body b2Body;
-
-// Initialize physics system (b2World, walls, bumpers, flippers, collision handlers)
+// Initialize physics system (cpSpace, walls, bumpers, flippers, collision handlers)
 // Returns pointers to bumpers array, left flipper body, and right flipper body via out parameters
-void physics_init(GameStruct *game, Bumper **out_bumpers, b2Body **out_leftFlipperBody, b2Body **out_rightFlipperBody);
+void physics_init(GameStruct *game, Bumper **out_bumpers, cpBody **out_leftFlipperBody, cpBody **out_rightFlipperBody);
 
 // Step the physics simulation forward by dt seconds
 void physics_step(GameStruct *game, float dt);
