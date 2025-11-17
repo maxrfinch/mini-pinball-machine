@@ -105,11 +105,11 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
     b2ShapeId otherShapeId = b2_nullShapeId;
     uint32_t otherCategory = 0;
     
-    if (catA == COLLISION_BALL) {
+    if (catA == CATEGORY_BALL) {
         ballShapeId = shapeIdA;
         otherShapeId = shapeIdB;
         otherCategory = catB;
-    } else if (catB == COLLISION_BALL) {
+    } else if (catB == CATEGORY_BALL) {
         ballShapeId = shapeIdB;
         otherShapeId = shapeIdA;
         otherCategory = catA;
@@ -125,7 +125,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
     }
     
     // Handle different collision types
-    if (otherCategory == COLLISION_BUMPER) {
+    if (otherCategory == CATEGORY_BUMPER) {
         // Ball-Bumper collision
         Bumper *bumper = (Bumper *)b2Shape_GetUserData(otherShapeId);
         if (!bumper) {
@@ -182,11 +182,11 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             bumper->enabled = 0;
             return true;
         }
-    } else if (otherCategory == COLLISION_PADDLE) {
+    } else if (otherCategory == CATEGORY_PADDLE) {
         // Ball-Flipper collision
         ball->killCounter = 0;
         return true;
-    } else if (otherCategory == COLLISION_LEFT_LOWER_BUMPER) {
+    } else if (otherCategory == CATEGORY_LEFT_LOWER_BUMPER) {
         // Left lower slingshot
         leftLowerBumperAnim = 1.0f;
         (ball->game)->gameScore += 25;
@@ -195,7 +195,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         }
         playBounce2((ball->game)->sound);
         return true;
-    } else if (otherCategory == COLLISION_RIGHT_LOWER_BUMPER) {
+    } else if (otherCategory == CATEGORY_RIGHT_LOWER_BUMPER) {
         // Right lower slingshot
         rightLowerBumperAnim = 1.0f;
         (ball->game)->gameScore += 25;
@@ -204,7 +204,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         }
         playBounce2((ball->game)->sound);
         return true;
-    } else if (otherCategory == COLLISION_ONE_WAY) {
+    } else if (otherCategory == CATEGORY_ONE_WAY) {
         // One-way gate - check normal direction
         // Allow collision only if the normal has a positive y component
         if (manifold->normal.y < 0) {
@@ -311,8 +311,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
         b2ShapeDef shapeDef = b2DefaultShapeDef();
         shapeDef.material.friction = 0.5f;
         shapeDef.material.restitution = 0.5f;
-        shapeDef.filter.categoryBits = COLLISION_WALL;
-        shapeDef.filter.maskBits     = COLLISION_BALL;
+        shapeDef.filter.categoryBits = CATEGORY_WALL;
+        shapeDef.filter.maskBits     = CATEGORY_BALL;
 
         b2CreateSegmentShape(staticBody, &shapeDef, &segment);
     }
@@ -334,15 +334,15 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef leftBouncerDef = b2DefaultShapeDef();
     leftBouncerDef.material.friction = 0.0f;
     leftBouncerDef.material.restitution = 1.2f;
-    leftBouncerDef.filter.categoryBits = COLLISION_LEFT_LOWER_BUMPER;
-    leftBouncerDef.filter.maskBits     = COLLISION_BALL;
+    leftBouncerDef.filter.categoryBits = CATEGORY_LEFT_LOWER_BUMPER;
+    leftBouncerDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &leftBouncerDef, &leftBouncer);
 
     b2ShapeDef rightBouncerDef = b2DefaultShapeDef();
     rightBouncerDef.material.friction = 0.0f;
     rightBouncerDef.material.restitution = 1.2f;
-    rightBouncerDef.filter.categoryBits = COLLISION_RIGHT_LOWER_BUMPER;
-    rightBouncerDef.filter.maskBits     = COLLISION_BALL;
+    rightBouncerDef.filter.categoryBits = CATEGORY_RIGHT_LOWER_BUMPER;
+    rightBouncerDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &rightBouncerDef, &rightBouncer);
 
     // Bouncer guards
@@ -355,8 +355,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef guardDef = b2DefaultShapeDef();
     guardDef.material.friction = 0.0f;
     guardDef.material.restitution = 0.9f;
-    guardDef.filter.categoryBits = COLLISION_WALL;
-    guardDef.filter.maskBits     = COLLISION_BALL;
+    guardDef.filter.categoryBits = CATEGORY_WALL;
+    guardDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &guardDef, &guard1);
     b2CreateSegmentShape(staticBody, &guardDef, &guard2);
 
@@ -379,8 +379,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
         b2ShapeDef bumperShapeDef = b2DefaultShapeDef();
         bumperShapeDef.material.restitution = bumperBounciness;
-        bumperShapeDef.filter.categoryBits = COLLISION_BUMPER;
-        bumperShapeDef.filter.maskBits     = COLLISION_BALL;
+        bumperShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+        bumperShapeDef.filter.maskBits     = CATEGORY_BALL;
         bumperShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &bumperShapeDef, &circle);
@@ -400,8 +400,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
     b2ShapeDef slowMoShapeDef = b2DefaultShapeDef();
     slowMoShapeDef.material.restitution = bumperBounciness;
-    slowMoShapeDef.filter.categoryBits = COLLISION_BUMPER;
-    slowMoShapeDef.filter.maskBits     = COLLISION_BALL;
+    slowMoShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+    slowMoShapeDef.filter.maskBits     = CATEGORY_BALL;
     slowMoShapeDef.userData = &bumpers[3];
 
     bumpers[3].shape = b2CreateCircleShape(bumpers[3].body, &slowMoShapeDef, &slowMoCircle);
@@ -446,8 +446,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
         b2ShapeDef laneShapeDef = b2DefaultShapeDef();
         laneShapeDef.material.restitution = 0.0f;
-        laneShapeDef.filter.categoryBits = COLLISION_BUMPER;
-        laneShapeDef.filter.maskBits     = COLLISION_BALL;
+        laneShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+        laneShapeDef.filter.maskBits     = CATEGORY_BALL;
         laneShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &laneShapeDef, &laneCircle);
@@ -477,8 +477,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
 
         b2ShapeDef waterShapeDef = b2DefaultShapeDef();
         waterShapeDef.material.restitution = bumperBounciness;
-        waterShapeDef.filter.categoryBits = COLLISION_BUMPER;
-        waterShapeDef.filter.maskBits     = COLLISION_BALL;
+        waterShapeDef.filter.categoryBits = CATEGORY_BUMPER;
+        waterShapeDef.filter.maskBits     = CATEGORY_BALL;
         waterShapeDef.userData = &bumpers[i];
 
         bumpers[i].shape = b2CreateCircleShape(bumpers[i].body, &waterShapeDef, &waterCircle);
@@ -496,8 +496,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef oneWayDef = b2DefaultShapeDef();
     oneWayDef.material.restitution = 0.5f;
     oneWayDef.material.friction = 0.0f;
-    oneWayDef.filter.categoryBits = COLLISION_ONE_WAY;
-    oneWayDef.filter.maskBits     = COLLISION_BALL;
+    oneWayDef.filter.categoryBits = CATEGORY_ONE_WAY;
+    oneWayDef.filter.maskBits     = CATEGORY_BALL;
     b2CreateSegmentShape(staticBody, &oneWayDef, &oneWaySegment);
 
     // Additional static segments
@@ -512,8 +512,8 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef tempDef = b2DefaultShapeDef();
     tempDef.material.restitution = 0.5f;
     tempDef.material.friction = 0.5f;
-    tempDef.filter.categoryBits = COLLISION_WALL;
-    tempDef.filter.maskBits     = COLLISION_BALL;
+    tempDef.filter.categoryBits = CATEGORY_WALL;
+    tempDef.filter.maskBits     = CATEGORY_BALL;
 
     for (int i = 0; i < 3; i++) {
         b2CreateSegmentShape(staticBody, &tempDef, &tempSegments[i]);
@@ -551,16 +551,16 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     b2ShapeDef leftFlipperShapeDef = b2DefaultShapeDef();
     leftFlipperShapeDef.material.friction = 0.8f;
     leftFlipperShapeDef.material.restitution = 0.2f;
-    leftFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
-    leftFlipperShapeDef.filter.maskBits     = COLLISION_BALL;
+    leftFlipperShapeDef.filter.categoryBits = CATEGORY_PADDLE;
+    leftFlipperShapeDef.filter.maskBits     = CATEGORY_BALL;
     b2CreatePolygonShape(leftFlipperBodyStatic, &leftFlipperShapeDef, &flipperPoly);
 
     // Create right flipper shape
     b2ShapeDef rightFlipperShapeDef = b2DefaultShapeDef();
     rightFlipperShapeDef.material.friction = 0.8f;
     rightFlipperShapeDef.material.restitution = 0.2f;
-    rightFlipperShapeDef.filter.categoryBits = COLLISION_PADDLE;
-    rightFlipperShapeDef.filter.maskBits     = COLLISION_BALL;
+    rightFlipperShapeDef.filter.categoryBits = CATEGORY_PADDLE;
+    rightFlipperShapeDef.filter.maskBits     = CATEGORY_BALL;
     b2CreatePolygonShape(rightFlipperBodyStatic, &rightFlipperShapeDef, &flipperPoly);
 
     // Store references for debug drawing
@@ -653,14 +653,14 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         ballShapeDef.material.friction = 0.0f;
         ballShapeDef.material.restitution = 0.7f;
         ballShapeDef.density = density;
-        ballShapeDef.filter.categoryBits = COLLISION_BALL;
+        ballShapeDef.filter.categoryBits = CATEGORY_BALL;
         ballShapeDef.filter.maskBits =
-            COLLISION_WALL |
-            COLLISION_BUMPER |
-            COLLISION_PADDLE |
-            COLLISION_LEFT_LOWER_BUMPER |
-            COLLISION_RIGHT_LOWER_BUMPER |
-            COLLISION_ONE_WAY;
+            CATEGORY_WALL |
+            CATEGORY_BUMPER |
+            CATEGORY_PADDLE |
+            CATEGORY_LEFT_LOWER_BUMPER |
+            CATEGORY_RIGHT_LOWER_BUMPER |
+            CATEGORY_ONE_WAY;
         ballShapeDef.userData = &(game->balls[ballIndex]);
 
         game->balls[ballIndex].shape = b2CreateCircleShape(game->balls[ballIndex].body, &ballShapeDef, &ballCircle);
