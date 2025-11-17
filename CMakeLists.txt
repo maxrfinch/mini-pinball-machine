@@ -30,6 +30,7 @@ set(SOURCES
     src/gameStruct.c 
     src/inputManagerMac.c 
     src/main.c 
+    src/physics.c 
     src/physicsDebugDraw.c 
     src/scores.c 
     src/soundManager.c 
@@ -40,6 +41,7 @@ set(HEADERS_PRIVATE
     src/constants.h 
     src/gameStruct.h
     src/inputManager.h
+    src/physics.h
     src/physicsDebugDraw.h
     src/scores.h
     src/soundManager.h
