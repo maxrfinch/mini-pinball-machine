@@ -5,12 +5,10 @@ cmake_policy(SET CMP0077 NEW)
 
 project(pinball VERSION 0.1.0
         DESCRIPTION "Mini Pinball Machine"
-        LANGUAGES C CXX)
+        LANGUAGES C)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ### Require out-of-source builds
 file(TO_CMAKE_PATH "${PROJECT_BINARY_DIR}/CMakeLists.txt" LOC_PATH)
@@ -32,9 +30,8 @@ set(SOURCES
     src/gameStruct.c 
     src/inputManagerMac.c 
     src/main.c 
-    src/physics.cpp 
-    src/physicsDebugDraw.cpp
-    src/box2d_wrapper.cpp
+    src/physics.c 
+    src/physicsDebugDraw.c 
     src/scores.c 
     src/soundManager.c 
     src/sqlite3.c 
@@ -46,7 +43,6 @@ set(HEADERS_PRIVATE
     src/inputManager.h
     src/physics.h
     src/physicsDebugDraw.h
-    src/box2d_wrapper.h
     src/scores.h
     src/soundManager.h
     src/sqlite3.h
@@ -55,7 +51,7 @@ set(HEADERS_PRIVATE
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS_PRIVATE})
 set_target_properties(${PROJECT_NAME} PROPERTIES
     OUTPUT_NAME "pinball"
-    LINKER_LANGUAGE CXX
+    LINKER_LANGUAGE C
     MACOSX_RPATH TRUE
 )
 
@@ -101,37 +97,42 @@ if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIB)
     message(FATAL_ERROR "raylib not found. Install with 'brew install raylib' or adjust paths in CMakeLists.txt")
 endif()
 
-# Box2D from Homebrew
-find_path(BOX2D_INCLUDE_DIR
-    NAMES box2d/box2d.h
+# Chipmunk-Physics from Homebrew
+# Look directly in the 'chipmunk' subdir so CHIPMUNK_INCLUDE_DIR
+# is the directory that actually contains chipmunk.h
+find_path(CHIPMUNK_INCLUDE_DIR
+    NAMES chipmunk.h
     PATHS
-        /opt/homebrew/include
-        /usr/local/include
+        /opt/homebrew/include/chipmunk
+        /usr/local/include/chipmunk
 )
 
-find_library(BOX2D_LIB
-    NAMES box2d
+find_library(CHIPMUNK_LIB
+    NAMES chipmunk
     PATHS
         /opt/homebrew/lib
         /usr/local/lib
 )
 
-if(NOT BOX2D_INCLUDE_DIR OR NOT BOX2D_LIB)
-    message(FATAL_ERROR "Box2D physics library not found. Install with 'brew install box2d' and adjust paths if needed.")
+if(NOT CHIPMUNK_INCLUDE_DIR OR NOT CHIPMUNK_LIB)
+    message(FATAL_ERROR "Chipmunk physics library not found. Install with 'brew install chipmunk-physics' (or 'chipmunk') and adjust paths if needed.")
 endif()
-
-message(STATUS "BOX2D_INCLUDE_DIR = ${BOX2D_INCLUDE_DIR}")
-message(STATUS "BOX2D_LIB         = ${BOX2D_LIB}")
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${RAYLIB_INCLUDE_DIR}
-    ${BOX2D_INCLUDE_DIR}
+    ${CHIPMUNK_INCLUDE_DIR}
 )
 
-# Link against Homebrew raylib and box2d
+# Add Homebrew include directories
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${RAYLIB_INCLUDE_DIR}
+    ${CHIPMUNK_INCLUDE_DIR}
+)
+
+# Link against Homebrew raylib and chipmunk
 target_link_libraries(${PROJECT_NAME} PRIVATE
     ${RAYLIB_LIB}
-    ${BOX2D_LIB}
+    ${CHIPMUNK_LIB}
 )
 
 #--------------- RPATH FOR HOMEBREW DYLIBS ON MAC --------------------
@@ -143,15 +144,15 @@ if(APPLE)
     # Try to query Homebrew prefixes at configure time
     find_program(HOMEBREW_EXECUTABLE brew)
     if(HOMEBREW_EXECUTABLE)
-        # Box2D
+        # Chipmunk
         execute_process(
-            COMMAND "${HOMEBREW_EXECUTABLE}" --prefix box2d
-            OUTPUT_VARIABLE BOX2D_PREFIX
+            COMMAND "${HOMEBREW_EXECUTABLE}" --prefix chipmunk-physics
+            OUTPUT_VARIABLE CHIPMUNK_PREFIX
             OUTPUT_STRIP_TRAILING_WHITESPACE
             ERROR_QUIET
         )
-        if(BOX2D_PREFIX)
-            list(APPEND HOMEBREW_RPATHS "${BOX2D_PREFIX}/lib")
+        if(CHIPMUNK_PREFIX)
+            list(APPEND HOMEBREW_RPATHS "${CHIPMUNK_PREFIX}/lib")
         endif()
 
         # raylib

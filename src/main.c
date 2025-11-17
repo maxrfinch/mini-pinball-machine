@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <math.h>
+#include <chipmunk.h>
 #include "constants.h"
 #include "physicsDebugDraw.h"
 #include "inputManager.h"
@@ -10,7 +11,6 @@
 #include "soundManager.h"
 #include "gameStruct.h"
 #include "physics.h"
-#include "box2d_wrapper.h"
 
 #define DEG_TO_RAD (3.14159265 / 180.0)
 #define RAD_TO_DEG (180.0 / 3.14159265)
@@ -51,7 +51,26 @@ static float multiballOverlayY = 0.0f;
 
 
 
-// Debug drawing handled by Box2D debug draw
+// Debug drawing functions
+static void
+ChipmunkDebugDrawCirclePointer(cpVect p, cpFloat a, cpFloat r, cpSpaceDebugColor outline, cpSpaceDebugColor fill, cpDataPointer data)
+{ChipmunkDebugDrawCircle(p, a, r, outline, fill);}
+
+static void
+ChipmunkDebugDrawSegmentPointer(cpVect a, cpVect b, cpSpaceDebugColor color, cpDataPointer data)
+{ChipmunkDebugDrawSegment(a, b, color);}
+
+static void
+ChipmunkDebugDrawFatSegmentPointer(cpVect a, cpVect b, cpFloat r, cpSpaceDebugColor outline, cpSpaceDebugColor fill, cpDataPointer data)
+{ChipmunkDebugDrawFatSegment(a, b, r, outline, fill);}
+
+static void
+ChipmunkDebugDrawPolygonPointer(int count, const cpVect *verts, cpFloat r, cpSpaceDebugColor outline, cpSpaceDebugColor fill, cpDataPointer data)
+{ChipmunkDebugDrawPolygon(count, verts, r, outline, fill);}
+
+static void
+ChipmunkDebugDrawDotPointer(cpFloat size, cpVect pos, cpSpaceDebugColor color, cpDataPointer data)
+{ChipmunkDebugDrawDot(size, pos, color);}
 
 
 // start game
@@ -162,10 +181,10 @@ int main(void){
     TraceLog(LOG_INFO, "HELLO");
 
     // Initialize physics simulation
-    b2Body* leftFlipperBody = NULL;
-    b2Body* rightFlipperBody = NULL;
+    cpBody* leftFlipperBody = NULL;
+    cpBody* rightFlipperBody = NULL;
     physics_init(&game, &bumpers, &leftFlipperBody, &rightFlipperBody);
-    float timeStep = 1.0f/60.0f;
+    cpFloat timeStep = 1.0/60.0;
 
     TraceLog(LOG_INFO, "PHYSICS INITIALIZED");
 
@@ -193,7 +212,20 @@ int main(void){
     RenderTexture2D renderTarget = LoadRenderTexture(screenWidth, screenHeight);
 
 
-    // Debug draw handled by Box2D debug draw
+    // Setup debug draw options
+    cpSpaceDebugDrawOptions drawOptions = {
+    	ChipmunkDebugDrawCirclePointer,
+    	ChipmunkDebugDrawSegmentPointer,
+    	ChipmunkDebugDrawFatSegmentPointer,
+    	ChipmunkDebugDrawPolygonPointer,
+    	ChipmunkDebugDrawDotPointer,
+    	(cpSpaceDebugDrawFlags)(CP_SPACE_DEBUG_DRAW_SHAPES | CP_SPACE_DEBUG_DRAW_CONSTRAINTS | CP_SPACE_DEBUG_DRAW_COLLISION_POINTS),
+    	{0xEE/255.0f, 0xE8/255.0f, 0xD5/255.0f, 1.0f}, // Outline color
+    	ChipmunkDebugGetColorForShape,
+    	{0.0f, 0.75f, 0.0f, 1.0f}, // Constraint color
+    	{1.0f, 0.0f, 0.0f, 1.0f}, // Collision point color
+    	NULL,
+    };
 
     // Menu setup
     MenuPinball* menuPinballs = malloc(32 * sizeof(MenuPinball));
@@ -499,22 +531,21 @@ int main(void){
                     deltaAngularVelocityRight = ((rightFlipperAngle * DEG_TO_RAD) - (oldAngleRight * DEG_TO_RAD)) / effectiveTimestep;
                 }
 
-                Vec2 leftPos = b2Body_GetPosition(leftFlipperBody);
-                Vec2 rightPos = b2Body_GetPosition(rightFlipperBody);
-                b2Body_SetTransform(leftFlipperBody, leftPos, leftFlipperAngle * DEG_TO_RAD);
-                b2Body_SetTransform(rightFlipperBody, rightPos, rightFlipperAngle * DEG_TO_RAD);
-                b2Body_SetAngularVelocity(leftFlipperBody, deltaAngularVelocityLeft * flipperSpeedScalar);
-                b2Body_SetAngularVelocity(rightFlipperBody, deltaAngularVelocityRight * flipperSpeedScalar);
+                cpBodySetAngle(leftFlipperBody,leftFlipperAngle * DEG_TO_RAD);
+                cpBodySetAngle(rightFlipperBody,rightFlipperAngle * DEG_TO_RAD);
+                cpBodySetAngularVelocity(leftFlipperBody,deltaAngularVelocityLeft * flipperSpeedScalar);
+                cpBodySetAngularVelocity(rightFlipperBody,deltaAngularVelocityRight * flipperSpeedScalar);
+                cpSpaceReindexShapesForBody(game.space,leftFlipperBody);
+                cpSpaceReindexShapesForBody(game.space,rightFlipperBody);
 
                 // Check if any balls have fallen outside the screen
                 // Remove them if they have.
                 // Check if any balls are standing still for too long and remove.
                 for (int i = 0; i < maxBalls; i++){
                     if (balls[i].active == 1){
-                        Vec2 pos = b2Body_GetPosition(balls[i].body);
-                        Vec2 vel = b2Body_GetLinearVelocity(balls[i].body);
-                        float velLengthSq = vel.x * vel.x + vel.y * vel.y;
-                        if (velLengthSq < 0.01f){
+                        cpVect pos = cpBodyGetPosition(balls[i].body);
+                        cpVect vel = cpBodyGetVelocity(balls[i].body);
+                        if (cpvlengthsq(vel)<0.01f){
                             balls[i].killCounter++;
                         } else {
                             balls[i].killCounter=0;
@@ -525,7 +556,10 @@ int main(void){
                         }
                         if (pos.y > 170+ballSize || balls[i].killCounter > 100){
                             balls[i].active = 0;
-                            b2World_DestroyBody(game.world, balls[i].body);
+                            cpSpaceRemoveShape(game.space,balls[i].shape);
+                            cpSpaceRemoveBody(game.space,balls[i].body);
+                            cpShapeFree(balls[i].shape);
+                            cpBodyFree(balls[i].body);
                             game.numBalls--;
                             //Check number of lives and send to score if necessary
                             if (game.numBalls == 0){
@@ -541,7 +575,7 @@ int main(void){
                 //Update ball trails
                 for (int i = 0; i < maxBalls; i++){
                     if (balls[i].active == 1){
-                        Vec2 pos = b2Body_GetPosition(balls[i].body);
+                        cpVect pos = cpBodyGetPosition(balls[i].body);
                         balls[i].locationHistoryX[balls[i].trailStartIndex] = pos.x;
                         balls[i].locationHistoryY[balls[i].trailStartIndex] = pos.y;
                         balls[i].trailStartIndex = (balls[i].trailStartIndex + 1) % 16;
@@ -677,22 +711,19 @@ int main(void){
 
                     for (int i = 0; i < maxBalls; i++){
                         if (balls[i].active == 1){
-                            Vec2 pos = b2Body_GetPosition(balls[i].body);
-                            Vec2 vel = b2Body_GetLinearVelocity(balls[i].body);
+                            cpVect pos = cpBodyGetPosition(balls[i].body);
+                            cpVect vel = cpBodyGetVelocity(balls[i].body);
                             if (pos.y > waterY){
-                                float distUnderwater = fabsf(waterY - pos.y);
+                                float distUnderwater = fabs(waterY - pos.y);
                                 float bVely = -200.0f + -(distUnderwater * 40.0f);
-                                Vec2 force = {0, bVely};
-                                b2Body_ApplyForceToCenter(balls[i].body, force);
+                                cpBodyApplyForceAtLocalPoint (balls[i].body, cpv(0,bVely), cpvzero);
                                 // Apply special forces for flipper
                                 float flipperForce = -1000.0f;
                                 if (pos.x <= worldWidth / 2.0f && fabsf(deltaAngularVelocityLeft) > 0){
-                                    Vec2 flipperForceVec = {0, flipperForce};
-                                    b2Body_ApplyForceToCenter(balls[i].body, flipperForceVec);
+                                    cpBodyApplyForceAtLocalPoint (balls[i].body, cpv(0,flipperForce), cpvzero);
                                 }
                                 if (pos.x >= worldWidth / 2.0f && fabsf(deltaAngularVelocityRight) > 0){
-                                    Vec2 flipperForceVec = {0, flipperForce};
-                                    b2Body_ApplyForceToCenter(balls[i].body, flipperForceVec);
+                                    cpBodyApplyForceAtLocalPoint (balls[i].body, cpv(0,flipperForce), cpvzero);
                                 }
                                 if (balls[i].underwaterState == 0){
                                     playWaterSplash(sound);
@@ -836,7 +867,7 @@ int main(void){
 
             // render bumpers which belong behind balls.
             for (int i = 0; i < numBumpers; i++){
-                Vec2 pos = b2Body_GetPosition(bumpers[i].body);
+                cpVect pos = cpBodyGetPosition(bumpers[i].body);
                 if (bumpers[i].type == 2 || bumpers[i].type == 3){
                     float width = 8.0f;
                     float height = 2.0f;
@@ -874,7 +905,7 @@ int main(void){
             //render balls
             for (int i = 0; i < maxBalls; i++){
                 if (balls[i].active == 1){
-                    Vec2 pos = b2Body_GetPosition(balls[i].body);
+                    cpVect pos = cpBodyGetPosition(balls[i].body);
                     Color ballColor = (Color){255,183,0,255};
                     if (balls[i].type == 1){ ballColor = BLUE; }
                     if (game.slowMotion == 1){ ballColor = WHITE; }
@@ -884,7 +915,7 @@ int main(void){
 
             // Render bumpers which belong in front of balls
             for (int i = 0; i < numBumpers; i++){
-                Vec2 pos = b2Body_GetPosition(bumpers[i].body);
+                cpVect pos = cpBodyGetPosition(bumpers[i].body);
                 if (bumpers[i].type == 0){
                     float bounceScale = 0.2f;
                     float width = bumperSize + cos(millis() / 20.0) * bumpers[i].bounceEffect * bounceScale;
@@ -937,13 +968,13 @@ int main(void){
             }
 
             // Render left flipper
-            Vec2 pos = b2Body_GetPosition(leftFlipperBody);
-            float angle = b2Body_GetAngle(leftFlipperBody);
+            cpVect pos = cpBodyGetPosition(leftFlipperBody);
+            cpFloat angle = cpBodyGetAngle(leftFlipperBody);
             DrawTexturePro(leftFlipperTex,(Rectangle){0,0,leftFlipperTex.width,leftFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){0 * worldToScreen,0 * worldToScreen},(angle * RAD_TO_DEG),WHITE);
 
             // Render right flipper
-            pos = b2Body_GetPosition(rightFlipperBody);
-            angle = b2Body_GetAngle(rightFlipperBody);
+            pos = cpBodyGetPosition(rightFlipperBody);
+            angle = cpBodyGetAngle(rightFlipperBody);
             DrawTexturePro(rightFlipperTex,(Rectangle){0,0,rightFlipperTex.width,rightFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){0 * worldToScreen,0 * worldToScreen},(angle * RAD_TO_DEG),WHITE);
 
             // Render score
@@ -1001,7 +1032,7 @@ int main(void){
                     printf("{%f,%f,,},\n",(float)(mouseX * screenToWorld),(float)(mouseY * screenToWorld));
                 }
 
-                Box2DDebugDrawWorld(game.world);
+                cpSpaceDebugDraw(game.space, &drawOptions);
             }
         }
         if (game.gameState == 2){
