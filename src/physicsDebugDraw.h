@@ -1,11 +1,17 @@
 #ifndef HEADER_PHYSICS_DEBUG_DRAW
 #define HEADER_PHYSICS_DEBUG_DRAW
 
-void ChipmunkDebugDrawCircle(cpVect pos, cpFloat angle, cpFloat radius, cpSpaceDebugColor outlineColor, cpSpaceDebugColor fillColor);
-void ChipmunkDebugDrawSegment(cpVect a, cpVect b, cpSpaceDebugColor color);
-void ChipmunkDebugDrawFatSegment(cpVect a, cpVect b, cpFloat radius, cpSpaceDebugColor outlineColor, cpSpaceDebugColor fillColor);
-void ChipmunkDebugDrawPolygon(int count, const cpVect *verts, cpFloat radius, cpSpaceDebugColor outlineColor, cpSpaceDebugColor fillColor);
-void ChipmunkDebugDrawDot(cpFloat size, cpVect pos, cpSpaceDebugColor fillColor);
-cpSpaceDebugColor ChipmunkDebugGetColorForShape(cpShape *shape, cpDataPointer data);
+#include "raylib.h"
+
+// Forward declarations for Box2D types
+typedef struct b2World b2World;
+
+// Simple color structure to replace cpSpaceDebugColor
+typedef struct {
+    float r, g, b, a;
+} DebugColor;
+
+// Debug draw functions for Box2D
+void Box2DDebugDrawWorld(b2World* world);
 
 #endif
