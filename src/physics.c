@@ -648,13 +648,13 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     // Box2D: We offset polygon by (-height/2, -height/2), so adjust body position by +(height/2, height/2)
     b2BodyDef leftFlipperDef = b2DefaultBodyDef();
     leftFlipperDef.type = b2_kinematicBody;
-    leftFlipperDef.position = pb2_v(18 + flipperHeight / 2.0f, 143.6 + flipperHeight / 2.0f);
+    leftFlipperDef.position = pb2_v(17.2 + flipperHeight / 2.0f, 142.8 + flipperHeight / 2.0f);
     leftFlipperBodyStatic = b2CreateBody(game->world, &leftFlipperDef);
 
     // Create right flipper
     b2BodyDef rightFlipperDef = b2DefaultBodyDef();
     rightFlipperDef.type = b2_kinematicBody;
-    rightFlipperDef.position = pb2_v(60.6 + flipperHeight / 2.0f, 143.6 + flipperHeight / 2.0f);
+    rightFlipperDef.position = pb2_v(61.4 + flipperHeight / 2.0f, 142.8 + flipperHeight / 2.0f);
     rightFlipperBodyStatic = b2CreateBody(game->world, &rightFlipperDef);
 
     // Define flipper polygon shape
