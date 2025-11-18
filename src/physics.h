@@ -2,6 +2,8 @@
 #define PHYSICS_H
 
 #include "gameStruct.h"
+#include "inputManager.h"
+#include "soundManager.h"
 
 // Initialize physics system (Box2D world, walls, bumpers, flippers, collision handlers)
 // Returns pointers to bumpers array, left flipper body, and right flipper body via out parameters
@@ -18,6 +20,20 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
 
 // Draw physics debug visualization (walls, bodies, shapes)
 void physics_debug_draw(GameStruct *game);
+
+// Initialize flipper system
+void physics_flippers_init(GameStruct *game, b2BodyId *leftFlipperBody, b2BodyId *rightFlipperBody);
+
+// Update flipper angles and sounds based on input
+// Returns the delta angular velocities for left and right flippers (for physics integration)
+void physics_flippers_update(GameStruct *game,
+                              b2BodyId *leftFlipperBody,
+                              b2BodyId *rightFlipperBody,
+                              InputManager *input,
+                              SoundManager *sound,
+                              float dt,
+                              float *out_leftDeltaAngularVelocity,
+                              float *out_rightDeltaAngularVelocity);
 
 // Animation state for lower bumpers (set by collision handlers, read by rendering code)
 extern float leftLowerBumperAnim;

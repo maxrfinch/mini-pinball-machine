@@ -27,7 +27,6 @@ endif()
 #---------------- SOURCE FILES ----------------
 set(SOURCES
     src/constants.c 
-    src/flippers.c
     src/game.c
     src/gameStruct.c 
     src/inputManagerMac.c 
@@ -51,7 +50,6 @@ set(SOURCES
 
 set(HEADERS_PRIVATE
     src/constants.h
-    src/flippers.h
     src/game.h
     src/gameStruct.h
     src/inputManager.h

@@ -16,7 +16,6 @@
 #include "util.h"
 #include "game.h"
 #include "water.h"
-#include "flippers.h"
 #include "powerups.h"
 #include "menu.h"
 
@@ -111,7 +110,7 @@ int main(void){
     Game_Init(&game, bumpers);
     
     // Initialize flippers
-    Flippers_Init(&game, leftFlipperBody, rightFlipperBody);
+    physics_flippers_init(&game, leftFlipperBody, rightFlipperBody);
     
     // Initialize powerup system
     PowerupSystem powerupSystem;
@@ -193,8 +192,8 @@ int main(void){
                 // Update flippers
                 float deltaAngularVelocityLeft = 0.0f;
                 float deltaAngularVelocityRight = 0.0f;
-                Flippers_Update(&game, leftFlipperBody, rightFlipperBody, input, sound, 
-                               effectiveTimestep, &deltaAngularVelocityLeft, &deltaAngularVelocityRight);
+                physics_flippers_update(&game, leftFlipperBody, rightFlipperBody, input, sound, 
+                                       effectiveTimestep, &deltaAngularVelocityLeft, &deltaAngularVelocityRight);
 
                 physics_step(&game, effectiveTimestep);
 
