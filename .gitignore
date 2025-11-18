@@ -1,2 +1,2 @@
 build/
-firmware/build/
+firmware/build/*.backup
