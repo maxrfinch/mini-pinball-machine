@@ -1,12 +1,4 @@
 # Mini Pinball Machine
-A mini pinball machine based on the Raspberry Pi 5 with a laser-cut enclosure and custom software.
-
-The hardware enclosure is laser-cut wood, a 7" touchscreen monitor, and an Arduino to interact with the dot-matrix display and arcade buttons.  The enclosure also has stereo audio.
-
-A Raspberry Pi 4 runs a custom-designed pinball game which interacts with the physical hardware. The game contains several powerups, high scores, and is optimized to run at 60fps.
-
-===
-
 A mini pinball machine formerly based on the Raspberry Pi 4 + Arduino Uno, now based on the Raspberry Pi 5 + Pico.
 The game contains several powerups, high scores, and is optimized to run at 60fps.
 
