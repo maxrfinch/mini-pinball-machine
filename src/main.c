@@ -42,8 +42,8 @@ Bumper* bumpers = NULL;
 static float slowMotionFactor = 1.0f;
 static float iceOverlayAlpha = 0.0f;
 
-static float leftLowerBumperAnim = 0.0f;
-static float rightLowerBumperAnim = 0.0f;
+// leftLowerBumperAnim and rightLowerBumperAnim are now declared in physics.h
+// and defined in physics.c (they are set by collision handlers)
 
 static float multiballOverlayY = 0.0f;
 

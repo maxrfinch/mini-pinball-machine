@@ -59,8 +59,10 @@ typedef enum {
 /*  Local animation state (driven by collision handlers, read by renderer)    */
 /* -------------------------------------------------------------------------- */
 
-static float leftLowerBumperAnim  = 0.0f;
-static float rightLowerBumperAnim = 0.0f;
+// These variables are accessed by main.c for rendering lower bumper animations
+// They are set to 1.0f when a collision occurs and decremented in main.c
+float leftLowerBumperAnim  = 0.0f;
+float rightLowerBumperAnim = 0.0f;
 
 /* -------------------------------------------------------------------------- */
 /*  Debug draw state - stores references to bodies and shapes for rendering  */
