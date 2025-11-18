@@ -54,6 +54,9 @@
 
 #define DEG_TO_RAD (3.14159265 / 180.0)
 
+// External function from main.c for water ripple impacts
+extern void AddWaterImpulse(float x, float impulse);
+
 // Local geometry/limit constants for this module.
 //
 // numWalls   : number of static wall segments we create in physics_init().
@@ -719,6 +722,32 @@ void physics_step(GameStruct *game, float dt) {
     // Contact events are processed during PreSolveCallback
     // which is called automatically during b2World_Step
     
+    // Check for water intersections and apply ripple impulses
+    if (game->waterPowerupState > 0) {
+        // Water level in world coordinates (water rises from bottom)
+        float waterWorldY = worldHeight * (1.0f - game->waterHeight);
+        
+        for (int i = 0; i < maxBalls; i++) {
+            if (game->balls[i].active) {
+                b2Vec2 pos = b2Body_GetPosition(game->balls[i].body);
+                b2Vec2 vel = b2Body_GetLinearVelocity(game->balls[i].body);
+                
+                // Check if ball just entered water (was above, now at or below water level)
+                int wasUnderwater = game->balls[i].underwaterState;
+                int isUnderwater = (pos.y >= waterWorldY) ? 1 : 0;
+                
+                // On water entry, create ripple impulse
+                if (!wasUnderwater && isUnderwater) {
+                    // Map ball x-position (0 to worldWidth) to ripple index
+                    float impulse = fabsf(vel.y) * 0.0025f;
+                    AddWaterImpulse(pos.x, impulse);
+                }
+                
+                game->balls[i].underwaterState = isUnderwater;
+            }
+        }
+    }
+    
     //TraceLog(LOG_INFO, "[PHYSICS] done");
 }
 
@@ -805,6 +834,7 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         game->balls[ballIndex].trailStartIndex = 0;
         game->balls[ballIndex].type = type;
         game->balls[ballIndex].killCounter = 0;
+        game->balls[ballIndex].underwaterState = 0;
 
         if (type == 0) {
             game->slowMotion = 0;

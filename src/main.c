@@ -48,7 +48,20 @@ static float waterImpactIntensity = 0.0f;
 
 static float multiballOverlayY = 0.0f;
 
+// Water ripple simulation buffers
+#define RIPPLE_SAMPLES 150
+#define WATER_LEFT 0.0f
+#define WATER_WIDTH 90.0f
+static float rippleHeight[RIPPLE_SAMPLES];
+static float rippleVelocity[RIPPLE_SAMPLES];
 
+// AddWaterImpulse: Called from physics.c when ball hits water
+void AddWaterImpulse(float x, float impulse) {
+    int idx = (int)((x - WATER_LEFT) / WATER_WIDTH * RIPPLE_SAMPLES);
+    if (idx >= 0 && idx < RIPPLE_SAMPLES) {
+        rippleVelocity[idx] += impulse;
+    }
+}
 
 
 
@@ -180,6 +193,39 @@ int main(void){
     SetShaderValue(swirlShader, speedXLoc, speedXVec, SHADER_UNIFORM_VEC2);
     SetShaderValue(swirlShader, speedYLoc, speedYVec, SHADER_UNIFORM_VEC2);
 
+    // Load water shader with ripple support
+    Shader waterShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/water.fs", GLSL_VERSION));
+    int waterSecondsLoc = GetShaderLocation(waterShader, "secondes");
+    int waterFreqXLoc = GetShaderLocation(waterShader, "freqX");
+    int waterFreqYLoc = GetShaderLocation(waterShader, "freqY");
+    int waterAmpXLoc = GetShaderLocation(waterShader, "ampX");
+    int waterAmpYLoc = GetShaderLocation(waterShader, "ampY");
+    int waterSpeedXLoc = GetShaderLocation(waterShader, "speedX");
+    int waterSpeedYLoc = GetShaderLocation(waterShader, "speedY");
+    int rippleTexLoc = GetShaderLocation(waterShader, "rippleTex");
+    int waterLevelLoc = GetShaderLocation(waterShader, "waterLevel");
+
+    SetShaderValue(waterShader, GetShaderLocation(waterShader, "size"), &screenSize, SHADER_UNIFORM_VEC2);
+    SetShaderValue(waterShader, waterFreqXLoc,  freqXVec,  SHADER_UNIFORM_VEC2);
+    SetShaderValue(waterShader, waterFreqYLoc,  freqYVec,  SHADER_UNIFORM_VEC2);
+    SetShaderValue(waterShader, waterAmpXLoc,   ampXVec,   SHADER_UNIFORM_VEC2);
+    SetShaderValue(waterShader, waterAmpYLoc,   ampYVec,   SHADER_UNIFORM_VEC2);
+    SetShaderValue(waterShader, waterSpeedXLoc, speedXVec, SHADER_UNIFORM_VEC2);
+    SetShaderValue(waterShader, waterSpeedYLoc, speedYVec, SHADER_UNIFORM_VEC2);
+
+    // Create ripple texture (150x1 R32F)
+    Image rippleImage = GenImageColor(RIPPLE_SAMPLES, 1, (Color){0, 0, 0, 255});
+    Texture2D rippleTexture = LoadTextureFromImage(rippleImage);
+    UnloadImage(rippleImage);
+    SetTextureFilter(rippleTexture, TEXTURE_FILTER_BILINEAR);
+    SetTextureWrap(rippleTexture, TEXTURE_WRAP_CLAMP);
+
+    // Initialize ripple buffers
+    for (int i = 0; i < RIPPLE_SAMPLES; i++) {
+        rippleHeight[i] = 0.0f;
+        rippleVelocity[i] = 0.0f;
+    }
+
     float shaderSeconds = 0.0f;
 
     TraceLog(LOG_INFO, "HELLO");
@@ -300,6 +346,49 @@ int main(void){
         float ampYVecCurrent[2] = { ampY * ampScale, 0.0f };
         SetShaderValue(swirlShader, ampXLoc, ampXVecCurrent, SHADER_UNIFORM_VEC2);
         SetShaderValue(swirlShader, ampYLoc, ampYVecCurrent, SHADER_UNIFORM_VEC2);
+
+        // Update ripple simulation
+        float t = GetTime();
+        
+        // Add idle wave motion
+        for (int i = 0; i < RIPPLE_SAMPLES; i++) {
+            rippleHeight[i] += 0.002f * sinf(t * 1.5f + i * 0.15f);
+        }
+
+        // Neighbor propagation (spring-like behavior)
+        float spread = 0.25f;
+        for (int i = 1; i < RIPPLE_SAMPLES - 1; i++) {
+            rippleVelocity[i] += spread * (rippleHeight[i-1] + rippleHeight[i+1] - 2.0f * rippleHeight[i]);
+        }
+
+        // Apply damping and update positions
+        for (int i = 0; i < RIPPLE_SAMPLES; i++) {
+            rippleVelocity[i] *= 0.985f;
+            rippleHeight[i] += rippleVelocity[i];
+        }
+
+        // Update ripple texture
+        unsigned char rippleData[RIPPLE_SAMPLES * 4];
+        for (int i = 0; i < RIPPLE_SAMPLES; i++) {
+            // Convert float height to grayscale byte (centered at 128)
+            int val = (int)(128.0f + rippleHeight[i] * 50.0f);
+            if (val < 0) val = 0;
+            if (val > 255) val = 255;
+            rippleData[i * 4 + 0] = (unsigned char)val;
+            rippleData[i * 4 + 1] = (unsigned char)val;
+            rippleData[i * 4 + 2] = (unsigned char)val;
+            rippleData[i * 4 + 3] = 255;
+        }
+        UpdateTexture(rippleTexture, rippleData);
+
+        // Update water shader uniforms
+        SetShaderValue(waterShader, waterSecondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
+        float ampXVecWater[2] = { ampX * ampScale, 0.0f };
+        float ampYVecWater[2] = { ampY * ampScale, 0.0f };
+        SetShaderValue(waterShader, waterAmpXLoc, ampXVecWater, SHADER_UNIFORM_VEC2);
+        SetShaderValue(waterShader, waterAmpYLoc, ampYVecWater, SHADER_UNIFORM_VEC2);
+        SetShaderValue(waterShader, waterLevelLoc, &game.waterHeight, SHADER_UNIFORM_FLOAT);
+        SetShaderValueTexture(waterShader, rippleTexLoc, rippleTexture);
 
         float mouseX = GetMouseX();
         float mouseY = GetMouseY();
@@ -1041,8 +1130,8 @@ int main(void){
                 Vector2 origin = (Vector2){ 0.0f, 0.0f };
                 Color tint = (Color){ 255, 255, 255, 120 };
 
-                // Enable shader: amplifies wave deformation
-                BeginShaderMode(swirlShader);
+                // Enable water shader with ripple effects
+                BeginShaderMode(waterShader);
                 DrawTexturePro(waterOverlayTex, src, dst, origin, 0.0f, tint);
                 EndShaderMode();
             }
