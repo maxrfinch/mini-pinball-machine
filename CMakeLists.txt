@@ -27,34 +27,44 @@ endif()
 #---------------- SOURCE FILES ----------------
 set(SOURCES
     src/constants.c 
+    src/game.c
     src/gameStruct.c 
     src/inputManagerMac.c 
-    src/main.c 
+    src/main.c
+    src/menu.c
     src/physics.c 
     src/physicsDebugDraw.c 
+    src/powerups.c
     src/render.c
     src/resources.c
     src/scores.c 
     src/soundManager.c 
     src/sqlite3.c
     src/ui.c
+    src/util.c
+    src/water.c
 )
 
 # Note: physics_old.c, physicsDebugDraw_old.c are reference implementations
 # and are NOT included in the build. They exist for comparing behavior.
 
 set(HEADERS_PRIVATE
-    src/constants.h 
+    src/constants.h
+    src/game.h
     src/gameStruct.h
     src/inputManager.h
+    src/menu.h
     src/physics.h
     src/physicsDebugDraw.h
+    src/powerups.h
     src/render.h
     src/resources.h
     src/scores.h
     src/soundManager.h
     src/sqlite3.h
     src/ui.h
+    src/util.h
+    src/water.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS_PRIVATE})

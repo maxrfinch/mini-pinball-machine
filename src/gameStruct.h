@@ -47,6 +47,17 @@ typedef enum {
     TRANSITION_GAME_OVER
 } TransitionAction;
 
+typedef enum {
+    SCENE_RAYLIB_TITLE,   // Initial raylib loading screen
+    SCENE_MENU,           // Main menu/attract mode
+    SCENE_GAME,           // Active gameplay
+    SCENE_GAME_OVER       // Score entry screen
+} SceneId;
+
+typedef enum {
+    MODE_CLASSIC   // Currently only one mode exists
+} GameMode;
+
 typedef struct {
     b2ShapeId shape;
     b2BodyId body;
@@ -92,7 +103,11 @@ struct GameStructData {
     int numBalls;
     Ball *balls;
     int active;
-    int gameState;
+    int gameState;  // Legacy: 0=menu, 1=game, 2=gameover, 5=title
+    SceneId currentScene;
+    SceneId nextScene;
+    GameMode currentMode;
+    GameMode pendingMode;
     long gameScore;
     long oldGameScore;
     int powerupScore;

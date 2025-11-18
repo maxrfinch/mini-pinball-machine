@@ -1,7 +1,6 @@
 #include "raylib.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
 #include <math.h>
 #include <box2d/box2d.h>
 #include "constants.h"
@@ -14,9 +13,11 @@
 #include "resources.h"
 #include "render.h"
 #include "ui.h"
-
-#define DEG_TO_RAD (3.14159265 / 180.0)
-#define RAD_TO_DEG (180.0 / 3.14159265)
+#include "util.h"
+#include "game.h"
+#include "water.h"
+#include "powerups.h"
+#include "menu.h"
 
 #if defined(PLATFORM_RPI)
     #define GLSL_VERSION            100
@@ -24,76 +25,19 @@
     #define GLSL_VERSION            330
 #endif
 
-long long millis() {
-    struct timeval te;
-    gettimeofday(&te, NULL);
-    long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000;
-    return milliseconds;
-}
-
-const int maxBalls = 256;
-const float ballSize = 5;
-
-const int numBumpers = 14;
-const float bumperSize = 10.0f;
-const float smallBumperSize = 4.0f;
-const float bumperBounciness = 1.8f;
-
 // global pointer to the bumpers array
 Bumper* bumpers = NULL;
 
-static float slowMotionFactor = 1.0f;
-static float iceOverlayAlpha = 0.0f;
-static float waterImpactIntensity = 0.0f;
-
-// leftLowerBumperAnim and rightLowerBumperAnim are now declared in physics.h
-// and defined in physics.c (they are set by collision handlers)
-
-static float multiballOverlayY = 0.0f;
-
-// Water ripple simulation buffers
-#define RIPPLE_SAMPLES 25
-#define WATER_LEFT 0.0f
-#define WATER_WIDTH 90.0f
-static float rippleHeight[RIPPLE_SAMPLES];
-static float rippleVelocity[RIPPLE_SAMPLES];
+// Global water system instance
+static WaterSystem waterSystem;
 
 // AddWaterImpulse: Called from physics.c when ball hits water
 void AddWaterImpulse(float x, float impulse) {
-    int idx = (int)((x - WATER_LEFT) / WATER_WIDTH * RIPPLE_SAMPLES);
-    if (idx >= 0 && idx < RIPPLE_SAMPLES) {
-        rippleVelocity[idx] += impulse;
+    Water_AddImpulse(&waterSystem, x, impulse);
+    waterSystem.impactIntensity += 0.6f;
+    if (waterSystem.impactIntensity > 1.5f) {
+        waterSystem.impactIntensity = 1.5f;
     }
-}
-
-// start game
-void startGame(GameStruct *game){
-    game->gameState = 1;
-    game->numLives = 3;
-    game->gameScore = 0;
-    game->powerupScore = 0;
-    game->powerupScoreDisplay = 0;
-    game->bumperPowerupState = 0;
-    game->ballPowerupState = 0;
-    game->waterHeight = 0.0f;
-    game->waterPowerupState = 0;
-    game->redPowerupOverlay = 0;
-    game->bluePowerupOverlay = 0;
-    game->slowMotion=0;
-    game->slowMotionCounter=0;
-    game->leftFlipperState=0;
-    game->rightFlipperState=0;
-    iceOverlayAlpha=0.0f;
-    
-    // Initialize slow-mo powerup cooldown state (available at game start)
-    game->slowMoPowerupAvailable = 1;
-    game->slowMoCooldownTimer = 0.0f;
-    game->slowMoCooldownBaselineLives = game->numLives;
-    game->slowMoExplosionEffect = 0.0f;
-    
-    inputSetScore(game->input,0);
-    inputSetGameState(game->input,STATE_GAME);
-    inputSetNumBalls(game->input,game->numLives);
 }
 
 int main(void){
@@ -114,11 +58,8 @@ int main(void){
     Resources resources;
     Resources_Init(&resources);
 
-    // Initialize ripple buffers
-    for (int i = 0; i < RIPPLE_SAMPLES; i++) {
-        rippleHeight[i] = 0.0f;
-        rippleVelocity[i] = 0.0f;
-    }
+    // Initialize water system
+    Water_Init(&waterSystem);
     
     // Shader parameters for amplitude scaling
     float ampX = 5.0f;
@@ -134,18 +75,6 @@ int main(void){
 
     TraceLog(LOG_INFO, "PHYSICS INITIALIZED");
 
-    // Flipper variables
-    float flipperSpeed = 900.0f;
-    float leftFlipperAngle = 33.0f;
-    float rightFlipperAngle = 147.0f;
-    float flipperSpeedScalar = 1.0f;
-
-    // Powerup variables
-    float powerupFullY = 64.0f;
-    float powerupEmptyY = 104.4f;
-    float powerupTargetScore = 5000.0f;
-    TraceLog(LOG_INFO, "BALLS");
-
     //create balls array
     Ball* balls = malloc(maxBalls * sizeof(Ball));
     game.balls = balls;
@@ -159,13 +88,6 @@ int main(void){
 
     // Menu setup
     MenuPinball* menuPinballs = malloc(32 * sizeof(MenuPinball));
-    // Initialize pinballs
-    for (int i = 0; i < 32; i++){
-        menuPinballs[i].px = -100;
-        menuPinballs[i].py = (rand() % screenHeight);
-        menuPinballs[i].vx = 0;
-        menuPinballs[i].vy = 0;
-    }
 
     // Setup input
     InputManager *input = inputInit();
@@ -181,23 +103,21 @@ int main(void){
     long long endTime = millis();
     long long elapsedTimeStart = millis();
 
-    game.transitionState = 0;
-    game.transitionAlpha = 0;
-    game.transitionTarget = TRANSITION_TO_MENU;
-
-    game.menuState = 0;
-
-    //game.gameState = 2;
-    game.nameSelectIndex = 0;
-    game.nameSelectDone = 0;
-
-    multiballOverlayY = 20 + worldHeight;
-
-    game.gameState = 5;
-
-    char tempString[128];
     char nameString[6];
     sprintf(nameString,"     ");
+
+    // Initialize game state machine
+    Game_Init(&game, bumpers);
+    
+    // Initialize flippers
+    physics_flippers_init(&game, leftFlipperBody, rightFlipperBody);
+    
+    // Initialize powerup system
+    PowerupSystem powerupSystem;
+    Powerups_Init(&game, &powerupSystem);
+    
+    // Initialize menu
+    Menu_Init(&game, menuPinballs, 32);
 
     inputSetGameState(input,STATE_MENU);
     TraceLog(LOG_INFO, "START");
@@ -213,50 +133,15 @@ int main(void){
         float secondsVec[2] = { shaderSeconds, 0.0f };
         SetShaderValue(resources.swirlShader, resources.swirlSecondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
 
-        // Decay water impact intensity and drive ripple amplitude
-        waterImpactIntensity *= 0.95f;
-        if (waterImpactIntensity < 0.0f) waterImpactIntensity = 0.0f;
-        if (waterImpactIntensity > 1.0f) waterImpactIntensity = 1.0f;
-
-        float ampScale = 1.0f + 2.5f * waterImpactIntensity; // stronger ripples on impacts
+        // Update water simulation and shader uniforms
+        Water_Update(&waterSystem, &resources, GetFrameTime());
+        
+        // Drive ripple amplitude based on water impact intensity
+        float ampScale = 1.0f + 2.5f * waterSystem.impactIntensity;
         float ampXVecCurrent[2] = { ampX * ampScale, 0.0f };
         float ampYVecCurrent[2] = { ampY * ampScale, 0.0f };
         SetShaderValue(resources.swirlShader, resources.swirlAmpXLoc, ampXVecCurrent, SHADER_UNIFORM_VEC2);
         SetShaderValue(resources.swirlShader, resources.swirlAmpYLoc, ampYVecCurrent, SHADER_UNIFORM_VEC2);
-
-        // Update ripple simulation
-        float t = GetTime();
-        
-        // Add idle wave motion
-        for (int i = 0; i < RIPPLE_SAMPLES; i++) {
-            rippleHeight[i] += 0.002f * sinf(t * 1.5f + i * 0.15f);
-        }
-
-        // Neighbor propagation (spring-like behavior)
-        float spread = 0.25f;
-        for (int i = 1; i < RIPPLE_SAMPLES - 1; i++) {
-            rippleVelocity[i] += spread * (rippleHeight[i-1] + rippleHeight[i+1] - 2.0f * rippleHeight[i]);
-        }
-
-        // Apply damping and update positions
-        for (int i = 0; i < RIPPLE_SAMPLES; i++) {
-            rippleVelocity[i] *= 0.985f;
-            rippleHeight[i] += rippleVelocity[i];
-        }
-
-        // Update ripple texture
-        unsigned char rippleData[RIPPLE_SAMPLES * 4];
-        for (int i = 0; i < RIPPLE_SAMPLES; i++) {
-            // Convert float height to grayscale byte (centered at 128)
-            int val = (int)(128.0f + rippleHeight[i] * 50.0f);
-            if (val < 0) val = 0;
-            if (val > 255) val = 255;
-            rippleData[i * 4 + 0] = (unsigned char)val;
-            rippleData[i * 4 + 1] = (unsigned char)val;
-            rippleData[i * 4 + 2] = (unsigned char)val;
-            rippleData[i * 4 + 3] = 255;
-        }
-        UpdateTexture(resources.rippleTexture, rippleData);
 
         // Update water shader uniforms
         SetShaderValue(resources.waterShader, resources.waterSecondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
@@ -273,14 +158,6 @@ int main(void){
         // Poll input
         inputUpdate(input);
 
-        // Validate slowMotionFactor to prevent bad timesteps
-        if (!isfinite(slowMotionFactor) || slowMotionFactor <= 0.0f) {
-            TraceLog(LOG_WARNING, "slowMotionFactor invalid (%f), resetting", slowMotionFactor);
-            slowMotionFactor = 1.0f;
-        }
-
-        game.slowMotionFactor = slowMotionFactor;
-
         // STEP SIMULATION AT FIXED RATE with safety cap
         const int MAX_PHYSICS_STEPS_PER_FRAME = 16;
         int stepCount = 0;
@@ -290,92 +167,17 @@ int main(void){
 
             updateSound(sound,&game);
 
-            if (game.transitionState == 1){
-                // TRANSITION OUT
-                game.transitionAlpha += 15;
-                if (game.transitionAlpha >= 255){
-                    game.transitionState = 2;
-                    game.transitionAlpha = 255;
-                    game.transitionDelay = 0;
-                }
-            } else if (game.transitionState == 2){
-                // HANDLE LOAD
-                switch (game.transitionTarget){
-                    case TRANSITION_TO_GAME: {
-                        startGame(&game);
-                        bumpers[4].enabled = 1;
-                        bumpers[5].enabled = 1;
-                        bumpers[6].enabled = 1;
-                        bumpers[7].enabled = 1;
-                        bumpers[8].enabled = 1;
-                        bumpers[9].enabled = 1;
-                        bumpers[10].enabled = 0;
-                        bumpers[11].enabled = 0;
-                        bumpers[12].enabled = 0;
-                        bumpers[13].enabled = 0;
-                        break;
-                    }
-                    case TRANSITION_TO_MENU: {
-                        game.gameState = 0;
-                        break;
-                    }
-                    case TRANSITION_GAME_OVER: {
-                        game.gameState = 2;
-                        game.nameSelectIndex = 0;
-                        game.nameSelectDone = 0;
-                        break;
-                    }
-                }
-                game.transitionDelay++;
-                if (game.transitionDelay > 10){
-                    game.transitionState = 3;
-                }
-            } else if (game.transitionState == 3){
-                //TRANSITION IN
-                game.transitionAlpha -= 15;
-                if (game.transitionAlpha <= 0){
-                    game.transitionState = 0;
-                    game.transitionAlpha = 0;
-                }
-            } else {
-                game.transitionAlpha = 0;
-            }
-            if (game.gameState == 5){
-                //transition from raylib title to menu
-                if (game.transitionState == 0){
-                    game.transitionState = 1;
-                    game.transitionTarget = TRANSITION_TO_MENU;
-                }
-            }
+            // Update game state machine and transitions
+            Game_Update(&game, bumpers, input, scores, sound, timeStep);
 
-            // Update menu pinballs
-            for (int i = 0; i < 16; i++){
-                menuPinballs[i].px += menuPinballs[i].vx;
-                menuPinballs[i].py += menuPinballs[i].vy;
-                menuPinballs[i].vy += 0.1f;
-                if (menuPinballs[i].py > screenHeight + 20){
-                    menuPinballs[i].px = 228;
-                    menuPinballs[i].py = 126;
-                    menuPinballs[i].vx = ((rand() % 40) / 10.0f) - 2.0f;
-                    menuPinballs[i].vy = ((rand() % 50) / -10.0f);
-                }
-            }
+            // Update menu if in menu state
             if (game.gameState == 0){
-                if (inputCenterPressed(input)){
-                    game.transitionState = 1;
-                    game.transitionTarget = TRANSITION_TO_GAME;
-                    playClick(sound);
-                }
-                if (inputLeftPressed(input))  {
-                    playClick(sound);
-                    game.menuState = 1;
-                }
-                if (inputRightPressed(input)) {
-                    playClick(sound);
-                    game.menuState = 0;
-                }
+                Menu_Update(&game, menuPinballs, 32, input, sound);
             }
-            float effectiveTimestep = (timeStep) * slowMotionFactor;
+            
+            // Update powerup system
+            float effectiveTimestep = (timeStep) * powerupSystem.slowMotionFactor;
+            Powerups_Update(&game, &powerupSystem, input, sound, effectiveTimestep);
             if (game.gameState == 1){
                 // Game
 
@@ -386,15 +188,20 @@ int main(void){
                 if (effectiveTimestep > (1.0f / 20.0f)) {
                     effectiveTimestep = 1.0f / 20.0f;
                 }
+                
+                // Update flippers
+                float deltaAngularVelocityLeft = 0.0f;
+                float deltaAngularVelocityRight = 0.0f;
+                physics_flippers_update(&game, leftFlipperBody, rightFlipperBody, input, sound, 
+                                       effectiveTimestep, &deltaAngularVelocityLeft, &deltaAngularVelocityRight);
 
                 physics_step(&game, effectiveTimestep);
-
-                // TraceLog(LOG_INFO, "STEP END accumulatedTime=%lld", accumulatedTime);
 
                 if (game.oldGameScore != game.gameScore){
                     inputSetScore(input,game.gameScore);
                     game.oldGameScore = game.gameScore;
                 }
+                
                 // Check powerups before dispensing balls
                 if (game.ballPowerupState == 0 && !bumpers[7].enabled && !bumpers[8].enabled && !bumpers[9].enabled){
                     // spawn balls
@@ -460,67 +267,6 @@ int main(void){
                     physics_add_ball(&game,(mouseX) * screenToWorld,(mouseY) * screenToWorld,0,0,1);
                 }
 
-                float oldAngleLeft = leftFlipperAngle;
-                float oldAngleRight = rightFlipperAngle;
-                float targetAngleLeft = 0.0f;
-                float targetAngleRight = 0.0f;
-                if (inputLeft(input)){
-                    if (game.leftFlipperState == 0){
-                        playFlipper(sound);
-                        game.leftFlipperState = 1;
-                    }
-                    targetAngleLeft = -33.0f - 10.0f;
-                    leftFlipperAngle -= (flipperSpeed * effectiveTimestep);
-                    if (leftFlipperAngle < targetAngleLeft){
-                        leftFlipperAngle = targetAngleLeft;
-                    }
-                } else {
-                    if (game.leftFlipperState == 1){
-                        playFlipper(sound);
-                    }
-                    game.leftFlipperState = 0;
-                    targetAngleLeft = 33.0f;
-                    leftFlipperAngle += (flipperSpeed * effectiveTimestep);
-                    if (leftFlipperAngle > targetAngleLeft){
-                        leftFlipperAngle = targetAngleLeft;
-                    }
-                }
-                if (inputRight(input)){
-                    if (game.rightFlipperState == 0){
-                        playFlipper(sound);
-                        game.rightFlipperState = 1;
-                    }
-                    targetAngleRight = 213.0f + 10.0f;
-                    rightFlipperAngle += (flipperSpeed * effectiveTimestep);
-                    if (rightFlipperAngle > targetAngleRight){
-                        rightFlipperAngle = targetAngleRight;
-                    }
-                } else {
-                    if (game.rightFlipperState == 1){
-                        playFlipper(sound);
-                    }
-                    game.rightFlipperState = 0;
-                    targetAngleRight = 147.0f;
-                    rightFlipperAngle -= (flipperSpeed * effectiveTimestep);
-                    if (rightFlipperAngle < targetAngleRight){
-                        rightFlipperAngle = targetAngleRight;
-                    }
-                }
-
-                float deltaAngularVelocityLeft = 0.0f;
-                float deltaAngularVelocityRight = 0.0f;
-                if (effectiveTimestep > 0.0f) {
-                    deltaAngularVelocityLeft = ((leftFlipperAngle * DEG_TO_RAD) - (oldAngleLeft * DEG_TO_RAD)) / effectiveTimestep;
-                    deltaAngularVelocityRight = ((rightFlipperAngle * DEG_TO_RAD) - (oldAngleRight * DEG_TO_RAD)) / effectiveTimestep;
-                }
-
-                b2Rot leftRot = b2MakeRot(leftFlipperAngle * DEG_TO_RAD);
-                b2Rot rightRot = b2MakeRot(rightFlipperAngle * DEG_TO_RAD);
-                b2Body_SetTransform(*leftFlipperBody, b2Body_GetPosition(*leftFlipperBody), leftRot);
-                b2Body_SetTransform(*rightFlipperBody, b2Body_GetPosition(*rightFlipperBody), rightRot);
-                b2Body_SetAngularVelocity(*leftFlipperBody, deltaAngularVelocityLeft * flipperSpeedScalar);
-                b2Body_SetAngularVelocity(*rightFlipperBody, deltaAngularVelocityRight * flipperSpeedScalar);
-
                 // Check if any balls have fallen outside the screen
                 // Remove them if they have.
                 // Check if any balls are standing still for too long and remove.
@@ -577,134 +323,14 @@ int main(void){
                     }
                 }
 
-                //update ice overlay
-                if (game.slowMotion == 1){
-                    slowMotionFactor = 0.3f;
-                    iceOverlayAlpha += 0.01f;
-                    if (iceOverlayAlpha >= 1.0f){
-                        iceOverlayAlpha = 1.0f;
-                    }
-                } else {
-                    if (slowMotionFactor < 1.0f){
-                        slowMotionFactor += 0.05f;
-                        if (slowMotionFactor > 1.0f){
-                            slowMotionFactor = 1.0f;
-                        }
-                    }
-                    iceOverlayAlpha -= 0.01f;
-                    if (iceOverlayAlpha <= 0.0f){
-                        iceOverlayAlpha = 0.0f;
-                    }
-                }
-                if (game.slowMotionCounter > 0){
-                    game.slowMotionCounter--;
-                    if (game.slowMotionCounter <= 0){
-                        game.slowMotion = 0;
-                        playSpeedupSound(sound);
-                        
-                        // Start 20-second cooldown timer after slow-mo ends
-                        if (game.slowMoPowerupAvailable == 0) {
-                            game.slowMoCooldownTimer = 20.0f; // 20 seconds
-                            game.slowMoCooldownBaselineLives = game.numLives;
-                        }
-                    }
-                }
-                
-                // Update explosion effect decay (affected by slow-motion for consistency)
-                if (game.slowMoExplosionEffect > 0.0f) {
-                    game.slowMoExplosionEffect -= 0.05f * slowMotionFactor;
-                    if (game.slowMoExplosionEffect < 0.0f) {
-                        game.slowMoExplosionEffect = 0.0f;
-                    }
-                }
-                
-                // Update slow-mo cooldown timer (20-second stay-alive requirement)
-                if (game.slowMoCooldownTimer > 0.0f && game.slowMoPowerupAvailable == 0) {
-                    // Count down using effectiveTimestep for consistency
-                    game.slowMoCooldownTimer -= effectiveTimestep;
-                    
-                    // Check if ball was lost (lives decreased)
-                    if (game.numLives < game.slowMoCooldownBaselineLives) {
-                        // Ball lost - reset timer and update baseline
-                        game.slowMoCooldownTimer = 20.0f;
-                        game.slowMoCooldownBaselineLives = game.numLives;
-                    }
-                    
-                    // Check if cooldown complete
-                    if (game.slowMoCooldownTimer <= 0.0f) {
-                        game.slowMoCooldownTimer = 0.0f;
-                        game.slowMoPowerupAvailable = 1;
-                        // TODO: play slow-mo ready sound
-                    }
-                }
-
-                // Update red and blue powerup overlays
-                if (game.redPowerupOverlay > 0.0f){
-                    game.redPowerupOverlay -= 0.02f * slowMotionFactor;
-                    if (game.redPowerupOverlay <= 0.0f){
-                        game.redPowerupOverlay = 0.0f;
-                    }
-                }
-                if (game.bluePowerupOverlay > 0.0f){
-                    game.bluePowerupOverlay -= 0.04f * slowMotionFactor;
-                    if (game.bluePowerupOverlay <= 0.0f){
-                        game.bluePowerupOverlay = 0.0f;
-                    }
-                }
-
-                // Update bumper
-                for (int i = 0; i < numBumpers; i++){
-                    bumpers[i].bounceEffect *= 0.94;
-                    if (bumpers[i].enabled){
-                        bumpers[i].enabledSize += 0.1f;
-                        if (bumpers[i].enabledSize > 1.0f){
-                            bumpers[i].enabledSize = 1.0f;
-                        }
-                    } else {
-                        bumpers[i].enabledSize -= 0.1f;
-                        if (bumpers[i].enabledSize < 0.0f){
-                            bumpers[i].enabledSize = 0.0f;
-                        }
-                    }
-                }
-
-                // Update powerup score display
-                if (game.powerupScoreDisplay < game.powerupScore){
-                    game.powerupScoreDisplay += 10;
-                    if (game.powerupScoreDisplay > game.powerupScore){
-                        game.powerupScoreDisplay = game.powerupScore;
-                    }
-                } else if (game.powerupScoreDisplay > game.powerupScore){
-                    game.powerupScoreDisplay -= 20;
-                    if (game.powerupScoreDisplay < game.powerupScore){
-                        game.powerupScoreDisplay = game.powerupScore;
-                    }
-                }
-                if (game.powerupScoreDisplay < 0){
-                    game.powerupScoreDisplay = 0;
-                }
-                // If the powerup is full, dispense powerup
-                if (game.powerupScoreDisplay >= powerupTargetScore){
-                    game.powerupScore = 0;
-                    game.waterHeightTarget = 0.5f;
-                    game.waterHeightTimer = 400.0f;
-                    game.waterPowerupState = 1;
-                    playWater(sound);
-
-                    game.gameScore += 1000;
-                    if (game.waterPowerupState == 0){
-                        game.powerupScore += 1000;
-                    }
-                }
-
-
+                // Update water height based on powerup state
                 if (game.waterPowerupState == 1){
-                    game.waterHeight += 0.006f * slowMotionFactor;
+                    game.waterHeight += 0.006f * powerupSystem.slowMotionFactor;
                     if (game.waterHeight > game.waterHeightTarget){
                         game.waterHeight = game.waterHeightTarget;
                     }
                 } else if (game.waterPowerupState == 2) {
-                    game.waterHeight -= 0.0005f * slowMotionFactor;
+                    game.waterHeight -= 0.0005f * powerupSystem.slowMotionFactor;
                     if (game.waterHeight < 0.0f){
                         game.waterHeight = 0.0f;
                         game.waterPowerupState = 0;
@@ -712,7 +338,7 @@ int main(void){
                 }
 
                 if (game.waterHeightTimer > 0.0f){
-                    game.waterHeightTimer -= 1.0f * slowMotionFactor;
+                    game.waterHeightTimer -= 1.0f * powerupSystem.slowMotionFactor;
                     if (game.waterHeightTimer <= 0.0f){
                         game.waterHeightTarget = 0.0f;
                         game.waterPowerupState = 2;
@@ -748,9 +374,9 @@ int main(void){
                                     balls[i].underwaterState = 1;
 
                                     // Kick the water ripple intensity on splash so the shader waves react
-                                    waterImpactIntensity += 0.6f;
-                                    if (waterImpactIntensity > 1.5f) {
-                                        waterImpactIntensity = 1.5f;
+                                    waterSystem.impactIntensity += 0.6f;
+                                    if (waterSystem.impactIntensity > 1.5f) {
+                                        waterSystem.impactIntensity = 1.5f;
                                     }
                                 }
                             } else {
@@ -762,52 +388,8 @@ int main(void){
                 }
             }
             if (game.gameState == 2){
-                // Game over
-                if (game.nameSelectDone == 0){
-                    if (inputRightPressed(input)){
-                        playClick(sound);
-                        game.nameSelectIndex++;
-                        if (game.nameSelectIndex > 5){
-                            game.nameSelectIndex = 0;
-                        }
-                    }
-                    if (inputLeftPressed(input)){
-                        playClick(sound);
-                        game.nameSelectIndex--;
-                        if (game.nameSelectIndex < 0){
-                            game.nameSelectIndex = 5;
-                        }
-                    }
-                    if (inputCenterPressed(input)){
-                        playClick(sound);
-                        if (game.nameSelectIndex == 5){
-                            // Name selection done
-                            // Submit score and start transition to menu.
-                            game.nameSelectDone = 1;
-                            game.transitionState = 1;
-                            game.transitionTarget = TRANSITION_TO_MENU;
-                            submitScore(scores,nameString,game.gameScore);
-                            printf("Game Over. score: %ld\n",game.gameScore);
-                            inputSetGameState(input,STATE_MENU);
-                        } else {
-                            if (game.nameSelectIndex > 0){
-                                while (game.nameSelectIndex-1 >= 0 && nameString[game.nameSelectIndex-1] == 32){
-                                    game.nameSelectIndex--;
-                                }
-                            }
-                            if (nameString[game.nameSelectIndex] < 65 || nameString[game.nameSelectIndex] > 90){
-                                nameString[game.nameSelectIndex] = 65;
-                            } else {
-                                nameString[game.nameSelectIndex] = (nameString[game.nameSelectIndex] + 1);
-                                if (nameString[game.nameSelectIndex] > 90){
-                                    nameString[game.nameSelectIndex] = 32;
-                                } else if (nameString[game.nameSelectIndex] < 65){
-                                    nameString[game.nameSelectIndex] = 90;
-                                }
-                            }
-                        }
-                    }
-                }
+                // Game over - delegate to scoreboard update
+                Scoreboard_Update(&game, input, scores, nameString);
             }
         }
 
@@ -829,7 +411,7 @@ int main(void){
             // Game
             Render_Gameplay(&game, &resources, bumpers, numBumpers, 
                            *leftFlipperBody, *rightFlipperBody,
-                           shaderSeconds, iceOverlayAlpha, 
+                           shaderSeconds, powerupSystem.iceOverlayAlpha, 
                            debugDrawEnabled, elapsedTimeStart);
         }
         if (game.gameState == 2){
