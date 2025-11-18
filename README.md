@@ -26,8 +26,8 @@ Optional:
 - Pinball Arcade Inspiration: https://www.chrisdalke.com/projects/mini-pinball-machine/
 - Chris Dalke: https://www.chrisdalke.com/
 
-##Further Reading
+## Further Reading
 [TODO]: Add links for port notes and other relevant .md files.
 
-##Instructions
+## Instructions
 [TODO]: Add Instructions here
