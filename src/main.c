@@ -11,6 +11,9 @@
 #include "soundManager.h"
 #include "gameStruct.h"
 #include "physics.h"
+#include "resources.h"
+#include "render.h"
+#include "ui.h"
 
 #define DEG_TO_RAD (3.14159265 / 180.0)
 #define RAD_TO_DEG (180.0 / 3.14159265)
@@ -107,104 +110,19 @@ int main(void){
     SoundManager *sound = initSound();
     game.sound = sound;
 
-
-    Texture bgTex = LoadTexture("Resources/Textures/background2.png");
-    Texture ballTex = LoadTexture("Resources/Textures/ball.png");
-    Texture beachBallTex = LoadTexture("Resources/Textures/beachBall.png");
-    Texture trailTex = LoadTexture("Resources/Textures/trail.png");
-    Texture bumperTex = LoadTexture("Resources/Textures/bumper.png");
-    Texture bumperLightTex = LoadTexture("Resources/Textures/bumperLight.png");
-    Texture iceBumperTex = LoadTexture("Resources/Textures/iceBumper.png");
-    Texture shockwaveTex = LoadTexture("Resources/Textures/shockwave.png");
-    Texture debugTex = LoadTexture("Resources/Textures/debugSmall.png");
-    Texture leftFlipperTex = LoadTexture("Resources/Textures/flipperL.png");
-    Texture rightFlipperTex = LoadTexture("Resources/Textures/flipperR.png");
-    Texture bgMenu = LoadTexture("Resources/Textures/bgMenu.png");
-    Texture titleOverlay = LoadTexture("Resources/Textures/titleOverlay.png");
-    Texture menuOverlay1 = LoadTexture("Resources/Textures/menuOverlay1.png");
-    Texture gameOverOverlay1 = LoadTexture("Resources/Textures/gameOverOverlay1.png");
-    Texture gameOverOverlay2 = LoadTexture("Resources/Textures/gameOverOverlay2.png");
-    Texture arrowRight = LoadTexture("Resources/Textures/arrowRight.png");
-    Texture menuControls = LoadTexture("Resources/Textures/menuControls.png");
-    Texture transitionTex = LoadTexture("Resources/Textures/transition.png");
-    Texture waterTex = LoadTexture("Resources/Textures/waterTex.png");
-    Texture waterOverlayTex = LoadTexture("Resources/Textures/waterOverlayTex.png");
-    Texture particleTex = LoadTexture("Resources/Textures/particle.png");
-    Texture iceOverlay = LoadTexture("Resources/Textures/iceOverlay.png");
-    Texture bumper3 = LoadTexture("Resources/Textures/bumper3.png");
-    Texture lowerBumperShock = LoadTexture("Resources/Textures/lowerBumperShock.png");
-    Texture redPowerupOverlay = LoadTexture("Resources/Textures/redPowerupOverlay.png");
-
-    Font font1 = LoadFontEx("Resources/Fonts/Avenir-Black.ttf",80,0,0);
-    Font font2 = LoadFontEx("Resources/Fonts/Avenir-Black.ttf",120,0,0);
-
-    Shader alphaTestShader = LoadShader(0, TextFormat("resources/shaders/glsl%i/alphaTest.fs", GLSL_VERSION));
-
-    Shader swirlShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/wave.fs", GLSL_VERSION));
-    int secondsLoc = GetShaderLocation(swirlShader, "secondes");
-	int freqXLoc = GetShaderLocation(swirlShader, "freqX");
-	int freqYLoc = GetShaderLocation(swirlShader, "freqY");
-	int ampXLoc = GetShaderLocation(swirlShader, "ampX");
-	int ampYLoc = GetShaderLocation(swirlShader, "ampY");
-	int speedXLoc = GetShaderLocation(swirlShader, "speedX");
-	int speedYLoc = GetShaderLocation(swirlShader, "speedY");
-	
-    float freqX = 25.0f;
-    float freqY = 25.0f;
-    float ampX = 5.0f;
-    float ampY = 5.0f;
-    float speedX = 8.0f;
-    float speedY = 8.0f;
-    float screenSize[2] = {screenWidth, screenHeight};
-
-    // Pack scalars into vec2s (second component unused)
-    float freqXVec[2]   = { freqX,   0.0f };
-    float freqYVec[2]   = { freqY,   0.0f };
-    float ampXVec[2]    = { ampX,    0.0f };
-    float ampYVec[2]    = { ampY,    0.0f };
-    float speedXVec[2]  = { speedX,  0.0f };
-    float speedYVec[2]  = { speedY,  0.0f };
-
-    SetShaderValue(swirlShader, GetShaderLocation(swirlShader, "size"), &screenSize, SHADER_UNIFORM_VEC2);
-    SetShaderValue(swirlShader, freqXLoc,  freqXVec,  SHADER_UNIFORM_VEC2);
-    SetShaderValue(swirlShader, freqYLoc,  freqYVec,  SHADER_UNIFORM_VEC2);
-    SetShaderValue(swirlShader, ampXLoc,   ampXVec,   SHADER_UNIFORM_VEC2);
-    SetShaderValue(swirlShader, ampYLoc,   ampYVec,   SHADER_UNIFORM_VEC2);
-    SetShaderValue(swirlShader, speedXLoc, speedXVec, SHADER_UNIFORM_VEC2);
-    SetShaderValue(swirlShader, speedYLoc, speedYVec, SHADER_UNIFORM_VEC2);
-
-    // Load water shader with ripple support
-    Shader waterShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/water.fs", GLSL_VERSION));
-    int waterSecondsLoc = GetShaderLocation(waterShader, "secondes");
-    int waterFreqXLoc = GetShaderLocation(waterShader, "freqX");
-    int waterFreqYLoc = GetShaderLocation(waterShader, "freqY");
-    int waterAmpXLoc = GetShaderLocation(waterShader, "ampX");
-    int waterAmpYLoc = GetShaderLocation(waterShader, "ampY");
-    int waterSpeedXLoc = GetShaderLocation(waterShader, "speedX");
-    int waterSpeedYLoc = GetShaderLocation(waterShader, "speedY");
-    int rippleTexLoc = GetShaderLocation(waterShader, "rippleTex");
-    int waterLevelLoc = GetShaderLocation(waterShader, "waterLevel");
-
-    SetShaderValue(waterShader, GetShaderLocation(waterShader, "size"), &screenSize, SHADER_UNIFORM_VEC2);
-    SetShaderValue(waterShader, waterFreqXLoc,  freqXVec,  SHADER_UNIFORM_VEC2);
-    SetShaderValue(waterShader, waterFreqYLoc,  freqYVec,  SHADER_UNIFORM_VEC2);
-    SetShaderValue(waterShader, waterAmpXLoc,   ampXVec,   SHADER_UNIFORM_VEC2);
-    SetShaderValue(waterShader, waterAmpYLoc,   ampYVec,   SHADER_UNIFORM_VEC2);
-    SetShaderValue(waterShader, waterSpeedXLoc, speedXVec, SHADER_UNIFORM_VEC2);
-    SetShaderValue(waterShader, waterSpeedYLoc, speedYVec, SHADER_UNIFORM_VEC2);
-
-    // Create ripple texture (150x1 R32F)
-    Image rippleImage = GenImageColor(RIPPLE_SAMPLES, 1, (Color){0, 0, 0, 255});
-    Texture2D rippleTexture = LoadTextureFromImage(rippleImage);
-    UnloadImage(rippleImage);
-    SetTextureFilter(rippleTexture, TEXTURE_FILTER_BILINEAR);
-    SetTextureWrap(rippleTexture, TEXTURE_WRAP_CLAMP);
+    // Initialize all resources (textures, shaders, fonts)
+    Resources resources;
+    Resources_Init(&resources);
 
     // Initialize ripple buffers
     for (int i = 0; i < RIPPLE_SAMPLES; i++) {
         rippleHeight[i] = 0.0f;
         rippleVelocity[i] = 0.0f;
     }
+    
+    // Shader parameters for amplitude scaling
+    float ampX = 5.0f;
+    float ampY = 5.0f;
 
     float shaderSeconds = 0.0f;
 
@@ -293,7 +211,7 @@ int main(void){
         startTime = millis();
         shaderSeconds += GetFrameTime() / 2.0f;
         float secondsVec[2] = { shaderSeconds, 0.0f };
-        SetShaderValue(swirlShader, secondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
+        SetShaderValue(resources.swirlShader, resources.swirlSecondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
 
         // Decay water impact intensity and drive ripple amplitude
         waterImpactIntensity *= 0.95f;
@@ -303,8 +221,8 @@ int main(void){
         float ampScale = 1.0f + 2.5f * waterImpactIntensity; // stronger ripples on impacts
         float ampXVecCurrent[2] = { ampX * ampScale, 0.0f };
         float ampYVecCurrent[2] = { ampY * ampScale, 0.0f };
-        SetShaderValue(swirlShader, ampXLoc, ampXVecCurrent, SHADER_UNIFORM_VEC2);
-        SetShaderValue(swirlShader, ampYLoc, ampYVecCurrent, SHADER_UNIFORM_VEC2);
+        SetShaderValue(resources.swirlShader, resources.swirlAmpXLoc, ampXVecCurrent, SHADER_UNIFORM_VEC2);
+        SetShaderValue(resources.swirlShader, resources.swirlAmpYLoc, ampYVecCurrent, SHADER_UNIFORM_VEC2);
 
         // Update ripple simulation
         float t = GetTime();
@@ -338,16 +256,16 @@ int main(void){
             rippleData[i * 4 + 2] = (unsigned char)val;
             rippleData[i * 4 + 3] = 255;
         }
-        UpdateTexture(rippleTexture, rippleData);
+        UpdateTexture(resources.rippleTexture, rippleData);
 
         // Update water shader uniforms
-        SetShaderValue(waterShader, waterSecondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
+        SetShaderValue(resources.waterShader, resources.waterSecondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
         float ampXVecWater[2] = { ampX * ampScale, 0.0f };
         float ampYVecWater[2] = { ampY * ampScale, 0.0f };
-        SetShaderValue(waterShader, waterAmpXLoc, ampXVecWater, SHADER_UNIFORM_VEC2);
-        SetShaderValue(waterShader, waterAmpYLoc, ampYVecWater, SHADER_UNIFORM_VEC2);
-        SetShaderValue(waterShader, waterLevelLoc, &game.waterHeight, SHADER_UNIFORM_FLOAT);
-        SetShaderValueTexture(waterShader, rippleTexLoc, rippleTexture);
+        SetShaderValue(resources.waterShader, resources.waterAmpXLoc, ampXVecWater, SHADER_UNIFORM_VEC2);
+        SetShaderValue(resources.waterShader, resources.waterAmpYLoc, ampYVecWater, SHADER_UNIFORM_VEC2);
+        SetShaderValue(resources.waterShader, resources.waterLevelLoc, &game.waterHeight, SHADER_UNIFORM_FLOAT);
+        SetShaderValueTexture(resources.waterShader, resources.waterRippleTexLoc, resources.rippleTexture);
 
         float mouseX = GetMouseX();
         float mouseY = GetMouseY();
@@ -905,366 +823,25 @@ int main(void){
         BeginDrawing();
         if (game.gameState == 0){
             // Menu
-            ClearBackground((Color){255,183,0,255});
-            float timeFactor = (millis() - elapsedTimeStart) / 1000.0f;
-            float xOffset = sin(timeFactor) * 50.0f;
-            float yOffset = cos(timeFactor) * 50.0f;
-            float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
-            float width = screenWidth * 3;
-            float height = screenHeight * 3;
-			BeginShaderMode(swirlShader);
-            DrawTexturePro(bgMenu,(Rectangle){0,0,bgMenu.width,bgMenu.height},(Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},(Vector2){width/2,height/2},angle,WHITE);
-            EndShaderMode();
-
-            // Render pinballs
-            for (int i = 0; i < 16; i++){
-                DrawTexturePro(ballTex,(Rectangle){0,0,ballTex.width,ballTex.height},(Rectangle){menuPinballs[i].px,menuPinballs[i].py,30,30},(Vector2){0,0},0,(Color){255,183,0,255});
-            }
-
-            DrawTexturePro(menuOverlay1,(Rectangle){0,0,titleOverlay.width,titleOverlay.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
-            DrawTexturePro(titleOverlay,(Rectangle){0,0,titleOverlay.width,titleOverlay.height},(Rectangle){0,12 + sin(timeFactor)*5.0f,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
-
-            if (game.menuState == 0){
-                DrawTextEx(font1, "Top Scores", (Vector2){153,329}, 36.0, 1.0, WHITE);
-                float y = 362;
-                for (int i = 1; i <= 10; i++){
-                    ScoreObject *score = getRankedScore(scores,i);
-                    if (score != NULL){
-                        sprintf(tempString,"%d)",i);
-                        DrawTextEx(font1, tempString, (Vector2){66 - MeasureTextEx(font1, tempString, 27.0, 1.0).x,y}, 27.0, 1.0, WHITE);
-                        sprintf(tempString,"%s",score->scoreName);
-                        DrawTextEx(font1, tempString, (Vector2){75,y}, 27.0, 1.0, WHITE);
-                        float scoreNameWidth = MeasureTextEx(font1, tempString, 27.0, 1.0).x;
-                        sprintf(tempString,"%d",score->scoreValue);
-                        float scoreValueWidth = MeasureTextEx(font1, tempString, 27.0, 1.0).x;
-                        DrawTextEx(font1, tempString, (Vector2){404 - scoreValueWidth,y}, 27.0, 1.0, WHITE);
-                        float lineY = y + 27.0 / 2.0f - 1.0f;
-                        DrawLineEx((Vector2){75 + (scoreNameWidth + 10),lineY}, (Vector2){404 - (scoreValueWidth + 10),lineY}, 2, (Color){255,255,255,50});
-                    } else {
-                        sprintf(tempString,"%d)",i);
-                        DrawTextEx(font1, tempString, (Vector2){66 - MeasureTextEx(font1, tempString, 27.0, 1.0).x,y}, 27.0, 1.0, GRAY);
-                        DrawTextEx(font1, "No Score", (Vector2){75,y}, 27.0, 1.0, GRAY);
-                    }
-                    y += (27.0 * 0.8) + 2;
-                }
-            } else if (game.menuState == 1){
-                DrawTexturePro(menuControls,(Rectangle){0,0,menuControls.width,menuControls.height},(Rectangle){26,320,menuControls.width/2,menuControls.height/2},(Vector2){0,0},0,WHITE);
-            }
-
+            UI_DrawMenu(&game, &resources, menuPinballs, 16, scores, elapsedTimeStart, shaderSeconds);
         }
         if (game.gameState == 1){
             // Game
-            ClearBackground((Color){40,1,42,255});
-
-            // Draw powerup status under game background
-            float powerupProportion = game.powerupScoreDisplay / powerupTargetScore;
-            if (powerupProportion > 1.0f){ powerupProportion = 1.0f; }
-            float powerupHeight = (powerupEmptyY - powerupFullY) * 2;
-            float powerupY = powerupFullY - (powerupProportion * powerupHeight / 2.0f);
-            BeginShaderMode(swirlShader);
-            DrawTexturePro(waterTex,(Rectangle){0,0,waterTex.width,waterTex.height},(Rectangle){30 * worldToScreen,powerupY* worldToScreen,powerupHeight* worldToScreen,powerupHeight* worldToScreen},(Vector2){0,0},0,WHITE);
-            EndShaderMode();
-
-            DrawTexturePro(bgTex,(Rectangle){0,0,bgTex.width,bgTex.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
-
-            if (game.redPowerupOverlay > 0.0f){
-                DrawTexturePro(redPowerupOverlay,(Rectangle){0,0,bgTex.width,bgTex.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,(Color){255,255,255,40.0*game.redPowerupOverlay});
-            }
-
-            // render bumpers which belong behind balls.
-            for (int i = 0; i < numBumpers; i++){
-                b2Vec2 pos = b2Body_GetPosition(bumpers[i].body);
-                if (bumpers[i].type == 2 || bumpers[i].type == 3){
-                    float width = 8.0f;
-                    float height = 2.0f;
-                    Color bumperColor = (Color){0,0,0,80};
-                    if (bumpers[i].enabled == 0){
-                        width = 8.0f;
-                        height = 1.5f;
-                    } else {
-                        if (bumpers[i].type == 2){
-                            bumperColor = RED;
-                        } else if (bumpers[i].type == 3){
-                            bumperColor = BLUE;
-                        }
-                    }
-                    DrawTexturePro(bumper3,(Rectangle){0,0,bumper3.width,bumper3.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},bumpers[i].angle,bumperColor);
-                }
-            }
-
-            // Render ball trails
-            for (int i = 0; i < maxBalls; i++){
-                if (balls[i].active == 1){
-                    for (int ii = 1; ii <= 16; ii++){
-                        int index = (balls[i].trailStartIndex + ii - 1);
-                        if (index >= 16){ index -= 16; }
-                        float trailSize = ballSize * sqrt(ii/16.0f);
-                        Color ballColor = (Color){255,183,0,255};
-                        if (balls[i].type == 1){ ballColor = BLUE; }
-                        if (game.slowMotion == 1){ ballColor = WHITE; }
-                        DrawTexturePro(trailTex,(Rectangle){0,0,trailTex.width,trailTex.height},(Rectangle){balls[i].locationHistoryX[index] * worldToScreen,balls[i].locationHistoryY[index] * worldToScreen,trailSize * worldToScreen,trailSize * worldToScreen},(Vector2){(trailSize / 2.0) * worldToScreen,(trailSize / 2.0) * worldToScreen},0,ballColor);
-
-                    }
-                }
-            }
-
-            //render balls
-            for (int i = 0; i < maxBalls; i++){
-                if (balls[i].active == 1){
-                    b2Vec2 pos = b2Body_GetPosition(balls[i].body);
-                    Color ballColor = (Color){255,183,0,255};
-                    if (balls[i].type == 1){ ballColor = BLUE; }
-                    if (game.slowMotion == 1){ ballColor = WHITE; }
-                    DrawTexturePro(ballTex,(Rectangle){0,0,ballTex.width,ballTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,ballSize * worldToScreen,ballSize * worldToScreen},(Vector2){(ballSize / 2.0) * worldToScreen,(ballSize / 2.0) * worldToScreen},0,ballColor);
-                }
-            }
-
-            // Render bumpers which belong in front of balls
-            for (int i = 0; i < numBumpers; i++){
-                b2Vec2 pos = b2Body_GetPosition(bumpers[i].body);
-                if (bumpers[i].type == 0){
-                    float bounceScale = 0.2f;
-                    float width = bumperSize + cos(millis() / 20.0) * bumpers[i].bounceEffect * bounceScale;
-                    float height = bumperSize + sin(millis() / 20.0) * bumpers[i].bounceEffect * bounceScale;
-                    float shockSize = (bumperSize * bumpers[i].bounceEffect) * 0.15f;
-                    DrawTexturePro(shockwaveTex,(Rectangle){0,0,shockwaveTex.width,shockwaveTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){shockSize/2 * worldToScreen,shockSize/2 * worldToScreen},0,WHITE);
-                    DrawTexturePro(bumperTex,(Rectangle){0,0,bumperTex.width,bumperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},0,WHITE);
-                } else if (bumpers[i].type == 1){
-                    // Ice bumper (slow-mo powerup)
-                    float width = 6.0f;
-                    float height = 6.0f;
-                    float shockPercent = (bumpers[i].bounceEffect) / 20.0f;
-                    float shockSize = shockPercent * 20.0f;
-                    float angle = sin(shaderSeconds) * 50.0f;
-                    
-                    // Calculate bumper alpha based on powerup state
-                    int bumperAlpha = 255;
-                    if (game.slowMoPowerupAvailable == 0) {
-                        // Powerup unavailable - invisible (but physics still active)
-                        bumperAlpha = 0;
-                    } else {
-                        // Powerup available - blink to indicate ready
-                        // Use shaderSeconds for periodic blinking (0.5-1.0 range)
-                        float blinkValue = 0.75f + 0.25f * sin(shaderSeconds * 4.0f);
-                        bumperAlpha = (int)(255 * blinkValue);
-                    }
-                    
-                    // Draw ice bumper with calculated alpha
-                    DrawTexturePro(iceBumperTex,(Rectangle){0,0,iceBumperTex.width,iceBumperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},angle,(Color){255,255,255,bumperAlpha});
-                    
-                    // Only draw visual effects when powerup is available or explosion is active
-                    if (game.slowMoPowerupAvailable == 1 || game.slowMoExplosionEffect > 0.0f) {
-                        // Draw regular bounce effect
-                        if (bumpers[i].bounceEffect > 0.0f) {
-                            DrawTexturePro(trailTex,(Rectangle){0,0,trailTex.width,trailTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){(shockSize / 2.0) * worldToScreen,(shockSize / 2.0) * worldToScreen},0,(Color){255,255,255,255 * shockPercent});
-                        }
-                        
-                        // Draw explosion effect when triggered
-                        if (game.slowMoExplosionEffect > 0.0f) {
-                            float explosionSize = 25.0f * (1.0f - game.slowMoExplosionEffect);
-                            int explosionAlpha = (int)(255 * game.slowMoExplosionEffect);
-                            DrawTexturePro(shockwaveTex,(Rectangle){0,0,shockwaveTex.width,shockwaveTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,explosionSize * worldToScreen,explosionSize * worldToScreen},(Vector2){(explosionSize / 2.0) * worldToScreen,(explosionSize / 2.0) * worldToScreen},0,(Color){255,255,255,explosionAlpha});
-                        }
-                    }
-
-                } else if (bumpers[i].type == 4){
-                    float bounceScale = 0.2f;
-                    float width = smallBumperSize + cos(millis() / 20.0) * bumpers[i].bounceEffect * bounceScale;
-                    float height = smallBumperSize + sin(millis() / 20.0) * bumpers[i].bounceEffect * bounceScale;
-                    width *= bumpers[i].enabledSize;
-                    height *= bumpers[i].enabledSize;
-                    float shockSize = (smallBumperSize * bumpers[i].bounceEffect) * 0.15f;
-                    shockSize *= bumpers[i].enabledSize;
-                    DrawTexturePro(shockwaveTex,(Rectangle){0,0,shockwaveTex.width,shockwaveTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){shockSize/2 * worldToScreen,shockSize/2 * worldToScreen},0,RED);
-                    DrawTexturePro(bumperLightTex,(Rectangle){0,0,bumperTex.width,bumperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},0,RED);
-                    //printf("bumper %d: %f %f %f\n",i,width,height,bumpers[i].enabledSize);
-                }
-            }
-
-            //render lower bumpers
-            if (leftLowerBumperAnim > 0.0f){
-                float percent = 1.0f - leftLowerBumperAnim;
-                float x = 10.0f;
-                float y = 117.2f;
-                float width = 8.0f+ (2.0f * percent);
-                float height = 18.0f + (4.0f * percent);
-                float angle = -24.0f + sin(shaderSeconds * 100.0f) * 10.0f;
-                DrawTexturePro(lowerBumperShock,(Rectangle){0,0,lowerBumperShock.width,lowerBumperShock.height},(Rectangle){x * worldToScreen,y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},angle,(Color){255,255,255,255* (1.0f -percent)});
-            }
-            if (rightLowerBumperAnim > 0.0f){
-                float percent = 1.0f - rightLowerBumperAnim;
-                float x = 73.2f;
-                float y = 117.2f;
-                float width = 8.0f+ (2.0f * percent);
-                float height = 18.0f + (4.0f * percent);
-                float angle = 24.0f - sin(shaderSeconds * 100.0f) * 10.0f;
-                DrawTexturePro(lowerBumperShock,(Rectangle){0,0,lowerBumperShock.width,lowerBumperShock.height},(Rectangle){x * worldToScreen,y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},angle,(Color){255,255,255,255* (1.0f -percent)});
-
-            }
-
-            // Render left flipper
-            b2Vec2 pos = b2Body_GetPosition(*leftFlipperBody);
-            float angle = b2Rot_GetAngle(b2Body_GetRotation(*leftFlipperBody));
-            // The collision shape is offset by (-flipperHeight/2, -flipperHeight/2) in local space
-            // So the texture origin (pivot) should be at (flipperHeight/2, flipperHeight/2) to match
-            DrawTexturePro(leftFlipperTex,(Rectangle){0,0,leftFlipperTex.width,leftFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){(flipperHeight / 2.0f) * worldToScreen,(flipperHeight / 2.0f) * worldToScreen},(angle * RAD_TO_DEG),WHITE);
-
-            // Render right flipper
-            pos = b2Body_GetPosition(*rightFlipperBody);
-            angle = b2Rot_GetAngle(b2Body_GetRotation(*rightFlipperBody));
-            // The collision shape is offset by (-flipperHeight/2, -flipperHeight/2) in local space
-            // So the texture origin (pivot) should be at (flipperHeight/2, flipperHeight/2) to match
-            DrawTexturePro(rightFlipperTex,(Rectangle){0,0,rightFlipperTex.width,rightFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){(flipperHeight / 2.0f) * worldToScreen,(flipperHeight / 2.0f) * worldToScreen},(angle * RAD_TO_DEG),WHITE);
-
-            // Render score
-            //sprintf(tempString,"%ld",game.gameScore);
-            //DrawTextEx(font1, tempString, (Vector2){10,screenHeight - 35}, 30, 1.0, WHITE);
-
-            // Render water powerup when active
-            if (game.waterPowerupState > 0){
-                float baseWaterY = screenHeight * (1.0f - game.waterHeight);
-
-                // Subtle bob
-                float verticalOffset = sinf(shaderSeconds * 4.0f) * 8.0f;
-                float waterY = baseWaterY + verticalOffset;
-
-                // Stronger dynamic ripples (true wave motion)
-                float rippleX = sinf(shaderSeconds * 6.0f) * 12.0f;
-                float rippleY = cosf(shaderSeconds * 3.0f) * 6.0f;
-
-                Rectangle src = (Rectangle){
-                    rippleX, rippleY,
-                    (float)waterOverlayTex.width,
-                    (float)waterOverlayTex.height
-                };
-
-                Rectangle dst = (Rectangle){
-                    0.0f,
-                    waterY - 40.0f,
-                    (float)screenWidth,
-                    (float)screenHeight
-                };
-
-                Vector2 origin = (Vector2){ 0.0f, 0.0f };
-                Color tint = (Color){ 255, 255, 255, 120 };
-
-                // Enable water shader with ripple effects
-                BeginShaderMode(waterShader);
-                DrawTexturePro(waterOverlayTex, src, dst, origin, 0.0f, tint);
-                EndShaderMode();
-            }
-
-            if (game.bluePowerupOverlay > 0.0f){
-                DrawRectangle(0,0,screenWidth,screenHeight,(Color){128,128,255,128*game.bluePowerupOverlay});
-            }
-
-            // Render ice powerup when active
-            if (iceOverlayAlpha > 0.0f){
-                BeginBlendMode(BLEND_ADDITIVE);
-                DrawTexturePro(iceOverlay,(Rectangle){0,0,iceOverlay.width,iceOverlay.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,(Color){255,255,255,128*iceOverlayAlpha});
-                EndBlendMode();
-            }
-
-            if (game.numBalls == 0 && game.numLives > 0){
-                DrawRectangleRounded((Rectangle){108,600,screenWidth-238,80},0.1,16,(Color){0,0,0,100});
-                DrawRectangleRounded((Rectangle){112,604,screenWidth-242,76},0.1,16,(Color){0,0,0,100});
-
-                const int totalBalls = 3;
-                int currentBall = totalBalls - game.numLives + 1;
-                if (currentBall < 1) currentBall = 1;
-                if (currentBall > totalBalls) currentBall = totalBalls;
-
-                char ballText[32];
-                snprintf(ballText, sizeof(ballText), "Ball %d / %d", currentBall, totalBalls);
-
-                DrawTextEx(
-                    font1,
-                    ballText,
-                    (Vector2){
-                        screenWidth/2 - MeasureTextEx(font1, ballText, 40.0, 1.0).x/2 - 10,
-                        610
-                    },
-                    40,
-                    1.0,
-                    WHITE
-                );
-                DrawTextEx(font1, "Center Button to Launch!", (Vector2){screenWidth/2 - MeasureTextEx(font1,  "Center Button to Launch!", 20.0, 1.0).x/2  - 10,650}, 20, 1.0, WHITE);
-
-                for (int i = 0; i < 8; i++){
-                    DrawTexturePro(arrowRight,(Rectangle){0,0,arrowRight.width,arrowRight.height},(Rectangle){screenWidth - 9,(i * 20) + 625+ (5 * sin(((i*100)+millis()-elapsedTimeStart)/200.0f)),20,20},(Vector2){16,16},-90,(Color){0,0,0,100});
-                }
-            }
-
-            // Toggle debug draw with F1 key
-            if (IsKeyPressed(KEY_F1)) {
-                debugDrawEnabled = !debugDrawEnabled;
-                TraceLog(LOG_INFO, "Debug draw %s", debugDrawEnabled ? "enabled" : "disabled");
-            }
-
-            // Debug Rendering
-            if (IsKeyDown(KEY_TAB)){
-                DrawFPS(10, 10);
-
-                DrawLine(0,mouseY,screenWidth,mouseY,RED);
-                DrawLine(mouseX,0,mouseX,screenHeight,RED);
-                if (IsMouseButtonPressed(0)){
-                    printf("{%f,%f,,},\n",(float)(mouseX * screenToWorld),(float)(mouseY * screenToWorld));
-                }
-            }
-
-            // Draw physics debug visualization if enabled
-            if (debugDrawEnabled) {
-                physics_debug_draw(&game);
-            }
+            Render_Gameplay(&game, &resources, bumpers, numBumpers, 
+                           *leftFlipperBody, *rightFlipperBody,
+                           shaderSeconds, iceOverlayAlpha, 
+                           debugDrawEnabled, elapsedTimeStart);
         }
         if (game.gameState == 2){
-            ClearBackground((Color){255,183,0,255});
-            float timeFactor = (millis() - elapsedTimeStart) / 1000.0f;
-            float xOffset = sin(timeFactor) * 50.0f;
-            float yOffset = cos(timeFactor) * 50.0f;
-            float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
-            float width = screenWidth * 3;
-            float height = screenHeight * 3;
-            float secondsVec[2] = { shaderSeconds, 0.0f };
-            SetShaderValue(swirlShader, secondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
-			BeginShaderMode(swirlShader);
-            DrawTexturePro(bgMenu,(Rectangle){0,0,bgMenu.width,bgMenu.height},(Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},(Vector2){width/2,height/2},angle,WHITE);
-            EndShaderMode();
-
-            for (int i = 0; i < 16; i++){
-                DrawTexturePro(ballTex,(Rectangle){0,0,ballTex.width,ballTex.height},(Rectangle){menuPinballs[i].px,menuPinballs[i].py,30,30},(Vector2){0,0},0,(Color){0,0,0,50});
-            }
-
-            DrawTexturePro(gameOverOverlay1,(Rectangle){0,0,gameOverOverlay1.width,gameOverOverlay1.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
-            DrawTexturePro(gameOverOverlay2,(Rectangle){0,0,gameOverOverlay2.width,gameOverOverlay2.height},(Rectangle){0,12 + sin((millis() - elapsedTimeStart) / 1000.0f)*5.0f,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
-
-            sprintf(tempString,"%ld",game.gameScore);
-            DrawTextEx(font2, "Score:", (Vector2){screenWidth/2 - MeasureTextEx(font2, "Score:", 60, 1.0).x/2,275}, 60, 1.0, WHITE);
-            DrawTextEx(font2, tempString, (Vector2){screenWidth/2 - MeasureTextEx(font2, tempString, 60, 1.0).x/2,332}, 60, 1.0, WHITE);
-
-            for (int i =0; i < 5; i++){
-                sprintf(tempString,"%c",nameString[i]);
-                float textWidth = MeasureTextEx(font2, tempString, 60, 1.0).x;
-                if (nameString[i] == 32){
-                    DrawTextEx(font2, "-", (Vector2){54 + (i * 62) - textWidth / 2,510}, 60, 1.0, DARKGRAY);
-                } else {
-                    DrawTextEx(font2, tempString, (Vector2){54 + (i * 62) - textWidth / 2,510}, 60, 1.0, WHITE);
-                }
-            }
-            DrawTexturePro(arrowRight,(Rectangle){0,0,arrowRight.width,arrowRight.height},(Rectangle){54 + (game.nameSelectIndex * 62),595+ (5 * sin((millis()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
-
+            // Game Over
+            UI_DrawGameOver(&game, &resources, menuPinballs, 16, nameString, elapsedTimeStart, shaderSeconds);
         }
         if (game.gameState == 5){
             ClearBackground(WHITE);
         }
 
-        if (game.transitionState > 0){
-            float secondsVec[2] = { shaderSeconds, 0.0f };
-            SetShaderValue(swirlShader, secondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
-            float transitionAmount = ((game.transitionAlpha / 255.0f));
-            DrawRectanglePro((Rectangle){screenWidth,screenHeight,screenWidth,screenHeight + 200}, (Vector2){0,screenHeight + 200}, -33.0f * transitionAmount, BLACK);
-            DrawRectanglePro((Rectangle){0,0,screenWidth,screenHeight + 200}, (Vector2){screenWidth,0}, -33.0f * transitionAmount, BLACK);
-        }
+        // Draw transition overlay if active
+        UI_DrawTransition(&game, shaderSeconds);
 
         EndDrawing();
     }
@@ -1273,6 +850,9 @@ int main(void){
     inputShutdown(input);
     shutdownSound(sound);
     physics_shutdown(&game);
+    
+    // Unload all resources
+    Resources_Unload(&resources);
     
     // Free allocated memory
     free(game.balls);
