@@ -640,23 +640,33 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     static b2BodyId rightFlipperBodyStatic;
 
     // Create left flipper
+    // Body position must be adjusted because we offset the polygon vertices
+    // Original Chipmunk position: (19.8, 145.45) with polygon at (0,0) and CoG at (height/2, height/2)
+    // Box2D: We offset polygon by (-height/2, -height/2), so adjust body position by +(height/2, height/2)
     b2BodyDef leftFlipperDef = b2DefaultBodyDef();
     leftFlipperDef.type = b2_kinematicBody;
-    leftFlipperDef.position = pb2_v(19.8, 145.45);
+    leftFlipperDef.position = pb2_v(18 + flipperHeight / 2.0f, 143.6 + flipperHeight / 2.0f);
     leftFlipperBodyStatic = b2CreateBody(game->world, &leftFlipperDef);
 
     // Create right flipper
     b2BodyDef rightFlipperDef = b2DefaultBodyDef();
     rightFlipperDef.type = b2_kinematicBody;
-    rightFlipperDef.position = pb2_v(63.5, 145.45);
+    rightFlipperDef.position = pb2_v(60.6 + flipperHeight / 2.0f, 143.6 + flipperHeight / 2.0f);
     rightFlipperBodyStatic = b2CreateBody(game->world, &rightFlipperDef);
 
     // Define flipper polygon shape
+    // In Chipmunk, the polygon was at (0,0) to (width, height) with center of gravity at (height/2, height/2)
+    // In Box2D, we achieve the same effect by offsetting the polygon vertices so the rotation point is at (0,0)
+    // Original vertices: (0,0), (width,0), (width,height), (0,height)
+    // Offset by (-height/2, -height/2) to put rotation point at origin:
+    float pivotOffsetX = -flipperHeight / 2.0f;
+    float pivotOffsetY = -flipperHeight / 2.0f;
+    
     b2Vec2 flipperVerts[4] = {
-        pb2_v(0, 0),
-        pb2_v(flipperWidth, 0),
-        pb2_v(flipperWidth, flipperHeight),
-        pb2_v(0, flipperHeight)
+        pb2_v(pivotOffsetX, pivotOffsetY),                              // Bottom-left
+        pb2_v(flipperWidth + pivotOffsetX, pivotOffsetY),               // Bottom-right
+        pb2_v(flipperWidth + pivotOffsetX, flipperHeight + pivotOffsetY), // Top-right
+        pb2_v(pivotOffsetX, flipperHeight + pivotOffsetY)               // Top-left
     };
 
     b2Hull flipperHull = b2ComputeHull(flipperVerts, 4);
@@ -698,7 +708,7 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
  *    centralize any future debug instrumentation or sub-stepping logic.
  */
 void physics_step(GameStruct *game, float dt) {
-    TraceLog(LOG_INFO, "[PHYSICS] stepping dt=%f", dt);
+    //TraceLog(LOG_INFO, "[PHYSICS] stepping dt=%f", dt);
     
     // Box2D 3.x step parameters
     // Use subStepCount=1 to match Chipmunk's single-step behavior
@@ -709,7 +719,7 @@ void physics_step(GameStruct *game, float dt) {
     // Contact events are processed during PreSolveCallback
     // which is called automatically during b2World_Step
     
-    TraceLog(LOG_INFO, "[PHYSICS] done");
+    //TraceLog(LOG_INFO, "[PHYSICS] done");
 }
 
 /*

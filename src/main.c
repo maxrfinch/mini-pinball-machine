@@ -41,6 +41,7 @@ Bumper* bumpers = NULL;
 
 static float slowMotionFactor = 1.0f;
 static float iceOverlayAlpha = 0.0f;
+static float waterImpactIntensity = 0.0f;
 
 // leftLowerBumperAnim and rightLowerBumperAnim are now declared in physics.h
 // and defined in physics.c (they are set by collision handlers)
@@ -289,6 +290,17 @@ int main(void){
         float secondsVec[2] = { shaderSeconds, 0.0f };
         SetShaderValue(swirlShader, secondsLoc, secondsVec, SHADER_UNIFORM_VEC2);
 
+        // Decay water impact intensity and drive ripple amplitude
+        waterImpactIntensity *= 0.95f;
+        if (waterImpactIntensity < 0.0f) waterImpactIntensity = 0.0f;
+        if (waterImpactIntensity > 1.0f) waterImpactIntensity = 1.0f;
+
+        float ampScale = 1.0f + 2.5f * waterImpactIntensity; // stronger ripples on impacts
+        float ampXVecCurrent[2] = { ampX * ampScale, 0.0f };
+        float ampYVecCurrent[2] = { ampY * ampScale, 0.0f };
+        SetShaderValue(swirlShader, ampXLoc, ampXVecCurrent, SHADER_UNIFORM_VEC2);
+        SetShaderValue(swirlShader, ampYLoc, ampYVecCurrent, SHADER_UNIFORM_VEC2);
+
         float mouseX = GetMouseX();
         float mouseY = GetMouseY();
 
@@ -410,8 +422,8 @@ int main(void){
                 }
 
                 // Optional: uncomment for verbose physics-step logging while debugging hangs
-                 TraceLog(LOG_INFO, "STEP START accumulatedTime=%lld, effectiveTimestep=%f, slowMotionFactor=%f", 
-                         accumulatedTime, effectiveTimestep, slowMotionFactor);
+                 //TraceLog(LOG_INFO, "STEP START accumulatedTime=%lld, effectiveTimestep=%f, slowMotionFactor=%f", 
+                   //      accumulatedTime, effectiveTimestep, slowMotionFactor);
 
                 physics_step(&game, effectiveTimestep);
 
@@ -738,6 +750,12 @@ int main(void){
                                 if (balls[i].underwaterState == 0){
                                     playWaterSplash(sound);
                                     balls[i].underwaterState = 1;
+
+                                    // Kick the water ripple intensity on splash so the shader waves react
+                                    waterImpactIntensity += 0.6f;
+                                    if (waterImpactIntensity > 1.5f) {
+                                        waterImpactIntensity = 1.5f;
+                                    }
                                 }
                             } else {
                                 balls[i].underwaterState = 0;
@@ -980,12 +998,16 @@ int main(void){
             // Render left flipper
             b2Vec2 pos = b2Body_GetPosition(*leftFlipperBody);
             float angle = b2Rot_GetAngle(b2Body_GetRotation(*leftFlipperBody));
-            DrawTexturePro(leftFlipperTex,(Rectangle){0,0,leftFlipperTex.width,leftFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){0 * worldToScreen,0 * worldToScreen},(angle * RAD_TO_DEG),WHITE);
+            // The collision shape is offset by (-flipperHeight/2, -flipperHeight/2) in local space
+            // So the texture origin (pivot) should be at (flipperHeight/2, flipperHeight/2) to match
+            DrawTexturePro(leftFlipperTex,(Rectangle){0,0,leftFlipperTex.width,leftFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){(flipperHeight / 2.0f) * worldToScreen,(flipperHeight / 2.0f) * worldToScreen},(angle * RAD_TO_DEG),WHITE);
 
             // Render right flipper
             pos = b2Body_GetPosition(*rightFlipperBody);
             angle = b2Rot_GetAngle(b2Body_GetRotation(*rightFlipperBody));
-            DrawTexturePro(rightFlipperTex,(Rectangle){0,0,rightFlipperTex.width,rightFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){0 * worldToScreen,0 * worldToScreen},(angle * RAD_TO_DEG),WHITE);
+            // The collision shape is offset by (-flipperHeight/2, -flipperHeight/2) in local space
+            // So the texture origin (pivot) should be at (flipperHeight/2, flipperHeight/2) to match
+            DrawTexturePro(rightFlipperTex,(Rectangle){0,0,rightFlipperTex.width,rightFlipperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,flipperWidth * worldToScreen,flipperHeight * worldToScreen},(Vector2){(flipperHeight / 2.0f) * worldToScreen,(flipperHeight / 2.0f) * worldToScreen},(angle * RAD_TO_DEG),WHITE);
 
             // Render score
             //sprintf(tempString,"%ld",game.gameScore);
@@ -993,9 +1015,35 @@ int main(void){
 
             // Render water powerup when active
             if (game.waterPowerupState > 0){
-                float waterY = screenHeight * (1.0f - game.waterHeight);
+                float baseWaterY = screenHeight * (1.0f - game.waterHeight);
+
+                // Subtle bob
+                float verticalOffset = sinf(shaderSeconds * 4.0f) * 8.0f;
+                float waterY = baseWaterY + verticalOffset;
+
+                // Stronger dynamic ripples (true wave motion)
+                float rippleX = sinf(shaderSeconds * 6.0f) * 12.0f;
+                float rippleY = cosf(shaderSeconds * 3.0f) * 6.0f;
+
+                Rectangle src = (Rectangle){
+                    rippleX, rippleY,
+                    (float)waterOverlayTex.width,
+                    (float)waterOverlayTex.height
+                };
+
+                Rectangle dst = (Rectangle){
+                    0.0f,
+                    waterY - 40.0f,
+                    (float)screenWidth,
+                    (float)screenHeight
+                };
+
+                Vector2 origin = (Vector2){ 0.0f, 0.0f };
+                Color tint = (Color){ 255, 255, 255, 120 };
+
+                // Enable shader: amplifies wave deformation
                 BeginShaderMode(swirlShader);
-                DrawTexturePro(waterOverlayTex,(Rectangle){0,0,waterOverlayTex.width,waterOverlayTex.height},(Rectangle){0,waterY-30.0f,screenWidth,screenHeight},(Vector2){0,0},0,(Color){255,255,255,100});
+                DrawTexturePro(waterOverlayTex, src, dst, origin, 0.0f, tint);
                 EndShaderMode();
             }
 
