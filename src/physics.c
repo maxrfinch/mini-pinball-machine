@@ -216,11 +216,14 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         return true;
     } else if (otherCategory == CATEGORY_ONE_WAY) {
         // One-way gate - check normal direction
-        // Allow collision only if the normal has a positive y component
+        // The manifold normal points from shape A (ball) to shape B (gate)
+        // Gate segment goes from (69.6, 16.6) to (73.4, 4.6) - downward and right
+        // When ball comes from above (higher y), normal.y < 0, so we disable contact (pass through)
+        // When ball comes from below (lower y), normal.y >= 0, so we allow contact (blocked)
         if (manifold->normal.y < 0) {
-            return false; // Disable contact
+            return false; // Disable contact - ball passes through
         }
-        return true;
+        return true; // Allow contact - ball is blocked
     }
     
     return true; // Allow collision by default
