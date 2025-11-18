@@ -22,7 +22,7 @@ The entire physics system has been successfully migrated from Chipmunk to Box2D 
 
 ## Motivation for Migration
 
-The decision to migrate from Chipmunk to Box2D was driven by:
+The decision to migrate from Chipmunk to Box2D was driven by continal Chipmunk crashes. Box2D was choosen because:
 1. **Active Development:** Box2D 3.x represents modern, actively maintained physics engine
 2. **Industry Standard:** Box2D is widely used and well-documented
 3. **Performance:** Box2D 3.x offers improved performance characteristics
@@ -469,7 +469,6 @@ Key achievements:
 ---
 
 **Migration Completed:** November 2025  
-**Migrated By:** GitHub Copilot Coding Agent  
+**Migrated By:** GitHub Copilot Coding Agent & Max Finch 
 **Box2D Version:** 3.x C API  
 **Previous Engine:** Chipmunk Physics V 7.0.3  
-**Project:** Mini Pinball Machine by Chris Dalke
