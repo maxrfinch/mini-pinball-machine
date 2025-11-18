@@ -236,9 +236,11 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                 // Mark powerup as unavailable and start explosion effect
                 (ball->game)->slowMoPowerupAvailable = 0;
                 (ball->game)->slowMoExplosionEffect = 1.0f;
+                
+                // Show bounce effect only when powerup is triggered
+                bumper->bounceEffect = 20.0f;
             }
-            // Always show bounce effect and prevent elastic collision
-            bumper->bounceEffect = 20.0f;
+            // Disable elastic collision regardless of availability
             return false; // Disable contact to prevent elastic collision
         } else if (bumper->type == BUMPER_TYPE_LANE_TARGET_A ||
                    bumper->type == BUMPER_TYPE_LANE_TARGET_B) {

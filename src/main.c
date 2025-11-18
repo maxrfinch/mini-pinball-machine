@@ -744,9 +744,9 @@ int main(void){
                     }
                 }
                 
-                // Update explosion effect decay
+                // Update explosion effect decay (affected by slow-motion for consistency)
                 if (game.slowMoExplosionEffect > 0.0f) {
-                    game.slowMoExplosionEffect -= 0.05f;
+                    game.slowMoExplosionEffect -= 0.05f * slowMotionFactor;
                     if (game.slowMoExplosionEffect < 0.0f) {
                         game.slowMoExplosionEffect = 0.0f;
                     }
