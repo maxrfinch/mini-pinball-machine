@@ -1,5 +1,5 @@
 /*
- * physics.c
+ * physics.c - Box2D 3.x Physics Implementation (Migrated from Chipmunk)
  *
  * Responsibilities:
  *  - Owns all Box2D physics setup for the pinball table (world, walls, bumpers, flippers).
@@ -10,12 +10,38 @@
  *      - physics_shutdown  : destroy the Box2D world for a GameStruct.
  *      - physics_add_ball  : spawn a new ball with initial position and velocity.
  *
+ * Collision Category Mapping (Chipmunk → Box2D):
+ * ===============================================
+ * This implementation is a 1:1 port from physics_old.c (Chipmunk).
+ * 
+ * Chipmunk used integer collision types:
+ *   - COLLISION_WALL              = 0
+ *   - COLLISION_BALL              = 1
+ *   - COLLISION_BUMPER            = 2
+ *   - COLLISION_PADDLE            = 3
+ *   - COLLISION_LEFT_LOWER_BUMPER = 4
+ *   - COLLISION_RIGHT_LOWER_BUMPER= 5
+ *   - COLLISION_ONE_WAY           = 6
+ * 
+ * Box2D uses bit flags for filtering:
+ *   - CATEGORY_WALL                = (1 << 0) = 0x0001
+ *   - CATEGORY_BALL                = (1 << 1) = 0x0002
+ *   - CATEGORY_BUMPER              = (1 << 2) = 0x0004
+ *   - CATEGORY_PADDLE              = (1 << 3) = 0x0008
+ *   - CATEGORY_LEFT_LOWER_BUMPER   = (1 << 4) = 0x0010
+ *   - CATEGORY_RIGHT_LOWER_BUMPER  = (1 << 5) = 0x0020
+ *   - CATEGORY_ONE_WAY             = (1 << 6) = 0x0040
+ * 
+ * All collision logic from physics_old.c is implemented in PreSolveCallback().
+ * See the detailed comment above PreSolveCallback for handler-by-handler mapping.
+ *
  * Notes for future maintenance:
  *  - Keep Box2D-specific details (b2WorldId, b2ShapeId, b2BodyId, collision callbacks) inside this file.
  *  - If you change the maximum number of balls or walls, update both this file and any matching
  *    configuration in constants.h / GameStruct so the array sizes stay in sync.
  *  - Prefer configuring tunable values (gravity, bumper positions, sizes, bounciness) via constants.h
  *    or a table at the top of this file rather than hardcoding them inline.
+ *  - Contact return values: return true to allow collision, return false to disable (make "ghost").
  */
 
 #include "physics.h"
@@ -89,6 +115,53 @@ static inline b2Vec2 pb2_v(float x, float y) {
 /* -------------------------------------------------------------------------- */
 /*  Box2D 3.x Contact Event Handlers                                          */
 /* -------------------------------------------------------------------------- */
+
+/*
+ * COLLISION HANDLER MAPPING: Chipmunk (physics_old.c) → Box2D (physics.c)
+ * =========================================================================
+ * 
+ * This PreSolveCallback implements all collision logic from physics_old.c.
+ * Each Chipmunk collision handler is mapped to a branch in this function.
+ * 
+ * Category Bits → Gameplay Entities:
+ * ----------------------------------
+ * CATEGORY_WALL                (0x0001) : Static walls, boundaries
+ * CATEGORY_BALL                (0x0002) : Player balls
+ * CATEGORY_BUMPER              (0x0004) : All bumpers (type determined by userData)
+ * CATEGORY_PADDLE              (0x0008) : Flippers
+ * CATEGORY_LEFT_LOWER_BUMPER   (0x0010) : Left slingshot
+ * CATEGORY_RIGHT_LOWER_BUMPER  (0x0020) : Right slingshot
+ * CATEGORY_ONE_WAY             (0x0040) : Shooter lane gate
+ * 
+ * Chipmunk Handler → Box2D Branch Mapping:
+ * ----------------------------------------
+ * CollisionHandlerBallBumper (BEGIN)
+ *   → if (otherCategory == CATEGORY_BUMPER)
+ *   → Returns cpTrue for elastic bounce or cpFalse to disable contact
+ *   → Box2D: return true for elastic, return false to disable
+ * 
+ * CollisionHandlerBallFlipper (PRESOLVE)
+ *   → if (otherCategory == CATEGORY_PADDLE)
+ *   → Returns cpTrue, clears ball->killCounter
+ *   → Box2D: return true, clears ball->killCounter
+ * 
+ * CollisionHandlerLeftLowerBumper (BEGIN)
+ *   → if (otherCategory == CATEGORY_LEFT_LOWER_BUMPER)
+ *   → Returns cpTrue, sets leftLowerBumperAnim, awards 25 points
+ *   → Box2D: return true, same side effects
+ * 
+ * CollisionHandlerRightLowerBumper (BEGIN)
+ *   → if (otherCategory == CATEGORY_RIGHT_LOWER_BUMPER)
+ *   → Returns cpTrue, sets rightLowerBumperAnim, awards 25 points
+ *   → Box2D: return true, same side effects
+ * 
+ * CollisionOneWay (PRESOLVE)
+ *   → if (otherCategory == CATEGORY_ONE_WAY)
+ *   → Uses cpvdot(cpArbiterGetNormal(arb), cpv(0,1)) to check direction
+ *   → Returns cpArbiterIgnore(arb) if dot < 0 (pass through), cpTrue if >= 0 (block)
+ *   → Box2D: return false if normal dot (0,1) < 0, return true otherwise
+ *   → CRITICAL: Must account for contact normal direction (depends on shape order)
+ */
 
 /*
  * Box2D 3.x uses a custom PreSolve callback function.
@@ -215,15 +288,44 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         playBounce2((ball->game)->sound);
         return true;
     } else if (otherCategory == CATEGORY_ONE_WAY) {
-        // One-way gate - check normal direction
-        // The manifold normal points from shape A (ball) to shape B (gate)
-        // Gate segment goes from (69.6, 16.6) to (73.4, 4.6) - downward and right
-        // When ball comes from above (higher y), normal.y < 0, so we disable contact (pass through)
-        // When ball comes from below (lower y), normal.y >= 0, so we allow contact (blocked)
-        if (manifold->normal.y < 0) {
-            return false; // Disable contact - ball passes through
+        // One-way gate logic - ported from Chipmunk's CollisionOneWay handler
+        // 
+        // Chipmunk version:
+        //   if (cpvdot(cpArbiterGetNormal(arb), cpv(0,1)) < 0) {
+        //       return cpArbiterIgnore(arb);  // Pass through
+        //   }
+        //   return cpTrue;  // Block
+        //
+        // The gate segment is at (69.6, 16.6) to (73.4, 4.6) in the shooter lane.
+        // When the ball passes upward (leaving the shooter), the dot product with (0,1) is negative.
+        // When the ball tries to fall back down, the dot product is positive or zero.
+        //
+        // Box2D manifold normal: points from shapeA to shapeB
+        // We need to determine which direction the normal is pointing relative to upward (0,1).
+        // 
+        // The manifold normal in Box2D points from shape A to shape B.
+        // Since we identified the ball as either A or B, we need to know which.
+        b2Vec2 normal = manifold->normal;
+        
+        // If ball is shape A, normal points from ball to gate.
+        // If ball is shape B, normal points from gate to ball (so we need to flip it).
+        if (catB == CATEGORY_BALL) {
+            // Ball is shape B, so normal points from gate (A) to ball (B)
+            // We need normal from ball to gate, so flip it
+            normal.x = -normal.x;
+            normal.y = -normal.y;
         }
-        return true; // Allow contact - ball is blocked
+        
+        // Compute dot product with upward direction (0, 1)
+        float dotProduct = normal.x * 0.0f + normal.y * 1.0f;
+        
+        if (dotProduct < 0) {
+            // Ball is moving upward through the gate (leaving shooter lane)
+            return false; // Disable contact - allow pass through
+        }
+        
+        // Ball is trying to fall back down into shooter lane
+        return true; // Block the ball
     }
     
     return true; // Allow collision by default
