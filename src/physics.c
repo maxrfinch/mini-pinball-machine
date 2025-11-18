@@ -221,15 +221,23 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             playUpperBouncerSound((ball->game)->sound);
             return true;
         } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION) {
-            // Slow-motion bumper: trigger effect but disable elastic collision
-            // In Chipmunk this returned cpFalse to prevent elastic bounce
-            (ball->game)->slowMotion = 1;
-            (ball->game)->slowMotionCounter = 1200;
-            (ball->game)->gameScore += 1000;
-            if ((ball->game)->waterPowerupState == 0) {
-                (ball->game)->powerupScore += 1000;
+            // Slow-motion bumper: single-use powerup with cooldown
+            // Only trigger if powerup is available
+            if ((ball->game)->slowMoPowerupAvailable == 1) {
+                // Trigger slow motion effect
+                (ball->game)->slowMotion = 1;
+                (ball->game)->slowMotionCounter = 1200;
+                (ball->game)->gameScore += 1000;
+                if ((ball->game)->waterPowerupState == 0) {
+                    (ball->game)->powerupScore += 1000;
+                }
+                playSlowdownSound((ball->game)->sound);
+                
+                // Mark powerup as unavailable and start explosion effect
+                (ball->game)->slowMoPowerupAvailable = 0;
+                (ball->game)->slowMoExplosionEffect = 1.0f;
             }
-            playSlowdownSound((ball->game)->sound);
+            // Always show bounce effect and prevent elastic collision
             bumper->bounceEffect = 20.0f;
             return false; // Disable contact to prevent elastic collision
         } else if (bumper->type == BUMPER_TYPE_LANE_TARGET_A ||
