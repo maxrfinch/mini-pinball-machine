@@ -38,22 +38,22 @@ void main() {
     uv.x += cos((fragTexCoord.y - boxTop) * freqX / (pixelWidth * 750.0) + (secondes * speedX)) * ampX * pixelWidth;
     uv.y += sin((fragTexCoord.x - boxLeft) * freqY * aspect / (pixelHeight * 750.0) + (secondes * speedY)) * ampY * pixelHeight;
 
-    // Sample ripple heightmap
-    float ripple = texture(rippleTex, vec2(fragTexCoord.x, 0.5)).r;
+    // Sample ripple heightmap (centered at 0.5, range [0, 1])
+    float ripple = texture(rippleTex, vec2(fragTexCoord.x, 0.5)).r - 0.5;
 
     // Apply ripple distortion
-    uv.y += ripple * 0.05;
+    uv.y += ripple * 0.1;
     
     // Sample the main texture with distorted UV
     vec4 color = texture(texture0, uv);
     
     // Modulate brightness based on ripple height
-    color.rgb += ripple * 0.12;
+    color.rgb += ripple * 0.25;
     
     // Calculate gradient for normal-like lighting effect
     float dx = 1.0 / 150.0;  // Step size in ripple texture
-    float left = texture(rippleTex, vec2(fragTexCoord.x - dx, 0.5)).r;
-    float right = texture(rippleTex, vec2(fragTexCoord.x + dx, 0.5)).r;
+    float left = texture(rippleTex, vec2(fragTexCoord.x - dx, 0.5)).r - 0.5;
+    float right = texture(rippleTex, vec2(fragTexCoord.x + dx, 0.5)).r - 0.5;
     float grad = (right - left);
     
     // Apply gradient-based shading
