@@ -1104,14 +1104,19 @@ int main(void){
                     // Draw ice bumper with calculated alpha
                     DrawTexturePro(iceBumperTex,(Rectangle){0,0,iceBumperTex.width,iceBumperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},angle,(Color){255,255,255,bumperAlpha});
                     
-                    // Draw regular bounce effect
-                    DrawTexturePro(trailTex,(Rectangle){0,0,trailTex.width,trailTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){(shockSize / 2.0) * worldToScreen,(shockSize / 2.0) * worldToScreen},0,(Color){255,255,255,255 * shockPercent});
-                    
-                    // Draw explosion effect when triggered
-                    if (game.slowMoExplosionEffect > 0.0f) {
-                        float explosionSize = 25.0f * (1.0f - game.slowMoExplosionEffect);
-                        int explosionAlpha = (int)(255 * game.slowMoExplosionEffect);
-                        DrawTexturePro(shockwaveTex,(Rectangle){0,0,shockwaveTex.width,shockwaveTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,explosionSize * worldToScreen,explosionSize * worldToScreen},(Vector2){(explosionSize / 2.0) * worldToScreen,(explosionSize / 2.0) * worldToScreen},0,(Color){255,255,255,explosionAlpha});
+                    // Only draw visual effects when powerup is available or explosion is active
+                    if (game.slowMoPowerupAvailable == 1 || game.slowMoExplosionEffect > 0.0f) {
+                        // Draw regular bounce effect
+                        if (bumpers[i].bounceEffect > 0.0f) {
+                            DrawTexturePro(trailTex,(Rectangle){0,0,trailTex.width,trailTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){(shockSize / 2.0) * worldToScreen,(shockSize / 2.0) * worldToScreen},0,(Color){255,255,255,255 * shockPercent});
+                        }
+                        
+                        // Draw explosion effect when triggered
+                        if (game.slowMoExplosionEffect > 0.0f) {
+                            float explosionSize = 25.0f * (1.0f - game.slowMoExplosionEffect);
+                            int explosionAlpha = (int)(255 * game.slowMoExplosionEffect);
+                            DrawTexturePro(shockwaveTex,(Rectangle){0,0,shockwaveTex.width,shockwaveTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,explosionSize * worldToScreen,explosionSize * worldToScreen},(Vector2){(explosionSize / 2.0) * worldToScreen,(explosionSize / 2.0) * worldToScreen},0,(Color){255,255,255,explosionAlpha});
+                        }
                     }
 
                 } else if (bumpers[i].type == 4){
