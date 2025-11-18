@@ -73,23 +73,23 @@ int inputCenterPressed(InputManager* input){
     return 0;
 }
 
-// Send game state
+// Send game state (new protocol: STATE <id>)
 void inputSetGameState(InputManager* input, InputGameState state){
     switch (state){
         case STATE_MENU: {
-            sprintf(tempString,"m\n");
+            sprintf(tempString,"STATE 0\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
             break;
         }
         case STATE_GAME: {
-            sprintf(tempString,"r\n");
+            sprintf(tempString,"STATE 1\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
             break;
         }
         case STATE_GAME_OVER: {
-            sprintf(tempString,"g\n");
+            sprintf(tempString,"STATE 2\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
             break;
@@ -97,12 +97,12 @@ void inputSetGameState(InputManager* input, InputGameState state){
     }
 }
 void inputSetScore(InputManager *input, long score){
-    sprintf(tempString,"s=%ld\n",score);
+    sprintf(tempString,"SCORE %ld\n",score);
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
 void inputSetNumBalls(InputManager *input, int numBalls){
-    sprintf(tempString,"b=%d\n",numBalls);
+    sprintf(tempString,"BALLS %d\n",numBalls);
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
