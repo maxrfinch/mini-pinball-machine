@@ -108,6 +108,13 @@ void startGame(GameStruct *game){
     game->leftFlipperState=0;
     game->rightFlipperState=0;
     iceOverlayAlpha=0.0f;
+    
+    // Initialize slow-mo powerup cooldown state (available at game start)
+    game->slowMoPowerupAvailable = 1;
+    game->slowMoCooldownTimer = 0.0f;
+    game->slowMoCooldownBaselineLives = game->numLives;
+    game->slowMoExplosionEffect = 0.0f;
+    
     inputSetScore(game->input,0);
     inputSetGameState(game->input,STATE_GAME);
     inputSetNumBalls(game->input,game->numLives);
@@ -728,6 +735,40 @@ int main(void){
                     if (game.slowMotionCounter <= 0){
                         game.slowMotion = 0;
                         playSpeedupSound(sound);
+                        
+                        // Start 20-second cooldown timer after slow-mo ends
+                        if (game.slowMoPowerupAvailable == 0) {
+                            game.slowMoCooldownTimer = 20.0f; // 20 seconds
+                            game.slowMoCooldownBaselineLives = game.numLives;
+                        }
+                    }
+                }
+                
+                // Update explosion effect decay (affected by slow-motion for consistency)
+                if (game.slowMoExplosionEffect > 0.0f) {
+                    game.slowMoExplosionEffect -= 0.05f * slowMotionFactor;
+                    if (game.slowMoExplosionEffect < 0.0f) {
+                        game.slowMoExplosionEffect = 0.0f;
+                    }
+                }
+                
+                // Update slow-mo cooldown timer (20-second stay-alive requirement)
+                if (game.slowMoCooldownTimer > 0.0f && game.slowMoPowerupAvailable == 0) {
+                    // Count down using effectiveTimestep for consistency
+                    game.slowMoCooldownTimer -= effectiveTimestep;
+                    
+                    // Check if ball was lost (lives decreased)
+                    if (game.numLives < game.slowMoCooldownBaselineLives) {
+                        // Ball lost - reset timer and update baseline
+                        game.slowMoCooldownTimer = 20.0f;
+                        game.slowMoCooldownBaselineLives = game.numLives;
+                    }
+                    
+                    // Check if cooldown complete
+                    if (game.slowMoCooldownTimer <= 0.0f) {
+                        game.slowMoCooldownTimer = 0.0f;
+                        game.slowMoPowerupAvailable = 1;
+                        // TODO: play slow-mo ready sound
                     }
                 }
 
@@ -1041,13 +1082,42 @@ int main(void){
                     DrawTexturePro(shockwaveTex,(Rectangle){0,0,shockwaveTex.width,shockwaveTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){shockSize/2 * worldToScreen,shockSize/2 * worldToScreen},0,WHITE);
                     DrawTexturePro(bumperTex,(Rectangle){0,0,bumperTex.width,bumperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},0,WHITE);
                 } else if (bumpers[i].type == 1){
+                    // Ice bumper (slow-mo powerup)
                     float width = 6.0f;
                     float height = 6.0f;
                     float shockPercent = (bumpers[i].bounceEffect) / 20.0f;
                     float shockSize = shockPercent * 20.0f;
                     float angle = sin(shaderSeconds) * 50.0f;
-                    DrawTexturePro(iceBumperTex,(Rectangle){0,0,iceBumperTex.width,iceBumperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},angle,WHITE);
-                    DrawTexturePro(trailTex,(Rectangle){0,0,trailTex.width,trailTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){(shockSize / 2.0) * worldToScreen,(shockSize / 2.0) * worldToScreen},0,(Color){255,255,255,255 * shockPercent});
+                    
+                    // Calculate bumper alpha based on powerup state
+                    int bumperAlpha = 255;
+                    if (game.slowMoPowerupAvailable == 0) {
+                        // Powerup unavailable - invisible (but physics still active)
+                        bumperAlpha = 0;
+                    } else {
+                        // Powerup available - blink to indicate ready
+                        // Use shaderSeconds for periodic blinking (0.5-1.0 range)
+                        float blinkValue = 0.75f + 0.25f * sin(shaderSeconds * 4.0f);
+                        bumperAlpha = (int)(255 * blinkValue);
+                    }
+                    
+                    // Draw ice bumper with calculated alpha
+                    DrawTexturePro(iceBumperTex,(Rectangle){0,0,iceBumperTex.width,iceBumperTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},angle,(Color){255,255,255,bumperAlpha});
+                    
+                    // Only draw visual effects when powerup is available or explosion is active
+                    if (game.slowMoPowerupAvailable == 1 || game.slowMoExplosionEffect > 0.0f) {
+                        // Draw regular bounce effect
+                        if (bumpers[i].bounceEffect > 0.0f) {
+                            DrawTexturePro(trailTex,(Rectangle){0,0,trailTex.width,trailTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,shockSize * worldToScreen,shockSize * worldToScreen},(Vector2){(shockSize / 2.0) * worldToScreen,(shockSize / 2.0) * worldToScreen},0,(Color){255,255,255,255 * shockPercent});
+                        }
+                        
+                        // Draw explosion effect when triggered
+                        if (game.slowMoExplosionEffect > 0.0f) {
+                            float explosionSize = 25.0f * (1.0f - game.slowMoExplosionEffect);
+                            int explosionAlpha = (int)(255 * game.slowMoExplosionEffect);
+                            DrawTexturePro(shockwaveTex,(Rectangle){0,0,shockwaveTex.width,shockwaveTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,explosionSize * worldToScreen,explosionSize * worldToScreen},(Vector2){(explosionSize / 2.0) * worldToScreen,(explosionSize / 2.0) * worldToScreen},0,(Color){255,255,255,explosionAlpha});
+                        }
+                    }
 
                 } else if (bumpers[i].type == 4){
                     float bounceScale = 0.2f;

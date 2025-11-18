@@ -120,6 +120,12 @@ struct GameStructData {
     SoundManager *sound;
     int leftFlipperState;
     int rightFlipperState;
+    
+    // Slow-mo powerup cooldown state
+    int slowMoPowerupAvailable;      // 1 if powerup ready, 0 if in cooldown/explosion
+    float slowMoCooldownTimer;       // Countdown timer for 20-second stay-alive requirement
+    int slowMoCooldownBaselineLives; // Lives count when cooldown started (to detect ball loss)
+    float slowMoExplosionEffect;     // Explosion animation intensity (0.0 to 1.0)
 
 };
 
