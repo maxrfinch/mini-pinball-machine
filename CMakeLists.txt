@@ -32,9 +32,12 @@ set(SOURCES
     src/main.c 
     src/physics.c 
     src/physicsDebugDraw.c 
+    src/render.c
+    src/resources.c
     src/scores.c 
     src/soundManager.c 
-    src/sqlite3.c 
+    src/sqlite3.c
+    src/ui.c
 )
 
 # Note: physics_old.c, physicsDebugDraw_old.c are reference implementations
@@ -46,9 +49,12 @@ set(HEADERS_PRIVATE
     src/inputManager.h
     src/physics.h
     src/physicsDebugDraw.h
+    src/render.h
+    src/resources.h
     src/scores.h
     src/soundManager.h
     src/sqlite3.h
+    src/ui.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS_PRIVATE})
