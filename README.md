@@ -23,3 +23,11 @@ Optional:
 
 ## Instructions
 [TODO]: Add Instructions here
+
+### Notes
+**Geekworm X1206 Voltage Warning:**
+Perform the following on your PI:
+1) From the command line start by running the following command:
+    - ```sudo rpi-eeprom-config -e```
+2) Add **PSU_MAX_CURRENT=5000** at the end of what shows up, likely after BOOT_ORDER0xf41
+3) Reboot your PI ```sudo reboot```

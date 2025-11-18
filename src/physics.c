@@ -66,9 +66,6 @@ extern void AddWaterImpulse(float x, float impulse);
 //              same size is updated as well.
 // numBumpers : number of bumpers we create in physics_init().
 static const int   numWalls   = 128;
-static const int   maxBalls   = 256;
-static const float ballSize   = 5.0f;
-static const int   numBumpers = 14;
 
 /*
  * BumperType:
