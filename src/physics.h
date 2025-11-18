@@ -19,4 +19,8 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
 // Draw physics debug visualization (walls, bodies, shapes)
 void physics_debug_draw(GameStruct *game);
 
+// Animation state for lower bumpers (set by collision handlers, read by rendering code)
+extern float leftLowerBumperAnim;
+extern float rightLowerBumperAnim;
+
 #endif // PHYSICS_H

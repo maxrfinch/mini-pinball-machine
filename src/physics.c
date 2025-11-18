@@ -59,8 +59,10 @@ typedef enum {
 /*  Local animation state (driven by collision handlers, read by renderer)    */
 /* -------------------------------------------------------------------------- */
 
-static float leftLowerBumperAnim  = 0.0f;
-static float rightLowerBumperAnim = 0.0f;
+// These variables are accessed by main.c for rendering lower bumper animations
+// They are set to 1.0f when a collision occurs and decremented in main.c
+float leftLowerBumperAnim  = 0.0f;
+float rightLowerBumperAnim = 0.0f;
 
 /* -------------------------------------------------------------------------- */
 /*  Debug draw state - stores references to bodies and shapes for rendering  */
@@ -134,6 +136,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         }
         
         if (bumper->type == BUMPER_TYPE_STANDARD) {
+            // Standard bumpers: apply bounce effect, score, sound, and allow elastic collision
             bumper->bounceEffect = 10.0f;
             (ball->game)->gameScore += 50;
             if ((ball->game)->waterPowerupState == 0) {
@@ -142,6 +145,8 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             playUpperBouncerSound((ball->game)->sound);
             return true;
         } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION) {
+            // Slow-motion bumper: trigger effect but disable elastic collision
+            // In Chipmunk this returned cpFalse to prevent elastic bounce
             (ball->game)->slowMotion = 1;
             (ball->game)->slowMotionCounter = 1200;
             (ball->game)->gameScore += 1000;
@@ -150,9 +155,11 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             }
             playSlowdownSound((ball->game)->sound);
             bumper->bounceEffect = 20.0f;
-            return true;
+            return false; // Disable contact to prevent elastic collision
         } else if (bumper->type == BUMPER_TYPE_LANE_TARGET_A ||
                    bumper->type == BUMPER_TYPE_LANE_TARGET_B) {
+            // Lane target bumpers: score once when enabled, then disable collision
+            // In Chipmunk this returned cpFalse to prevent elastic bounce
             if (bumper->enabled == 1) {
                 (ball->game)->gameScore += 50;
                 if ((ball->game)->waterPowerupState == 0) {
@@ -161,7 +168,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                 bumper->enabled = 0;
                 playBounce((ball->game)->sound);
             }
-            return true;
+            return false; // Disable contact - lane targets don't bounce
         } else if (bumper->type == BUMPER_TYPE_WATER_POWERUP) {
             if (bumper->enabled == 1) {
                 bumper->bounceEffect = 10.0f;
@@ -171,17 +178,19 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                 }
                 bumper->enabled = 0;
                 playBounce((ball->game)->sound);
-                return true;
+                return true; // Allow elastic collision for enabled water powerup bumpers
             } else {
                 return false; // Disable collision if bumper not enabled
             }
         } else {
+            // Fallback: simple one-shot scoring bumper without elastic bounce
+            // In Chipmunk this returned cpFalse to prevent elastic bounce
             (ball->game)->gameScore += 25;
             if ((ball->game)->waterPowerupState == 0) {
                 (ball->game)->powerupScore += 25;
             }
             bumper->enabled = 0;
-            return true;
+            return false; // Disable contact for fallback bumpers
         }
     } else if (otherCategory == CATEGORY_PADDLE) {
         // Ball-Flipper collision
@@ -207,11 +216,14 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         return true;
     } else if (otherCategory == CATEGORY_ONE_WAY) {
         // One-way gate - check normal direction
-        // Allow collision only if the normal has a positive y component
+        // The manifold normal points from shape A (ball) to shape B (gate)
+        // Gate segment goes from (69.6, 16.6) to (73.4, 4.6) - downward and right
+        // When ball comes from above (higher y), normal.y < 0, so we disable contact (pass through)
+        // When ball comes from below (lower y), normal.y >= 0, so we allow contact (blocked)
         if (manifold->normal.y < 0) {
-            return false; // Disable contact
+            return false; // Disable contact - ball passes through
         }
-        return true;
+        return true; // Allow contact - ball is blocked
     }
     
     return true; // Allow collision by default
@@ -587,7 +599,9 @@ void physics_step(GameStruct *game, float dt) {
     TraceLog(LOG_INFO, "[PHYSICS] stepping dt=%f", dt);
     
     // Box2D 3.x step parameters
-    int subStepCount = 4;
+    // Use subStepCount=1 to match Chipmunk's single-step behavior
+    // Higher substep counts can cause excessive velocity accumulation
+    int subStepCount = 1;
     b2World_Step(game->world, dt, subStepCount);
     
     // Contact events are processed during PreSolveCallback
@@ -632,11 +646,18 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         }
 
         float radius = ballSize / 2.0;
-        float density = 1.0;
+        float mass = 1.0;
         if (type == 2) {
             radius = 10.0f;
-            density = 2.0f;
+            mass = 2.0f;
         }
+        
+        // Calculate density from mass to match Chipmunk behavior
+        // In Chipmunk: mass is set directly
+        // In Box2D: mass = density * area, where area = π * r²
+        // Therefore: density = mass / (π * r²)
+        float area = 3.14159265f * radius * radius;
+        float density = mass / area;
 
         // Create ball body
         b2BodyDef ballBodyDef = b2DefaultBodyDef();
