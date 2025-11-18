@@ -61,8 +61,10 @@ cpSpaceSetGravity(space, cpv(0, 100));
 ```c
 b2WorldDef worldDef = b2DefaultWorldDef();
 worldDef.gravity = pb2_v(0, 100);
-worldDef.preSolveFcn = PreSolveCallback;
 game->world = b2CreateWorld(&worldDef);
+
+// Register PreSolve callback for collision handling
+b2World_SetPreSolveCallback(game->world, PreSolveCallback, NULL);
 ```
 
 #### Contact Event Handling
@@ -74,8 +76,8 @@ handler->beginFunc = CollisionHandlerBallBumper;
 
 **After (Box2D 3.x):**
 ```c
-// Unified PreSolveCallback registered in worldDef
-worldDef.preSolveFcn = PreSolveCallback;
+// Unified PreSolveCallback registered using b2World_SetPreSolveCallback
+b2World_SetPreSolveCallback(game->world, PreSolveCallback, NULL);
 
 // Callback identifies collision types using filter category bits
 static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context) {
@@ -255,14 +257,14 @@ brew install raylib
 ### Runtime Issues
 
 **Collision callbacks not firing:**
-- Verify `preSolveFcn` is set in `worldDef`
+- Verify `b2World_SetPreSolveCallback` is called after world creation
 - Check filter category bits are set correctly on shapes
 - Ensure user data is set on shapes that need callbacks
 
 **Physics feels different:**
 - Check gravity value (should be 0, 100)
 - Verify restitution/friction values match Chipmunk version
-- Review sub-step count in `physics_step` (set to 4)
+- Review sub-step count in `physics_step` (set to 1 to match Chipmunk)
 
 ## Additional Notes
 
