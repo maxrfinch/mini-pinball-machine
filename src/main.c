@@ -63,33 +63,6 @@ void AddWaterImpulse(float x, float impulse) {
     }
 }
 
-
-
-// Debug drawing functions (commented out - need Box2D implementation)
-// TODO: Implement Box2D debug draw callbacks
-/*
-static void
-ChipmunkDebugDrawCirclePointer(cpVect p, cpFloat a, cpFloat r, cpSpaceDebugColor outline, cpSpaceDebugColor fill, cpDataPointer data)
-{ChipmunkDebugDrawCircle(p, a, r, outline, fill);}
-
-static void
-ChipmunkDebugDrawSegmentPointer(cpVect a, cpVect b, cpSpaceDebugColor color, cpDataPointer data)
-{ChipmunkDebugDrawSegment(a, b, color);}
-
-static void
-ChipmunkDebugDrawFatSegmentPointer(cpVect a, cpVect b, cpFloat r, cpSpaceDebugColor outline, cpSpaceDebugColor fill, cpDataPointer data)
-{ChipmunkDebugDrawFatSegment(a, b, r, outline, fill);}
-
-static void
-ChipmunkDebugDrawPolygonPointer(int count, const cpVect *verts, cpFloat r, cpSpaceDebugColor outline, cpSpaceDebugColor fill, cpDataPointer data)
-{ChipmunkDebugDrawPolygon(count, verts, r, outline, fill);}
-
-static void
-ChipmunkDebugDrawDotPointer(cpFloat size, cpVect pos, cpSpaceDebugColor color, cpDataPointer data)
-{ChipmunkDebugDrawDot(size, pos, color);}
-*/
-
-
 // start game
 void startGame(GameStruct *game){
     game->gameState = 1;
@@ -235,8 +208,6 @@ int main(void){
 
     float shaderSeconds = 0.0f;
 
-    TraceLog(LOG_INFO, "HELLO");
-
     // Initialize physics simulation
     b2BodyId* leftFlipperBody = NULL;
     b2BodyId* rightFlipperBody = NULL;
@@ -267,25 +238,6 @@ int main(void){
 
     // Setup render texture for special ball effect
     RenderTexture2D renderTarget = LoadRenderTexture(screenWidth, screenHeight);
-
-
-    // Setup debug draw options (commented out for Box2D migration)
-    // TODO: Implement Box2D debug draw
-    /*
-    cpSpaceDebugDrawOptions drawOptions = {
-    	ChipmunkDebugDrawCirclePointer,
-    	ChipmunkDebugDrawSegmentPointer,
-    	ChipmunkDebugDrawFatSegmentPointer,
-    	ChipmunkDebugDrawPolygonPointer,
-    	ChipmunkDebugDrawDotPointer,
-    	(cpSpaceDebugDrawFlags)(CP_SPACE_DEBUG_DRAW_SHAPES | CP_SPACE_DEBUG_DRAW_CONSTRAINTS | CP_SPACE_DEBUG_DRAW_COLLISION_POINTS),
-    	{0xEE/255.0f, 0xE8/255.0f, 0xD5/255.0f, 1.0f}, // Outline color
-    	ChipmunkDebugGetColorForShape,
-    	{0.0f, 0.75f, 0.0f, 1.0f}, // Constraint color
-    	{1.0f, 0.0f, 0.0f, 1.0f}, // Collision point color
-    	NULL,
-    };
-    */
 
     // Menu setup
     MenuPinball* menuPinballs = malloc(32 * sizeof(MenuPinball));
@@ -516,10 +468,6 @@ int main(void){
                 if (effectiveTimestep > (1.0f / 20.0f)) {
                     effectiveTimestep = 1.0f / 20.0f;
                 }
-
-                // Optional: uncomment for verbose physics-step logging while debugging hangs
-                 //TraceLog(LOG_INFO, "STEP START accumulatedTime=%lld, effectiveTimestep=%f, slowMotionFactor=%f", 
-                   //      accumulatedTime, effectiveTimestep, slowMotionFactor);
 
                 physics_step(&game, effectiveTimestep);
 
