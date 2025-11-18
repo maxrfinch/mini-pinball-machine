@@ -774,6 +774,8 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         ballCircle.radius = radius;
 
         b2ShapeDef ballShapeDef = b2DefaultShapeDef();
+        ballShapeDef.enableContactEvents = true;
+        ballShapeDef.enablePreSolveEvents = true;
         ballShapeDef.material.friction = 0.0f;
         ballShapeDef.material.restitution = 0.7f;
         ballShapeDef.density = density;
