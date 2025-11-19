@@ -25,7 +25,7 @@ void UI_DrawMenu(const GameStruct *game, const Resources *res,
     float width = screenWidth * 3;
     float height = screenHeight * 3;
 
-    bool useSwirl = IsShaderReady(res->swirlShader);
+    bool useSwirl = IsShaderValid(res->swirlShader);
 #if defined(PLATFORM_RPI)
     // On Raspberry Pi with DRM/GLES, swirl shader can be problematic; disable if needed.
     useSwirl = false;
@@ -96,7 +96,7 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
     float width = screenWidth * 3;
     float height = screenHeight * 3;
 
-    bool useSwirl = IsShaderReady(res->swirlShader);
+    bool useSwirl = IsShaderValid(res->swirlShader);
 #if defined(PLATFORM_RPI)
     // On Raspberry Pi with DRM/GLES, swirl shader can be problematic; disable if needed.
     useSwirl = false;
