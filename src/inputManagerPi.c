@@ -126,15 +126,18 @@ void inputUpdate(InputManager* input){
 }
 
 int inputLeft(InputManager* input){
-    return (input->keyState & 4);
+    // Physical left button corresponds to bit 0 (0x01)
+    return (input->keyState & 1);
 }
 
 int inputRight(InputManager* input){
-    return (input->keyState & 2);
+    // Physical right button corresponds to bit 2 (0x04)
+    return (input->keyState & 4);
 }
 
 int inputCenter(InputManager* input){
-    return (input->keyState & 1);
+    // Physical center button corresponds to bit 1 (0x02)
+    return (input->keyState & 2);
 }
 
 int inputLeftPressed(InputManager* input){
