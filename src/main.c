@@ -48,7 +48,7 @@ int main(void){
 
 
     SetConfigFlags(FLAG_VSYNC_HINT);
-    InitWindow(screenWidth, screenHeight, "Mini Pinball by Chris Dalke!");
+    InitWindow(screenWidth, screenHeight, "Mini Pinball!");
     SetTargetFPS(60);
 
     SoundManager *sound = initSound();
