@@ -8,6 +8,7 @@
 // #include "hw_neopixel.h"
 // #include "hw_haptics.h"
 #include <string.h>
+#include <stdio.h>
 
 #define CMD_BUFFER_SIZE 128
 #define BUTTON_POLL_INTERVAL_MS 10
@@ -25,6 +26,8 @@ int main(void) {
     hw_serial_init();
     hw_button_leds_init();
     protocol_init();
+
+    printf("Pico firmware booted\n");
     
     // Phase 2 & 3 initialization (TODO: uncomment when implemented)
     // hw_neopixel_init();
@@ -47,6 +50,7 @@ int main(void) {
             // Send button state if changed
             if (button_state != last_button_state) {
                 hw_serial_putchar(button_state);
+                printf("buttons=%u\n", button_state);
                 last_button_state = button_state;
             }
             
