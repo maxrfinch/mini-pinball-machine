@@ -384,7 +384,7 @@ static void writeCircleWallSegment(float walls[numWalls][4], int segmentIndex, i
 void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFlipperBody, b2BodyId **out_rightFlipperBody) {
     /* ----------------------------- Static walls ----------------------------- */
     // Each entry is a segment: { x1, y1, x2, y2 } in world coordinates.
-    float walls[numWalls][4] = {
+    float walls[128][4] = {
         {0,0,worldWidth,0},
         {0,0,0,worldHeight},
         {worldWidth,0,worldWidth,worldHeight},
