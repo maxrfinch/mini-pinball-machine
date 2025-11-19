@@ -138,21 +138,27 @@ uint8_t hw_buttons_poll(void) {
     //   left   -> bit 2 (0x04)
     //
     // Adjust mapping later if it doesn't match your physical layout.
+    // hw_buttons.c — inside hw_buttons_poll()
     uint8_t new_state = 0;
 
-    if (!(gpio_raw & (1u << SW_CENTER_PIN))) {
+    // LEFT button → bit 2 (0x04)
+    if (!(gpio_raw & (1u << SW_LEFT_PIN))) {
         new_state |= 0x04;
     }
+
+    // RIGHT button → bit 1 (0x02)
     if (!(gpio_raw & (1u << SW_RIGHT_PIN))) {
-        new_state |= 0x01;
-    }
-    if (!(gpio_raw & (1u << SW_LEFT_PIN))) {
         new_state |= 0x02;
+    }
+
+    // CENTER button → bit 0 (0x01)
+    if (!(gpio_raw & (1u << SW_CENTER_PIN))) {
+        new_state |= 0x01;
     }
 
     button_state = new_state;
     return button_state;
-}
+    }
 
 uint8_t hw_buttons_get_state(void) {
     return button_state;
