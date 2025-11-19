@@ -2,6 +2,7 @@
 #define HW_BUTTON_LEDS_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Button LED control via Adafruit NeoKey QT board
 
@@ -27,9 +28,19 @@ void hw_button_leds_init(void);
 // mode: LED mode (off, steady, breathe, blink, strobe)
 // r, g, b: color values (0-255)
 // count: for blink/strobe modes, number of times to flash (default 1)
-void hw_button_leds_set(uint8_t idx, LEDMode mode, uint8_t r, uint8_t g, uint8_t b, uint8_t count);
+void hw_button_leds_set(uint8_t idx,
+                        LEDMode mode,
+                        uint8_t r,
+                        uint8_t g,
+                        uint8_t b,
+                        uint8_t count);
 
 // Update button LEDs (call from main loop)
 void hw_button_leds_update(void);
+
+// Convenience helpers for dev/debug patterns
+void hw_button_led_blink_left(uint8_t times);
+void hw_button_led_blink_center(uint8_t times);
+void hw_button_led_blink_right(uint8_t times);
 
 #endif // HW_BUTTON_LEDS_H
