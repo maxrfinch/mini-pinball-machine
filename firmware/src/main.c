@@ -52,9 +52,18 @@ int main(void) {
         if (absolute_time_diff_us(last_button_poll, now) >= (BUTTON_POLL_INTERVAL_MS * 1000)) {
             uint8_t button_state = hw_buttons_poll();
 
+            // Detect button presses (transitions from 0 to 1)
+            uint8_t pressed_bits = button_state & ~last_button_state;
+            
+            if (pressed_bits != 0) {
+                // Call LED handler for button presses
+                button_leds_on_button_pressed(button_state, pressed_bits);
+            }
+
             // Raw debug: always print, even if it did not change
             printf("raw_buttons=%u\r\n", button_state);
 
+            last_button_state = button_state;
             last_button_poll = now;
         }
 
