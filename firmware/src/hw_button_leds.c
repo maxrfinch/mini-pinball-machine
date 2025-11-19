@@ -64,14 +64,14 @@ static const uint8_t LED_WHITE_B = 255;
 static uint8_t led_idx_to_pwm_pin(uint8_t idx) {
     switch (idx) {
         case BUTTON_LED_LEFT:
-            // LED1 on Arcade QT
-            return 12;
+            // Physical left LED
+            return 0;   // LED3 on Arcade QT (adjusted mapping)
         case BUTTON_LED_CENTER:
-            // LED2 on Arcade QT
-            return 13;
+            // Center LED
+            return 13;  // LED2
         case BUTTON_LED_RIGHT:
-            // LED3 on Arcade QT
-            return 0;
+            // Physical right LED
+            return 12;  // LED1
         default:
             return 0xFF; // invalid
     }
@@ -415,11 +415,18 @@ void button_leds_set_game_state(LedGameState state) {
 }
 
 void button_leds_on_game_start(void) {
+    // Switch LEDs to in-game state and trigger the game-start strobe on center
+    g_game_state = LED_GAME_STATE_IN_GAME;
+    g_ball_ready = false;
+
     // 5x strobe on center when game starts
     hw_button_leds_set(BUTTON_LED_CENTER,
                        LED_MODE_STROBE,
                        LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                        5);
+
+    // Update baselines so once the strobe finishes, we are in gameplay mode
+    apply_ingame_baseline();
 }
 
 void button_leds_on_ball_ready(void) {
@@ -445,7 +452,16 @@ void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
 
     // Center button press behavior depends on game state / ball ready
     if (pressed_bits & (1u << BUTTON_CENTER_BIT)) {
-        // No direct LED change here; protocol events handle animation
+        if (g_game_state == LED_GAME_STATE_MENU) {
+            // In menu: give immediate feedback with a short strobe on center
+            hw_button_leds_set(BUTTON_LED_CENTER,
+                               LED_MODE_STROBE,
+                               LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
+                               2); // 2x strobe on press
+        } else if (g_game_state == LED_GAME_STATE_IN_GAME && g_ball_ready) {
+            // In-game and ball ready: treat center press as ball launch
+            button_leds_on_ball_launched();
+        }
     }
 
     // Left/right: 2x strobe in menu, 1x strobe in gameplay
