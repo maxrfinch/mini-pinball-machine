@@ -43,7 +43,7 @@ void Resources_Init(Resources *res) {
     res->font2 = LoadFontEx("Resources/Fonts/Avenir-Black.ttf", 120, 0, 0);
 
     // Load shaders
-    res->alphaTestShader = LoadShader(0, TextFormat("resources/shaders/glsl%i/alphaTest.fs", GLSL_VERSION));
+    res->alphaTestShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/alphaTest.fs", GLSL_VERSION));
 
     res->swirlShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/wave.fs", GLSL_VERSION));
     res->swirlSecondsLoc = GetShaderLocation(res->swirlShader, "secondes");
