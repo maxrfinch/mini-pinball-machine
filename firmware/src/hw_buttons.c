@@ -132,28 +132,25 @@ uint8_t hw_buttons_poll(void) {
     //   unpressed -> pin reads 1
     //   pressed   -> pin reads 0
     //
-    // Map to the 3-bit protocol you’re already using:
-    //   center -> bit 0 (0x01)
-    //   right  -> bit 1 (0x02)
-    //   left   -> bit 2 (0x04)
-    //
-    // Adjust mapping later if it doesn't match your physical layout.
-    // hw_buttons.c — inside hw_buttons_poll()
+    // Map to the 3-bit protocol the Pi game expects:
+    //   left   -> bit 0 (0x01)
+    //   center -> bit 1 (0x02)
+    //   right  -> bit 2 (0x04)
     uint8_t new_state = 0;
 
-    // LEFT button → bit 2 (0x04)
+    // LEFT button → bit 0 (0x01)
     if (!(gpio_raw & (1u << SW_LEFT_PIN))) {
-        new_state |= 0x04;
+        new_state |= 0x01;
     }
 
-    // RIGHT button → bit 1 (0x02)
-    if (!(gpio_raw & (1u << SW_RIGHT_PIN))) {
+    // CENTER button → bit 1 (0x02)
+    if (!(gpio_raw & (1u << SW_CENTER_PIN))) {
         new_state |= 0x02;
     }
 
-    // CENTER button → bit 0 (0x01)
-    if (!(gpio_raw & (1u << SW_CENTER_PIN))) {
-        new_state |= 0x01;
+    // RIGHT button → bit 2 (0x04)
+    if (!(gpio_raw & (1u << SW_RIGHT_PIN))) {
+        new_state |= 0x04;
     }
 
     button_state = new_state;
