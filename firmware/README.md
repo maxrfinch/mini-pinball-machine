@@ -40,11 +40,14 @@ This directory contains the Raspberry Pi Pico firmware for the mini pinball mach
 - `SCORE <value>` - Update score display (e.g., `SCORE 12345`)
 - `BALLS <count>` - Update ball indicators (e.g., `BALLS 3`)
 - `STATE <id>` - Set game state (0=MENU, 1=GAME, 2=GAME_OVER)
+  - Automatically updates LED baseline patterns based on game state
 - `BTN_LED <idx> <mode> <r> <g> <b> [count]` - Control button LEDs
   - `idx`: Button index (0=left, 1=center, 2=right)
   - `mode`: LED mode (0=off, 1=steady, 2=breathe, 3=blink, 4=strobe)
   - `r`, `g`, `b`: Color values (0-255)
   - `count`: Optional, for blink/strobe modes (default 1)
+- `GAME_START` - Trigger game start LED effect (blinks center button 2x)
+- `BALL_LAUNCH` - Trigger ball launch LED effect (strobes center button 3x)
 
 ### Pico → Pi Messages
 
@@ -64,6 +67,9 @@ This directory contains the Raspberry Pi Pico firmware for the mini pinball mach
 - [x] Main event loop
 - [x] Button LED control with animations (breathe, blink, strobe)
 - [x] BTN_LED command implementation
+- [x] LED game state logic with baseline patterns
+- [x] Button press LED feedback
+- [x] Game event LED effects (game start, ball launch)
 
 ## Future Phases (TODO)
 
@@ -80,11 +86,33 @@ This directory contains the Raspberry Pi Pico firmware for the mini pinball mach
 ```
 /firmware
   /src
-    main.c           - Main event loop
+    main.c           - Main event loop, button press detection
     protocol.c       - Command parser
     hw_serial.c      - USB CDC communication
     hw_buttons.c     - I2C button polling
     hw_display.c     - Matrix display rendering
+    hw_button_leds.c - Button LED control and game-aware patterns
   CMakeLists.txt     - Build configuration
   README.md          - This file
 ```
+
+## LED Game State Logic
+
+The firmware now includes game-aware LED control with baseline patterns:
+
+### Game States
+- **MENU**: Left/right steady white, center breathing white
+- **IN_GAME**: All buttons steady white
+- **GAME_OVER**: Same as MENU
+
+### Automatic Behaviors
+- Button presses trigger a quick blink for tactile feedback
+- Game start triggers center button blink (2x)
+- Ball launch triggers center button strobe (3x)
+- STATE command automatically applies appropriate baseline patterns
+
+### Technical Details
+- All LEDs use white-only mode (255, 255, 255)
+- Baseline patterns are maintained separately from temporary effects
+- Temporary effects (blink/strobe) automatically return to OFF when complete
+- Button press detection in main loop triggers LED feedback

@@ -1,4 +1,5 @@
 #include "hw_button_leds.h"
+#include "hw_buttons.h"
 #include "pico/stdlib.h"
 
 // -----------------------------------------------------------------------------
@@ -20,6 +21,20 @@ typedef struct {
 
 static ButtonLEDState g_leds[3];
 
+// Baseline LED patterns for each button
+typedef struct {
+    LEDMode mode;
+    uint8_t r, g, b;
+} ButtonLedBaseline;
+
+static ButtonLedBaseline g_baseline[3];
+static LedGameState g_game_state = LED_GAME_STATE_MENU;
+
+// White LED constants
+static const uint8_t LED_WHITE_R = 255;
+static const uint8_t LED_WHITE_G = 255;
+static const uint8_t LED_WHITE_B = 255;
+
 // Timing (ms) for different modes
 #define BLINK_INTERVAL_MS   150u
 #define STROBE_INTERVAL_MS   60u
@@ -40,6 +55,58 @@ static void apply_led(uint8_t idx, bool on, uint8_t r, uint8_t g, uint8_t b) {
 }
 
 // -----------------------------------------------------------------------------
+// Baseline pattern management
+// -----------------------------------------------------------------------------
+
+static void button_leds_set_baseline(uint8_t idx, LEDMode mode, uint8_t r, uint8_t g, uint8_t b) {
+    if (idx > BUTTON_LED_RIGHT) {
+        return;
+    }
+    g_baseline[idx].mode = mode;
+    g_baseline[idx].r = r;
+    g_baseline[idx].g = g;
+    g_baseline[idx].b = b;
+}
+
+static void button_leds_apply_baseline(uint8_t idx) {
+    if (idx > BUTTON_LED_RIGHT) {
+        return;
+    }
+    hw_button_leds_set(idx, g_baseline[idx].mode, g_baseline[idx].r, g_baseline[idx].g, g_baseline[idx].b, 0);
+}
+
+static void button_leds_apply_all_baselines(void) {
+    for (uint8_t i = 0; i <= BUTTON_LED_RIGHT; i++) {
+        button_leds_apply_baseline(i);
+    }
+}
+
+static void apply_menu_baseline(void) {
+    // Left: steady white
+    button_leds_set_baseline(BUTTON_LED_LEFT, LED_MODE_STEADY, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
+    // Center: breathe white
+    button_leds_set_baseline(BUTTON_LED_CENTER, LED_MODE_BREATHE, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
+    // Right: steady white
+    button_leds_set_baseline(BUTTON_LED_RIGHT, LED_MODE_STEADY, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
+    
+    button_leds_apply_all_baselines();
+}
+
+static void apply_ingame_baseline(void) {
+    // All steady white in game
+    button_leds_set_baseline(BUTTON_LED_LEFT, LED_MODE_STEADY, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
+    button_leds_set_baseline(BUTTON_LED_CENTER, LED_MODE_STEADY, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
+    button_leds_set_baseline(BUTTON_LED_RIGHT, LED_MODE_STEADY, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
+    
+    button_leds_apply_all_baselines();
+}
+
+static void apply_gameover_baseline(void) {
+    // Same as menu for now
+    apply_menu_baseline();
+}
+
+// -----------------------------------------------------------------------------
 // Public API
 // -----------------------------------------------------------------------------
 
@@ -55,6 +122,9 @@ void hw_button_leds_init(void) {
 
         apply_led((uint8_t)i, false, 0, 0, 0);
     }
+    
+    // Initialize to menu state with default baselines
+    button_leds_set_game_state(LED_GAME_STATE_MENU);
 }
 
 void hw_button_leds_set(uint8_t idx,
@@ -221,4 +291,56 @@ void hw_button_led_blink_right(uint8_t times) {
         255, 255, 255, // white
         times
     );
+}
+
+// -----------------------------------------------------------------------------
+// Game-state API
+// -----------------------------------------------------------------------------
+
+void button_leds_set_game_state(LedGameState state) {
+    g_game_state = state;
+    
+    switch (state) {
+    case LED_GAME_STATE_MENU:
+        apply_menu_baseline();
+        break;
+    case LED_GAME_STATE_IN_GAME:
+        apply_ingame_baseline();
+        break;
+    case LED_GAME_STATE_GAME_OVER:
+        apply_gameover_baseline();
+        break;
+    default:
+        break;
+    }
+}
+
+void button_leds_on_game_start(void) {
+    // Ensure we're in game state
+    if (g_game_state != LED_GAME_STATE_IN_GAME) {
+        button_leds_set_game_state(LED_GAME_STATE_IN_GAME);
+    }
+    
+    // Blink center button 2 times
+    hw_button_leds_set(BUTTON_LED_CENTER, LED_MODE_BLINK, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B, 2);
+}
+
+void button_leds_on_ball_launch(void) {
+    // Strobe center button 3 times on ball launch
+    hw_button_leds_set(BUTTON_LED_CENTER, LED_MODE_STROBE, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B, 3);
+}
+
+void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
+    (void)button_state;  // May be used in future enhancements
+    
+    // Quick blink on the pressed button
+    if (pressed_bits & (1 << BUTTON_CENTER_BIT)) {
+        hw_button_leds_set(BUTTON_LED_CENTER, LED_MODE_BLINK, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B, 1);
+    }
+    if (pressed_bits & (1 << BUTTON_RIGHT_BIT)) {
+        hw_button_leds_set(BUTTON_LED_RIGHT, LED_MODE_BLINK, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B, 1);
+    }
+    if (pressed_bits & (1 << BUTTON_LEFT_BIT)) {
+        hw_button_leds_set(BUTTON_LED_LEFT, LED_MODE_BLINK, LED_WHITE_R, LED_WHITE_G, LED_WHITE_B, 1);
+    }
 }

@@ -20,6 +20,13 @@ typedef enum {
 #define BUTTON_LED_CENTER   1
 #define BUTTON_LED_RIGHT    2
 
+// LED game states
+typedef enum {
+    LED_GAME_STATE_MENU = 0,
+    LED_GAME_STATE_IN_GAME = 1,
+    LED_GAME_STATE_GAME_OVER = 2
+} LedGameState;
+
 // Initialize button LED hardware
 void hw_button_leds_init(void);
 
@@ -42,5 +49,11 @@ void hw_button_leds_update(void);
 void hw_button_led_blink_left(uint8_t times);
 void hw_button_led_blink_center(uint8_t times);
 void hw_button_led_blink_right(uint8_t times);
+
+// Game-state API
+void button_leds_set_game_state(LedGameState state);
+void button_leds_on_game_start(void);
+void button_leds_on_ball_launch(void);
+void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits);
 
 #endif // HW_BUTTON_LEDS_H
