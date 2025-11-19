@@ -14,7 +14,6 @@ set(SRC_FILES
     src/constants.c
     src/gameStruct.c
     src/game.c
-    src/inputManagerMac.c
     src/main.c
     src/menu.c
     src/physics.c
@@ -29,6 +28,15 @@ set(SRC_FILES
     src/util.c
     src/water.c
 )
+
+# Platform-specific input manager implementation
+if(APPLE)
+    list(APPEND SRC_FILES src/inputManagerMac.c)
+elseif(UNIX)
+    list(APPEND SRC_FILES src/inputManagerPi.c)
+else()
+    message(FATAL_ERROR "No input manager defined for this platform")
+endif()
 
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
