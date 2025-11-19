@@ -448,17 +448,21 @@ void button_leds_on_ball_launched(void) {
 }
 
 void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
-    (void)button_state; // currently unused
+    (void)pressed_bits; // not used anymore, we go off the current state byte
 
-    // Bit layout from hw_buttons.c:
+    // Bit layout (confirmed from hw_buttons.c and inputManagerPi.c):
     //   left   -> bit 0 (0x01)
     //   center -> bit 1 (0x02)
     //   right  -> bit 2 (0x04)
 
-    // Center button press behavior depends on game state / ball ready
-    if (pressed_bits & 0x02) {  // center
+    bool left_pressed   = (button_state & 0x01) != 0;
+    bool center_pressed = (button_state & 0x02) != 0;
+    bool right_pressed  = (button_state & 0x04) != 0;
+
+    // CENTER: behavior depends on game state / ball ready
+    if (center_pressed) {
         if (g_game_state == LED_GAME_STATE_MENU) {
-            // In menu: short strobe on center
+            // Menu: short strobe on center button LED
             hw_button_leds_set(BUTTON_LED_CENTER,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
@@ -469,8 +473,8 @@ void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
         }
     }
 
-    // Left/right: 2x strobe in menu, 1x strobe in gameplay
-    if (pressed_bits & 0x01) {  // left
+    // LEFT / RIGHT: 2x strobe in menu, 1x strobe in gameplay
+    if (left_pressed) {
         if (g_game_state == LED_GAME_STATE_MENU) {
             hw_button_leds_set(BUTTON_LED_LEFT,
                                LED_MODE_STROBE,
@@ -484,7 +488,7 @@ void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
         }
     }
 
-    if (pressed_bits & 0x04) {  // right
+    if (right_pressed) {
         if (g_game_state == LED_GAME_STATE_MENU) {
             hw_button_leds_set(BUTTON_LED_RIGHT,
                                LED_MODE_STROBE,
