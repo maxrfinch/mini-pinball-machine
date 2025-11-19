@@ -1,4 +1,5 @@
 #include "inputManager.h"
+#include <wiringSerial.h>
 #include <stdlib.h>
 #include <stdio.h>
 
