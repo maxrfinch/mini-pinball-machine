@@ -141,13 +141,13 @@ uint8_t hw_buttons_poll(void) {
     uint8_t new_state = 0;
 
     if (!(gpio_raw & (1u << SW_CENTER_PIN))) {
-        new_state |= 0x01;
+        new_state |= 0x04;
     }
     if (!(gpio_raw & (1u << SW_RIGHT_PIN))) {
-        new_state |= 0x02;
+        new_state |= 0x01;
     }
     if (!(gpio_raw & (1u << SW_LEFT_PIN))) {
-        new_state |= 0x04;
+        new_state |= 0x02;
     }
 
     button_state = new_state;
