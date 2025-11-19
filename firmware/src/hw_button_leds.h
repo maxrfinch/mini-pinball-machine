@@ -12,7 +12,8 @@ typedef enum {
     LED_MODE_STEADY = 1,    // Solid color
     LED_MODE_BREATHE = 2,   // Breathing animation
     LED_MODE_BLINK = 3,     // Blink N times
-    LED_MODE_STROBE = 4     // Fast strobe N times
+    LED_MODE_STROBE = 4,    // Fast strobe N times
+    LED_MODE_RAPID_BLINK = 5 // Continuous rapid blink (ball ready)
 } LEDMode;
 
 // Button indices (matching physical layout)
@@ -53,7 +54,8 @@ void hw_button_led_blink_right(uint8_t times);
 // Game-state API
 void button_leds_set_game_state(LedGameState state);
 void button_leds_on_game_start(void);
-void button_leds_on_ball_launch(void);
+void button_leds_on_ball_ready(void);
+void button_leds_on_ball_launched(void);
 void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits);
 
 #endif // HW_BUTTON_LEDS_H
