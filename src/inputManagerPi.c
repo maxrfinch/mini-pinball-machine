@@ -1,7 +1,107 @@
 #include "inputManager.h"
-#include <wiringSerial.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+// Minimal replacements for wiringSerial API using POSIX termios on /dev/ttyACM0
+
+static int serialOpen(const char *device, int baud)
+{
+    int fd = open(device, O_RDWR | O_NOCTTY | O_NONBLOCK);
+    if (fd < 0) {
+        perror("serialOpen: open failed");
+        return fd;
+    }
+
+    struct termios options;
+    if (tcgetattr(fd, &options) < 0) {
+        perror("serialOpen: tcgetattr failed");
+        close(fd);
+        return -1;
+    }
+
+    // Set raw mode
+    cfmakeraw(&options);
+
+    // Set baud rate (we only need 9600 for now)
+    speed_t speed = B9600;
+    switch (baud) {
+        case 9600:  speed = B9600;  break;
+        case 19200: speed = B19200; break;
+        case 38400: speed = B38400; break;
+        case 57600: speed = B57600; break;
+        case 115200: speed = B115200; break;
+        default:     speed = B9600;  break;
+    }
+    cfsetispeed(&options, speed);
+    cfsetospeed(&options, speed);
+
+    // 8N1, no flow control
+    options.c_cflag &= ~PARENB;
+    options.c_cflag &= ~CSTOPB;
+    options.c_cflag &= ~CSIZE;
+    options.c_cflag |= CS8;
+    options.c_cflag &= ~CRTSCTS;
+    options.c_cflag |= CREAD | CLOCAL;
+
+    // Non-canonical, no echo, non-blocking reads
+    options.c_cc[VMIN]  = 0;
+    options.c_cc[VTIME] = 0;
+
+    if (tcsetattr(fd, TCSANOW, &options) < 0) {
+        perror("serialOpen: tcsetattr failed");
+        close(fd);
+        return -1;
+    }
+
+    return fd;
+}
+
+static void serialClose(int fd)
+{
+    if (fd >= 0) {
+        close(fd);
+    }
+}
+
+static int serialDataAvail(int fd)
+{
+    int bytes = 0;
+    if (ioctl(fd, FIONREAD, &bytes) < 0) {
+        return 0;
+    }
+    return bytes;
+}
+
+static int serialGetchar(int fd)
+{
+    unsigned char ch;
+    int n = read(fd, &ch, 1);
+    if (n == 1) {
+        return (int)ch;
+    }
+    return -1;
+}
+
+static void serialPuts(int fd, const char *s)
+{
+    if (fd < 0 || s == NULL) return;
+    size_t len = strlen(s);
+    if (len == 0) return;
+    ssize_t written = write(fd, s, len);
+    (void)written;
+}
+
+static void serialFlush(int fd)
+{
+    if (fd >= 0) {
+        tcflush(fd, TCIOFLUSH);
+    }
+}
 
 static char tempString[64];
 
