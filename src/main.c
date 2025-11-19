@@ -262,10 +262,18 @@ int main(void){
 
                 if (game.numBalls == 0){
                     if (game.numLives >= 1){
+                        // Send BALL_READY event once when no balls and lives remain
+                        if (game.ballReadyEventSent == 0) {
+                            inputSendBallReady(input);
+                            game.ballReadyEventSent = 1;
+                        }
+                        
+                        // Launch ball on center button press
                         if (inputCenterPressed(input)){
                             physics_add_ball(&game,89.5 - ballSize / 2,160,0,-220,0);
-                            // Center button strobes 5 times when ball is launched
-                            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_STROBE, 255, 255, 0, 5);  // Yellow strobe
+                            // Send BALL_LAUNCHED event - Pico handles 5x strobe animation
+                            inputSendBallLaunched(input);
+                            game.ballReadyEventSent = 0;  // Reset for next time
                         }
                     } else {
                         // game over condition

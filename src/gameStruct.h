@@ -141,6 +141,9 @@ struct GameStructData {
     float slowMoCooldownTimer;       // Countdown timer for 20-second stay-alive requirement
     int slowMoCooldownBaselineLives; // Lives count when cooldown started (to detect ball loss)
     float slowMoExplosionEffect;     // Explosion animation intensity (0.0 to 1.0)
+    
+    // Ball ready state tracking for LED animation
+    int ballReadyEventSent;          // 1 if BALL_READY event was sent, 0 otherwise
 
 };
 

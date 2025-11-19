@@ -39,15 +39,22 @@ This directory contains the Raspberry Pi Pico firmware for the mini pinball mach
 
 - `SCORE <value>` - Update score display (e.g., `SCORE 12345`)
 - `BALLS <count>` - Update ball indicators (e.g., `BALLS 3`)
-- `STATE <id>` - Set game state (0=MENU, 1=GAME, 2=GAME_OVER)
+- `STATE <state>` - Set game state
+  - Text format (recommended): `STATE MENU`, `STATE GAME`, `STATE GAME_OVER`
+  - Numeric format (legacy): `STATE 0` (MENU), `STATE 1` (GAME), `STATE 2` (GAME_OVER)
   - Automatically updates LED baseline patterns based on game state
-- `BTN_LED <idx> <mode> <r> <g> <b> [count]` - Control button LEDs
+- `EVENT <event>` - Trigger game events
+  - `EVENT GAME_START` - Game starting (5x strobe on center button)
+  - `EVENT BALL_READY` - Ball ready to launch (rapid blink on center button)
+  - `EVENT BALL_LAUNCHED` - Ball launched (5x strobe on center button)
+- `BTN_LED <idx> <mode> <r> <g> <b> [count]` - Direct button LED control (advanced)
   - `idx`: Button index (0=left, 1=center, 2=right)
-  - `mode`: LED mode (0=off, 1=steady, 2=breathe, 3=blink, 4=strobe)
+  - `mode`: LED mode (0=off, 1=steady, 2=breathe, 3=blink, 4=strobe, 5=rapid_blink)
   - `r`, `g`, `b`: Color values (0-255)
   - `count`: Optional, for blink/strobe modes (default 1)
-- `GAME_START` - Trigger game start LED effect (blinks center button 2x)
-- `BALL_LAUNCH` - Trigger ball launch LED effect (strobes center button 3x)
+- Legacy commands (backwards compatibility):
+  - `GAME_START` - Same as `EVENT GAME_START`
+  - `BALL_LAUNCH` - Same as `EVENT BALL_LAUNCHED`
 
 ### Pico → Pi Messages
 
@@ -96,23 +103,45 @@ This directory contains the Raspberry Pi Pico firmware for the mini pinball mach
   README.md          - This file
 ```
 
-## LED Game State Logic
+## LED Animation Specification
 
-The firmware now includes game-aware LED control with baseline patterns:
+The Pico firmware owns all button LED animations. The Pi game sends high-level state changes and events; the Pico implements the animations.
 
-### Game States
-- **MENU**: Left/right steady white, center breathing white
-- **IN_GAME**: All buttons steady white
-- **GAME_OVER**: Same as MENU
+### Menu State (`STATE MENU`)
 
-### Automatic Behaviors
-- Button presses trigger a quick blink for tactile feedback
-- Game start triggers center button blink (2x)
-- Ball launch triggers center button strobe (3x)
-- STATE command automatically applies appropriate baseline patterns
+**Left & Right Buttons:**
+- Idle: Steady white
+- On press: 2x fast strobe, then return to steady
 
-### Technical Details
-- All LEDs use white-only mode (255, 255, 255)
-- Baseline patterns are maintained separately from temporary effects
-- Temporary effects (blink/strobe) automatically return to OFF when complete
-- Button press detection in main loop triggers LED feedback
+**Center Button:**
+- Idle: Fast breathe animation (smooth ramp up/down)
+- On game start (`EVENT GAME_START`): 5x fast strobe, then transition to game state
+
+### Gameplay State (`STATE GAME`)
+
+**Left & Right Buttons:**
+- Idle: Steady white
+- On press: 1x fast strobe, then return to steady
+
+**Center Button:**
+- Normal gameplay: OFF
+- Ball ready (`EVENT BALL_READY`): Rapid blink (continuous until launched)
+- On launch (`EVENT BALL_LAUNCHED`): 5x fast strobe, then return to OFF
+
+### Animation Details
+
+- **Steady**: Constant brightness
+- **Breathe**: Smooth brightness ramp (15ms steps, ~2 second cycle)
+- **Strobe**: Very fast on/off (60ms per toggle)
+- **Rapid Blink**: Continuous on/off (100ms per toggle)
+- All animations use white color (255, 255, 255)
+- Temporary effects (strobe) override baseline patterns
+- After temporary effects complete, LEDs return to baseline pattern
+- Ball ready state persists until `EVENT BALL_LAUNCHED` is received
+
+### Technical Implementation
+
+- Baseline patterns define the idle state for each button in each game state
+- Active animations override baselines but don't modify them
+- State tracking includes both game state and ball ready flag
+- All timing handled in firmware main loop via `hw_button_leds_update()`

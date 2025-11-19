@@ -144,8 +144,7 @@ int inputLeftPressed(InputManager* input){
     if (inputLeft(input)){
         if (input->leftKeyPressed == 0){
             input->leftKeyPressed = 1;
-            // Trigger blink on left button press
-            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_BLINK, 255, 255, 255, 2);
+            // Pico handles LED animation on button press
             return 1;
         }
     } else {
@@ -158,8 +157,7 @@ int inputRightPressed(InputManager* input){
     if (inputRight(input)){
         if (input->rightKeyPressed == 0){
             input->rightKeyPressed = 1;
-            // Trigger blink on right button press
-            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_BLINK, 255, 255, 255, 2);
+            // Pico handles LED animation on button press
             return 1;
         }
     } else {
@@ -180,37 +178,28 @@ int inputCenterPressed(InputManager* input){
     return 0;
 }
 
-// Send game state (new protocol: STATE <id>)
+// Send game state (text-based protocol preferred, numeric for compatibility)
 void inputSetGameState(InputManager* input, InputGameState state){
     switch (state){
         case STATE_MENU: {
-            sprintf(tempString,"STATE 0\n");
+            sprintf(tempString,"STATE MENU\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
-            // Set menu button LEDs: center breathes, left/right steady
-            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_BREATHE, 0, 255, 255, 0);  // Cyan breathing
-            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_STEADY, 255, 255, 255, 0);   // White steady
-            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_STEADY, 255, 255, 255, 0);  // White steady
+            // Pico handles LED baselines for menu state
             break;
         }
         case STATE_GAME: {
-            sprintf(tempString,"STATE 1\n");
+            sprintf(tempString,"STATE GAME\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
-            // Turn off all button LEDs during gameplay
-            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_OFF, 0, 0, 0, 0);
-            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_OFF, 0, 0, 0, 0);
-            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_OFF, 0, 0, 0, 0);
+            // Pico handles LED baselines for game state
             break;
         }
         case STATE_GAME_OVER: {
-            sprintf(tempString,"STATE 2\n");
+            sprintf(tempString,"STATE GAME_OVER\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
-            // Turn off all button LEDs during game over
-            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_OFF, 0, 0, 0, 0);
-            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_OFF, 0, 0, 0, 0);
-            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_OFF, 0, 0, 0, 0);
+            // Pico handles LED baselines for game over state
             break;
         }
     }
@@ -227,6 +216,7 @@ void inputSetNumBalls(InputManager *input, int numBalls){
 }
 
 // Send button LED command: BTN_LED <idx> <mode> <r> <g> <b> [count]
+// NOTE: This is now only for advanced/debug use. Normal game should use events.
 void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, int r, int g, int b, int count){
     if (count > 0) {
         sprintf(tempString,"BTN_LED %d %d %d %d %d %d\n", button_idx, mode, r, g, b, count);
@@ -235,4 +225,24 @@ void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, i
     }
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
+}
+
+// Send game event: EVENT <event_name>
+void inputSendEvent(InputManager *input, const char *event_name){
+    sprintf(tempString,"EVENT %s\n", event_name);
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+}
+
+// Convenience functions for common events
+void inputSendGameStart(InputManager *input){
+    inputSendEvent(input, "GAME_START");
+}
+
+void inputSendBallReady(InputManager *input){
+    inputSendEvent(input, "BALL_READY");
+}
+
+void inputSendBallLaunched(InputManager *input){
+    inputSendEvent(input, "BALL_LAUNCHED");
 }

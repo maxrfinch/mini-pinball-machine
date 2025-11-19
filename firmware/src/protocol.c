@@ -47,15 +47,44 @@ void protocol_process_command(const char *cmd) {
             hw_display_refresh();
         }
     }
-    // STATE command
+    // STATE command - supports both numeric and text formats
     else if (strcmp(token, "STATE") == 0) {
         token = strtok(NULL, " ");
         if (token != NULL) {
-            int state_id = atoi(token);
-            if (state_id >= GAME_STATE_MENU && state_id <= GAME_STATE_GAME_OVER) {
-                current_state = (GameState)state_id;
-                // Update LED game state to match
-                button_leds_set_game_state((LedGameState)state_id);
+            GameState new_state;
+            
+            // Try text-based state names first
+            if (strcmp(token, "MENU") == 0) {
+                new_state = GAME_STATE_MENU;
+            } else if (strcmp(token, "GAME") == 0) {
+                new_state = GAME_STATE_GAME;
+            } else if (strcmp(token, "GAME_OVER") == 0) {
+                new_state = GAME_STATE_GAME_OVER;
+            } else {
+                // Fall back to numeric format for backwards compatibility
+                int state_id = atoi(token);
+                if (state_id >= GAME_STATE_MENU && state_id <= GAME_STATE_GAME_OVER) {
+                    new_state = (GameState)state_id;
+                } else {
+                    return;  // Invalid state
+                }
+            }
+            
+            current_state = new_state;
+            // Update LED game state to match
+            button_leds_set_game_state((LedGameState)new_state);
+        }
+    }
+    // EVENT command
+    else if (strcmp(token, "EVENT") == 0) {
+        token = strtok(NULL, " ");
+        if (token != NULL) {
+            if (strcmp(token, "GAME_START") == 0) {
+                button_leds_on_game_start();
+            } else if (strcmp(token, "BALL_READY") == 0) {
+                button_leds_on_ball_ready();
+            } else if (strcmp(token, "BALL_LAUNCHED") == 0) {
+                button_leds_on_ball_launched();
             }
         }
     }
@@ -87,13 +116,12 @@ void protocol_process_command(const char *cmd) {
         
         hw_button_leds_set(idx, (LEDMode)mode, r, g, b, count);
     }
-    // GAME_START command
+    // Legacy commands (backwards compatibility)
     else if (strcmp(token, "GAME_START") == 0) {
         button_leds_on_game_start();
     }
-    // BALL_LAUNCH command
     else if (strcmp(token, "BALL_LAUNCH") == 0) {
-        button_leds_on_ball_launch();
+        button_leds_on_ball_launched();
     }
     // Future commands (Phase 2 & 3) - stubs
     else if (strcmp(token, "NEO_SET") == 0) {
