@@ -54,6 +54,8 @@ void protocol_process_command(const char *cmd) {
             int state_id = atoi(token);
             if (state_id >= GAME_STATE_MENU && state_id <= GAME_STATE_GAME_OVER) {
                 current_state = (GameState)state_id;
+                // Update LED game state to match
+                button_leds_set_game_state((LedGameState)state_id);
             }
         }
     }
@@ -84,6 +86,14 @@ void protocol_process_command(const char *cmd) {
         if (token != NULL) count = (uint8_t)atoi(token);
         
         hw_button_leds_set(idx, (LEDMode)mode, r, g, b, count);
+    }
+    // GAME_START command
+    else if (strcmp(token, "GAME_START") == 0) {
+        button_leds_on_game_start();
+    }
+    // BALL_LAUNCH command
+    else if (strcmp(token, "BALL_LAUNCH") == 0) {
+        button_leds_on_ball_launch();
     }
     // Future commands (Phase 2 & 3) - stubs
     else if (strcmp(token, "NEO_SET") == 0) {
