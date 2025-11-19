@@ -252,6 +252,8 @@ int main(void){
                     if (game.numLives >= 1){
                         if (inputCenterPressed(input)){
                             physics_add_ball(&game,89.5 - ballSize / 2,160,0,-220,0);
+                            // Center button strobes 5 times when ball is launched
+                            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_STROBE, 255, 255, 0, 5);  // Yellow strobe
                         }
                     } else {
                         // game over condition

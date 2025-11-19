@@ -47,3 +47,14 @@ void inputSetScore(InputManager *input, long score){
 void inputSetNumBalls(InputManager *input, int numBalls){
     
 }
+
+void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, int r, int g, int b, int count){
+    // Stub for Mac - no hardware button LEDs
+    (void)input;
+    (void)button_idx;
+    (void)mode;
+    (void)r;
+    (void)g;
+    (void)b;
+    (void)count;
+}

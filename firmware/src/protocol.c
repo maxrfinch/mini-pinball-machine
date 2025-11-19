@@ -57,6 +57,34 @@ void protocol_process_command(const char *cmd) {
             }
         }
     }
+    // BTN_LED command: BTN_LED <idx> <mode> <r> <g> <b> [count]
+    // idx: 0=left, 1=center, 2=right
+    // mode: 0=off, 1=steady, 2=breathe, 3=blink, 4=strobe
+    // r, g, b: color values (0-255)
+    // count: optional, for blink/strobe modes (default 1)
+    else if (strcmp(token, "BTN_LED") == 0) {
+        uint8_t idx = 0, mode = 0, r = 0, g = 0, b = 0, count = 1;
+        
+        token = strtok(NULL, " ");
+        if (token != NULL) idx = (uint8_t)atoi(token);
+        
+        token = strtok(NULL, " ");
+        if (token != NULL) mode = (uint8_t)atoi(token);
+        
+        token = strtok(NULL, " ");
+        if (token != NULL) r = (uint8_t)atoi(token);
+        
+        token = strtok(NULL, " ");
+        if (token != NULL) g = (uint8_t)atoi(token);
+        
+        token = strtok(NULL, " ");
+        if (token != NULL) b = (uint8_t)atoi(token);
+        
+        token = strtok(NULL, " ");
+        if (token != NULL) count = (uint8_t)atoi(token);
+        
+        hw_button_leds_set(idx, (LEDMode)mode, r, g, b, count);
+    }
     // Future commands (Phase 2 & 3) - stubs
     else if (strcmp(token, "NEO_SET") == 0) {
         // TODO: Phase 2 - NeoPixel individual LED set
@@ -69,9 +97,6 @@ void protocol_process_command(const char *cmd) {
     }
     else if (strcmp(token, "NEO_POWER_MODE") == 0) {
         // TODO: Phase 2 - Power LED mode
-    }
-    else if (strcmp(token, "BTN_LED") == 0) {
-        // TODO: Phase 2 - Button LED control
     }
     else if (strcmp(token, "HAPT") == 0) {
         // TODO: Phase 3 - Haptic motor control

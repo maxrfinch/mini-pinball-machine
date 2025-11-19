@@ -2,10 +2,10 @@
 #include "hw_serial.h"
 #include "hw_buttons.h"
 #include "hw_display.h"
+#include "hw_button_leds.h"
 #include "protocol.h"
 // Phase 2 & 3 includes (stubs only for now)
 // #include "hw_neopixel.h"
-// #include "hw_button_leds.h"
 // #include "hw_haptics.h"
 #include <string.h>
 
@@ -23,11 +23,11 @@ int main(void) {
     hw_buttons_init();
     hw_display_init();
     hw_serial_init();
+    hw_button_leds_init();
     protocol_init();
     
     // Phase 2 & 3 initialization (TODO: uncomment when implemented)
     // hw_neopixel_init();
-    // hw_button_leds_init();
     // hw_haptics_init();
     
     // Clear display on startup
@@ -58,9 +58,11 @@ int main(void) {
             protocol_process_command(cmd_buffer);
         }
         
+        // Update button LEDs
+        hw_button_leds_update();
+        
         // Future hardware updates would go here:
         // update_neopixels();
-        // update_button_leds();
         // update_haptics();
         
         // Small delay to prevent tight loop

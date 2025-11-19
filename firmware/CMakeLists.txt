@@ -17,6 +17,7 @@ add_executable(pinball_firmware
     src/hw_serial.c
     src/hw_buttons.c
     src/hw_display.c
+    src/hw_button_leds.c
     src/protocol.c
 )
 
