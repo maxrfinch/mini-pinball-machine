@@ -2,6 +2,7 @@
 #define HW_DISPLAY_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Display dimensions
 #define DISPLAY_WIDTH   32
