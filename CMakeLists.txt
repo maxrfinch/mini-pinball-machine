@@ -113,7 +113,19 @@ message(STATUS "RAYLIB_INCLUDE_DIR = ${RAYLIB_INCLUDE_DIR}")
 message(STATUS "RAYLIB_LIB         = ${RAYLIB_LIB}")
 
 if(NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIB)
-    message(FATAL_ERROR "raylib not found. Install with 'brew install raylib' or adjust paths in CMakeLists.txt")
+    if(APPLE)
+        message(FATAL_ERROR
+            "raylib not found.\n"
+            "On macOS: brew install raylib\n"
+            "Or adjust RAYLIB_INCLUDE_DIR/RAYLIB_LIB in CMakeLists.txt.")
+    elseif(UNIX)
+        message(FATAL_ERROR
+            "raylib not found.\n"
+            "On Debian/Raspberry Pi (e.g., Trixie): sudo apt install libraylib-dev\n"
+            "Or set RAYLIB_INCLUDE_DIR/RAYLIB_LIB manually.")
+    else()
+        message(FATAL_ERROR "raylib not found and no install instructions for this platform.")
+    endif()
 endif()
 
 # Box2D from Homebrew (3.x C API)
@@ -132,7 +144,19 @@ find_library(BOX2D_LIB
 )
 
 if(NOT BOX2D_INCLUDE_DIR OR NOT BOX2D_LIB)
-    message(FATAL_ERROR "Box2D physics library not found. Install with 'brew install box2d' and adjust paths if needed.")
+    if(APPLE)
+        message(FATAL_ERROR
+            "Box2D physics library not found.\n"
+            "On macOS: brew install box2d\n"
+            "Or adjust BOX2D_INCLUDE_DIR/BOX2D_LIB in CMakeLists.txt.")
+    elseif(UNIX)
+        message(FATAL_ERROR
+            "Box2D physics library not found.\n"
+            "On Debian/Raspberry Pi (e.g., Trixie): sudo apt install libbox2d-dev\n"
+            "Or set BOX2D_INCLUDE_DIR/BOX2D_LIB manually.")
+    else()
+        message(FATAL_ERROR "Box2D physics library not found and no install instructions for this platform.")
+    endif()
 endif()
 
 message(STATUS "BOX2D_INCLUDE_DIR = ${BOX2D_INCLUDE_DIR}")
