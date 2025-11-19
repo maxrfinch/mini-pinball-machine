@@ -41,6 +41,8 @@ int inputLeftPressed(InputManager* input){
     if (inputLeft(input)){
         if (input->leftKeyPressed == 0){
             input->leftKeyPressed = 1;
+            // Trigger blink on left button press
+            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_BLINK, 255, 255, 255, 2);
             return 1;
         }
     } else {
@@ -53,6 +55,8 @@ int inputRightPressed(InputManager* input){
     if (inputRight(input)){
         if (input->rightKeyPressed == 0){
             input->rightKeyPressed = 1;
+            // Trigger blink on right button press
+            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_BLINK, 255, 255, 255, 2);
             return 1;
         }
     } else {
@@ -80,18 +84,30 @@ void inputSetGameState(InputManager* input, InputGameState state){
             sprintf(tempString,"STATE 0\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
+            // Set menu button LEDs: center breathes, left/right steady
+            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_BREATHE, 0, 255, 255, 0);  // Cyan breathing
+            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_STEADY, 255, 255, 255, 0);   // White steady
+            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_STEADY, 255, 255, 255, 0);  // White steady
             break;
         }
         case STATE_GAME: {
             sprintf(tempString,"STATE 1\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
+            // Turn off all button LEDs during gameplay
+            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_OFF, 0, 0, 0, 0);
+            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_OFF, 0, 0, 0, 0);
+            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_OFF, 0, 0, 0, 0);
             break;
         }
         case STATE_GAME_OVER: {
             sprintf(tempString,"STATE 2\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
+            // Turn off all button LEDs during game over
+            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_OFF, 0, 0, 0, 0);
+            inputSetButtonLED(input, BUTTON_LED_LEFT, LED_MODE_OFF, 0, 0, 0, 0);
+            inputSetButtonLED(input, BUTTON_LED_RIGHT, LED_MODE_OFF, 0, 0, 0, 0);
             break;
         }
     }
@@ -103,6 +119,17 @@ void inputSetScore(InputManager *input, long score){
 }
 void inputSetNumBalls(InputManager *input, int numBalls){
     sprintf(tempString,"BALLS %d\n",numBalls);
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+}
+
+// Send button LED command: BTN_LED <idx> <mode> <r> <g> <b> [count]
+void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, int r, int g, int b, int count){
+    if (count > 0) {
+        sprintf(tempString,"BTN_LED %d %d %d %d %d %d\n", button_idx, mode, r, g, b, count);
+    } else {
+        sprintf(tempString,"BTN_LED %d %d %d %d %d\n", button_idx, mode, r, g, b);
+    }
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }

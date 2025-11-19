@@ -15,6 +15,20 @@ typedef enum {
     STATE_GAME_OVER
 } InputGameState;
 
+// Button LED modes (matching firmware)
+typedef enum {
+    LED_MODE_OFF = 0,
+    LED_MODE_STEADY = 1,
+    LED_MODE_BREATHE = 2,
+    LED_MODE_BLINK = 3,
+    LED_MODE_STROBE = 4
+} InputLEDMode;
+
+// Button indices (matching firmware)
+#define BUTTON_LED_LEFT     0
+#define BUTTON_LED_CENTER   1
+#define BUTTON_LED_RIGHT    2
+
 InputManager* inputInit();
 void inputShutdown(InputManager* input);
 void inputUpdate(InputManager* input);
@@ -27,5 +41,6 @@ int inputCenterPressed(InputManager* input);
 void inputSetGameState(InputManager* input, InputGameState state);
 void inputSetScore(InputManager *input, long score);
 void inputSetNumBalls(InputManager *input, int numBalls);
+void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, int r, int g, int b, int count);
 
 #endif

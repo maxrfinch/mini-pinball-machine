@@ -40,6 +40,11 @@ This directory contains the Raspberry Pi Pico firmware for the mini pinball mach
 - `SCORE <value>` - Update score display (e.g., `SCORE 12345`)
 - `BALLS <count>` - Update ball indicators (e.g., `BALLS 3`)
 - `STATE <id>` - Set game state (0=MENU, 1=GAME, 2=GAME_OVER)
+- `BTN_LED <idx> <mode> <r> <g> <b> [count]` - Control button LEDs
+  - `idx`: Button index (0=left, 1=center, 2=right)
+  - `mode`: LED mode (0=off, 1=steady, 2=breathe, 3=blink, 4=strobe)
+  - `r`, `g`, `b`: Color values (0-255)
+  - `count`: Optional, for blink/strobe modes (default 1)
 
 ### Pico → Pi Messages
 
@@ -57,14 +62,14 @@ This directory contains the Raspberry Pi Pico firmware for the mini pinball mach
 - [x] Ball count rendering (2×2 blocks, rows 6-7)
 - [x] Command parser (SCORE, BALLS, STATE)
 - [x] Main event loop
-- [x] Stub commands for Phase 2 & 3 features
+- [x] Button LED control with animations (breathe, blink, strobe)
+- [x] BTN_LED command implementation
 
 ## Future Phases (TODO)
 
 ### Phase 2
 - NeoPixel control (65 LEDs)
-- Button LED control
-- Commands: `NEO_SET`, `NEO_FILL`, `NEO_MODE`, `NEO_POWER_MODE`, `BTN_LED`
+- Commands: `NEO_SET`, `NEO_FILL`, `NEO_MODE`, `NEO_POWER_MODE`
 
 ### Phase 3
 - Haptic motor control (left/right)

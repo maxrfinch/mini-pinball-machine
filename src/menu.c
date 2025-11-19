@@ -39,6 +39,8 @@ void Menu_Update(GameStruct *game,
         game->transitionState = 1;
         game->transitionTarget = TRANSITION_TO_GAME;
         playClick(sound);
+        // Center button blinks twice when starting game
+        inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_BLINK, 0, 255, 0, 2);  // Green blink
     }
     if (inputLeftPressed(input)) {
         playClick(sound);
