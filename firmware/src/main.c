@@ -52,31 +52,8 @@ int main(void) {
         if (absolute_time_diff_us(last_button_poll, now) >= (BUTTON_POLL_INTERVAL_MS * 1000)) {
             uint8_t button_state = hw_buttons_poll();
 
-            // Detect changes and only react on 0 -> 1 transitions (new presses)
-            if (button_state != last_button_state) {
-                uint8_t changed = button_state ^ last_button_state;
-                uint8_t pressed = button_state & changed; // bits that just went high
-
-                // Send raw button state over the serial protocol (Pi listens to this)
-                hw_serial_putchar(button_state);
-
-                // USB debug output for development
-                printf("buttons=%u\r\n", button_state);
-                if (pressed & 0x04) {
-                    printf("LEFT pressed\r\n");
-                    hw_button_led_blink_left(2);    // double blink on left press
-                }
-                if (pressed & 0x01) {
-                    printf("CENTER pressed\r\n");
-                    hw_button_led_blink_center(3);  // triple blink on center press
-                }
-                if (pressed & 0x02) {
-                    printf("RIGHT pressed\r\n");
-                    hw_button_led_blink_right(1);   // single blink on right press
-                }
-
-                last_button_state = button_state;
-            }
+            // Raw debug: always print, even if it did not change
+            printf("raw_buttons=%u\r\n", button_state);
 
             last_button_poll = now;
         }
