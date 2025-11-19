@@ -19,6 +19,9 @@ typedef struct {
     uint8_t count;              // For blink/strobe: number of flashes
     uint16_t frame;             // Animation frame counter
     uint8_t cycle_count;        // Tracks completed cycles for blink/strobe
+    // Return state after temporary animation (blink/strobe)
+    LEDMode return_mode;
+    uint8_t return_r, return_g, return_b;
 } LEDState;
 
 static LEDState led_states[3];  // Left, Center, Right
@@ -43,6 +46,10 @@ void hw_button_leds_init(void) {
         led_states[i].count = 0;
         led_states[i].frame = 0;
         led_states[i].cycle_count = 0;
+        led_states[i].return_mode = LED_MODE_OFF;
+        led_states[i].return_r = 0;
+        led_states[i].return_g = 0;
+        led_states[i].return_b = 0;
     }
     
     // Turn off all LEDs initially
@@ -68,6 +75,15 @@ static void write_led_color(uint8_t idx, uint8_t r, uint8_t g, uint8_t b) {
 void hw_button_leds_set(uint8_t idx, LEDMode mode, uint8_t r, uint8_t g, uint8_t b, uint8_t count) {
     if (idx > 2) return;
     
+    // Save current state as return state for persistent modes (steady, breathe)
+    // Temporary animations (blink, strobe) will return to this state
+    if (led_states[idx].mode == LED_MODE_STEADY || led_states[idx].mode == LED_MODE_BREATHE) {
+        led_states[idx].return_mode = led_states[idx].mode;
+        led_states[idx].return_r = led_states[idx].r;
+        led_states[idx].return_g = led_states[idx].g;
+        led_states[idx].return_b = led_states[idx].b;
+    }
+    
     led_states[idx].mode = mode;
     led_states[idx].r = r;
     led_states[idx].g = g;
@@ -75,6 +91,14 @@ void hw_button_leds_set(uint8_t idx, LEDMode mode, uint8_t r, uint8_t g, uint8_t
     led_states[idx].count = (count == 0) ? 1 : count;  // Default to 1 if not specified
     led_states[idx].frame = 0;
     led_states[idx].cycle_count = 0;
+    
+    // For steady/breathe modes, clear return state (these are persistent)
+    if (mode == LED_MODE_STEADY || mode == LED_MODE_BREATHE) {
+        led_states[idx].return_mode = LED_MODE_OFF;
+        led_states[idx].return_r = 0;
+        led_states[idx].return_g = 0;
+        led_states[idx].return_b = 0;
+    }
     
     // For steady mode, immediately set the color
     if (mode == LED_MODE_STEADY) {
@@ -150,10 +174,27 @@ void hw_button_leds_update(void) {
                 
                 // Check if we've completed all blinks
                 if (state->cycle_count >= state->count) {
-                    state->mode = LED_MODE_OFF;
-                    state->frame = 0;
-                    state->cycle_count = 0;
-                    write_led_color(i, 0, 0, 0);
+                    // Return to saved state or turn off
+                    if (state->return_mode != LED_MODE_OFF) {
+                        state->mode = state->return_mode;
+                        state->r = state->return_r;
+                        state->g = state->return_g;
+                        state->b = state->return_b;
+                        state->frame = 0;
+                        state->cycle_count = 0;
+                        // For steady mode, set immediately
+                        if (state->mode == LED_MODE_STEADY) {
+                            state->current_r = state->r;
+                            state->current_g = state->g;
+                            state->current_b = state->b;
+                            write_led_color(i, state->r, state->g, state->b);
+                        }
+                    } else {
+                        state->mode = LED_MODE_OFF;
+                        state->frame = 0;
+                        state->cycle_count = 0;
+                        write_led_color(i, 0, 0, 0);
+                    }
                 }
                 break;
             }
@@ -185,10 +226,27 @@ void hw_button_leds_update(void) {
                 
                 // Check if we've completed all strobes
                 if (state->cycle_count >= state->count) {
-                    state->mode = LED_MODE_OFF;
-                    state->frame = 0;
-                    state->cycle_count = 0;
-                    write_led_color(i, 0, 0, 0);
+                    // Return to saved state or turn off
+                    if (state->return_mode != LED_MODE_OFF) {
+                        state->mode = state->return_mode;
+                        state->r = state->return_r;
+                        state->g = state->return_g;
+                        state->b = state->return_b;
+                        state->frame = 0;
+                        state->cycle_count = 0;
+                        // For steady mode, set immediately
+                        if (state->mode == LED_MODE_STEADY) {
+                            state->current_r = state->r;
+                            state->current_g = state->g;
+                            state->current_b = state->b;
+                            write_led_color(i, state->r, state->g, state->b);
+                        }
+                    } else {
+                        state->mode = LED_MODE_OFF;
+                        state->frame = 0;
+                        state->cycle_count = 0;
+                        write_led_color(i, 0, 0, 0);
+                    }
                 }
                 break;
             }
