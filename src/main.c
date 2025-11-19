@@ -51,6 +51,14 @@ int main(void){
     InitWindow(screenWidth, screenHeight, "Mini Pinball!");
     SetTargetFPS(60);
 
+    // Go fullscreen
+    ToggleFullscreen();
+
+    // Render-to-texture target at virtual resolution (600 x 1024)
+    RenderTexture2D gameTarget = LoadRenderTexture(screenWidth, screenHeight);
+    // Keep pixels crisp; use TEXTURE_FILTER_BILINEAR if you want smoothing
+    SetTextureFilter(gameTarget.texture, TEXTURE_FILTER_POINT);
+
     SoundManager *sound = initSound();
     game.sound = sound;
 
@@ -404,7 +412,10 @@ int main(void){
         }
 
         // RENDER AT SPEED GOVERNED BY RAYLIB
-        BeginDrawing();
+        // 1) Draw the game into the virtual 600x1024 canvas
+        BeginTextureMode(gameTarget);
+        ClearBackground(BLACK);   // or whatever your default background is
+
         if (game.gameState == 0){
             // Menu
             UI_DrawMenu(&game, &resources, menuPinballs, 16, scores, elapsedTimeStart, shaderSeconds);
@@ -412,9 +423,9 @@ int main(void){
         if (game.gameState == 1){
             // Game
             Render_Gameplay(&game, &resources, bumpers, numBumpers, 
-                           *leftFlipperBody, *rightFlipperBody,
-                           shaderSeconds, powerupSystem.iceOverlayAlpha, 
-                           debugDrawEnabled, elapsedTimeStart);
+                        *leftFlipperBody, *rightFlipperBody,
+                        shaderSeconds, powerupSystem.iceOverlayAlpha, 
+                        debugDrawEnabled, elapsedTimeStart);
         }
         if (game.gameState == 2){
             // Game Over
@@ -424,8 +435,40 @@ int main(void){
             ClearBackground(WHITE);
         }
 
-        // Draw transition overlay if active
+        // Draw transition overlay if active (still in virtual space)
         UI_DrawTransition(&game, shaderSeconds);
+
+        EndTextureMode();
+
+        // 2) Now scale that canvas to whatever the real fullscreen size is
+        BeginDrawing();
+        ClearBackground(BLACK);   // letterbox bars color
+
+        int renderW = GetRenderWidth();
+        int renderH = GetRenderHeight();
+
+        // Compute uniform scale so the whole 600x1024 fits without cropping
+        float scaleX = (float)renderW / (float)screenWidth;
+        float scaleY = (float)renderH / (float)screenHeight;
+        float scale = (scaleX < scaleY) ? scaleX : scaleY;
+
+        float drawW = (float)screenWidth  * scale;
+        float drawH = (float)screenHeight * scale;
+
+        // Center on screen (letterboxing)
+        float offsetX = (renderW - drawW) * 0.5f;
+        float offsetY = (renderH - drawH) * 0.5f;
+
+        // Draw the render texture to screen.
+        // Note: src.height is NEGATIVE to flip the texture vertically (raylib quirk).
+        DrawTexturePro(
+            gameTarget.texture,
+            (Rectangle){ 0, 0, (float)screenWidth, -(float)screenHeight },
+            (Rectangle){ offsetX, offsetY, drawW, drawH },
+            (Vector2){ 0, 0 },
+            0.0f,
+            WHITE
+        );
 
         EndDrawing();
     }
