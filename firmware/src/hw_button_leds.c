@@ -64,13 +64,13 @@ static const uint8_t LED_WHITE_B = 255;
 static uint8_t led_idx_to_pwm_pin(uint8_t idx) {
     switch (idx) {
         case BUTTON_LED_LEFT:
-            // Physical left LED
-            return 0;   // LED3 on Arcade QT (adjusted mapping)
-        case BUTTON_LED_CENTER:
-            // Center LED
+            // Physical left LED (swap with center)
             return 13;  // LED2
+        case BUTTON_LED_CENTER:
+            // Physical center LED (swap with left)
+            return 0;   // LED3
         case BUTTON_LED_RIGHT:
-            // Physical right LED
+            // Physical right LED stays the same
             return 12;  // LED1
         default:
             return 0xFF; // invalid
