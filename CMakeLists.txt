@@ -105,22 +105,16 @@ elseif(APPLE)
         "-framework CoreVideo"
     )
 
-elseif(UNIX) # Linux / Raspberry Pi
+elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
     add_definitions(-DPLATFORM_LINUX)
 
-    # For Raspberry Pi 5 cabinet build we are using raylib built with PLATFORM=DRM
-    # and OpenGL ES 2.0. Link the full DRM/GLES stack explicitly.
+    # Standard desktop build: raylib uses GLFW/X11 or Wayland underneath.
     target_link_libraries(${PROJECT_NAME} PRIVATE
         ${RAYLIB_LIB}
         ${BOX2D_LIB}
         m
         pthread
         dl
-        EGL
-        GLESv2
-        drm
-        gbm
-        xkbcommon
     )
 
 else()
