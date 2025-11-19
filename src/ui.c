@@ -1,5 +1,6 @@
 #include "ui.h"
 #include "constants.h"
+#include "raylib.h"
 #include <stdio.h>
 #include <math.h>
 #include <sys/time.h>
@@ -23,9 +24,27 @@ void UI_DrawMenu(const GameStruct *game, const Resources *res,
     float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
     float width = screenWidth * 3;
     float height = screenHeight * 3;
-    BeginShaderMode(res->swirlShader);
-    DrawTexturePro(res->bgMenu,(Rectangle){0,0,res->bgMenu.width,res->bgMenu.height},(Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},(Vector2){width/2,height/2},angle,WHITE);
-    EndShaderMode();
+
+    bool useSwirl = IsShaderReady(res->swirlShader);
+#if defined(PLATFORM_RPI)
+    // On Raspberry Pi with DRM/GLES, swirl shader can be problematic; disable if needed.
+    useSwirl = false;
+#endif
+
+    if (useSwirl) {
+        BeginShaderMode(res->swirlShader);
+    }
+
+    DrawTexturePro(res->bgMenu,
+                   (Rectangle){0,0,res->bgMenu.width,res->bgMenu.height},
+                   (Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},
+                   (Vector2){width/2,height/2},
+                   angle,
+                   WHITE);
+
+    if (useSwirl) {
+        EndShaderMode();
+    }
 
     // Render pinballs
     for (int i = 0; i < numMenuPinballs; i++){
@@ -76,9 +95,27 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
     float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
     float width = screenWidth * 3;
     float height = screenHeight * 3;
-    BeginShaderMode(res->swirlShader);
-    DrawTexturePro(res->bgMenu,(Rectangle){0,0,res->bgMenu.width,res->bgMenu.height},(Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},(Vector2){width/2,height/2},angle,WHITE);
-    EndShaderMode();
+
+    bool useSwirl = IsShaderReady(res->swirlShader);
+#if defined(PLATFORM_RPI)
+    // On Raspberry Pi with DRM/GLES, swirl shader can be problematic; disable if needed.
+    useSwirl = false;
+#endif
+
+    if (useSwirl) {
+        BeginShaderMode(res->swirlShader);
+    }
+
+    DrawTexturePro(res->bgMenu,
+                   (Rectangle){0,0,res->bgMenu.width,res->bgMenu.height},
+                   (Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},
+                   (Vector2){width/2,height/2},
+                   angle,
+                   WHITE);
+
+    if (useSwirl) {
+        EndShaderMode();
+    }
 
     for (int i = 0; i < numMenuPinballs; i++){
         DrawTexturePro(res->ballTex,(Rectangle){0,0,res->ballTex.width,res->ballTex.height},(Rectangle){menuPinballs[i].px,menuPinballs[i].py,30,30},(Vector2){0,0},0,(Color){0,0,0,50});
