@@ -60,6 +60,9 @@ int main(void) {
                 button_leds_on_button_pressed(button_state, pressed_bits);
             }
 
+            // Send raw button byte to Pi (protocol requirement)
+            hw_serial_putchar(button_state);
+            
             // Raw debug: always print, even if it did not change
             printf("raw_buttons=%u\r\n", button_state);
 
