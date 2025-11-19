@@ -27,6 +27,7 @@ int main(void) {
     hw_button_leds_init();
     protocol_init();
 
+    // Boot banner for USB debug
     printf("Pico firmware booted\n");
     
     // Phase 2 & 3 initialization (TODO: uncomment when implemented)
@@ -47,10 +48,29 @@ int main(void) {
         if (absolute_time_diff_us(last_button_poll, get_absolute_time()) >= (BUTTON_POLL_INTERVAL_MS * 1000)) {
             uint8_t button_state = hw_buttons_poll();
             
-            // Send button state if changed
+            // Detect changes and only react on 0 -> 1 transitions (new presses)
             if (button_state != last_button_state) {
+                uint8_t changed = button_state ^ last_button_state;
+                uint8_t pressed = button_state & changed; // bits that just went high
+
+                // Send raw button state over the serial protocol
                 hw_serial_putchar(button_state);
+
+                // USB debug output
                 printf("buttons=%u\n", button_state);
+                if (pressed & 0x04) {
+                    printf("LEFT pressed\n");
+                    hw_button_led_blink_left(2);    // double blink on left press
+                }
+                if (pressed & 0x01) {
+                    printf("CENTER pressed\n");
+                    hw_button_led_blink_center(3);  // triple blink on center press
+                }
+                if (pressed & 0x02) {
+                    printf("RIGHT pressed\n");
+                    hw_button_led_blink_right(1);   // single blink on right press
+                }
+
                 last_button_state = button_state;
             }
             
