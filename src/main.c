@@ -130,10 +130,14 @@ int main(void){
     inputSetGameState(input,STATE_MENU);
     TraceLog(LOG_INFO, "START");
 
+    int lastGameState = game.gameState;
+
     // Debug draw toggle state
     int debugDrawEnabled = 0;
 
     while (!WindowShouldClose()){
+        int prevGameState = lastGameState;
+
         endTime = millis();
         accumulatedTime += (endTime - startTime);
         startTime = millis();
@@ -409,6 +413,28 @@ int main(void){
                      "Physics fell behind: accumulatedTime=%lld, clamping",
                      accumulatedTime);
             accumulatedTime = 0;
+        }
+
+        // If the high-level game state changed this frame, notify the Pico so it can
+        // update button LED baselines (menu, gameplay, game over patterns).
+        if (game.gameState != prevGameState) {
+            switch (game.gameState) {
+                case 0:
+                    // Menu state
+                    inputSetGameState(input, STATE_MENU);
+                    break;
+                case 1:
+                    // Gameplay state
+                    inputSetGameState(input, STATE_GAME);
+                    break;
+                case 2:
+                    // Game over / scoreboard state
+                    inputSetGameState(input, STATE_GAME_OVER);
+                    break;
+                default:
+                    break;
+            }
+            lastGameState = game.gameState;
         }
 
         // RENDER AT SPEED GOVERNED BY RAYLIB
