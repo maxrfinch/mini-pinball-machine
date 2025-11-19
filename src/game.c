@@ -12,6 +12,7 @@ void Game_Init(GameStruct *game, Bumper *bumpers) {
     game->transitionState = 0;
     game->transitionAlpha = 0;
     game->transitionTarget = TRANSITION_TO_MENU;
+    game->ballReadyEventSent = 0;
 }
 
 void Game_StartGame(GameStruct *game, Bumper *bumpers) {
@@ -31,6 +32,7 @@ void Game_StartGame(GameStruct *game, Bumper *bumpers) {
     game->slowMotionCounter = 0;
     game->leftFlipperState = 0;
     game->rightFlipperState = 0;
+    game->ballReadyEventSent = 0;
     
     // Initialize slow-mo powerup cooldown state (available at game start)
     game->slowMoPowerupAvailable = 1;

@@ -41,6 +41,14 @@ int inputCenterPressed(InputManager* input);
 void inputSetGameState(InputManager* input, InputGameState state);
 void inputSetScore(InputManager *input, long score);
 void inputSetNumBalls(InputManager *input, int numBalls);
+
+// Direct LED control (advanced/debug use only - prefer events)
 void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, int r, int g, int b, int count);
+
+// High-level event API (preferred)
+void inputSendEvent(InputManager *input, const char *event_name);
+void inputSendGameStart(InputManager *input);
+void inputSendBallReady(InputManager *input);
+void inputSendBallLaunched(InputManager *input);
 
 #endif
