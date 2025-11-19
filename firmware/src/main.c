@@ -30,7 +30,7 @@ int main(void) {
     protocol_init();
 
     // Boot banner for USB debug
-    printf("Pico firmware booted\r\n");
+    
 
     // Phase 2 & 3 initialization (TODO: uncomment when implemented)
     // hw_neopixel_init();
@@ -64,7 +64,7 @@ int main(void) {
             hw_serial_putchar(button_state);
             
             // Raw debug: always print, even if it did not change
-            printf("raw_buttons=%u\r\n", button_state);
+            
 
             last_button_state = button_state;
             last_button_poll = now;
