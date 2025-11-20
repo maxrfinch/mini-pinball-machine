@@ -75,19 +75,19 @@ static void run_self_test(void) {
     printf("└────────────────────────────────────────────────────────────┘\n");
     printf("\n");
     
-    // Test Bit-banged bus (Matrix displays)
-    printf("┌─ Bit-Banged I2C Bus (Software) ───────────────────────────┐\n");
-    printf("│ GPIOs: %d (SDA), %d (SCL)                                  \n",
-           DISPLAY_SDA_PIN, DISPLAY_SCL_PIN);
-    printf("│ Note: Using GPIO_FUNC_SIO (NOT GPIO_FUNC_I2C)              \n");
+    // Test Matrix displays on I2C0 (shared with Seesaw)
+    printf("┌─ Matrix Displays (Shared on I2C0) ────────────────────────┐\n");
+    printf("│ Note: Matrices share I2C0 hardware bus with Seesaw         \n");
     printf("│                                                             \n");
     
     const uint8_t matrix_addrs[] = {MATRIX_ADDR_0, MATRIX_ADDR_1, MATRIX_ADDR_2, MATRIX_ADDR_3};
     for (int i = 0; i < 4; i++) {
         printf("│ Testing HT16K33 Matrix %d (0x%02X)... ", i, matrix_addrs[i]);
-        // We can't easily test bit-bang from here without duplicating the code
-        // But the display_init already logs this, so we'll just note it
-        printf("See init logs\n");
+        if (i2c_device_probe(i2c0, matrix_addrs[i])) {
+            printf("✓ OK\n");
+        } else {
+            printf("✗ FAILED\n");
+        }
     }
     printf("└────────────────────────────────────────────────────────────┘\n");
     printf("\n");

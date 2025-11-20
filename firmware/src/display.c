@@ -2,13 +2,13 @@
  * display.c
  * 
  * HT16K33 8x8 matrix display driver for Adafruit 1.2" 8x8 LED Matrix with I2C Backpack
- * Uses software (bit-bang) I2C on GPIO8/9 to keep displays separate from buttons
+ * Uses hardware I2C0 bus (shared with Seesaw buttons)
  */
 
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/gpio.h"
+#include "hardware/i2c.h"
 #include "display.h"
 #include "hardware_config.h"
 
@@ -18,9 +18,6 @@
 #define HT16K33_BRIGHTNESS_CMD 0xE0
 #define HT16K33_SYSTEM_SETUP 0x20
 #define HT16K33_OSCILLATOR_ON 0x01
-
-// Software I2C timing (microseconds)
-#define I2C_DELAY_US 5
 
 // Display configuration
 #define DISPLAY_WIDTH 32
@@ -51,85 +48,13 @@ static const uint8_t digit_font[10][5] = {
     {0x06, 0x49, 0x49, 0x29, 0x1E}  // 9
 };
 
-// Software I2C helper functions
-static inline void sda_high(void) {
-    gpio_set_dir(DISPLAY_SDA_PIN, GPIO_IN);  // Release line (pulled high)
-}
-
-static inline void sda_low(void) {
-    gpio_set_dir(DISPLAY_SDA_PIN, GPIO_OUT);
-    gpio_put(DISPLAY_SDA_PIN, 0);
-}
-
-static inline void scl_high(void) {
-    gpio_set_dir(DISPLAY_SCL_PIN, GPIO_IN);  // Release line (pulled high)
-    sleep_us(I2C_DELAY_US);
-}
-
-static inline void scl_low(void) {
-    gpio_set_dir(DISPLAY_SCL_PIN, GPIO_OUT);
-    gpio_put(DISPLAY_SCL_PIN, 0);
-    sleep_us(I2C_DELAY_US);
-}
-
-static inline bool sda_read(void) {
-    return gpio_get(DISPLAY_SDA_PIN);
-}
-
-static void i2c_start(void) {
-    sda_high();
-    scl_high();
-    sda_low();
-    scl_low();
-}
-
-static void i2c_stop(void) {
-    sda_low();
-    scl_high();
-    sda_high();
-}
-
-static bool i2c_write_byte(uint8_t byte) {
-    for (int i = 7; i >= 0; i--) {
-        if (byte & (1 << i)) {
-            sda_high();
-        } else {
-            sda_low();
-        }
-        scl_high();
-        scl_low();
-    }
-    
-    // Check ACK
-    sda_high();
-    scl_high();
-    bool ack = !sda_read();
-    scl_low();
-    
-    return ack;
-}
-
 static bool ht16k33_write(uint8_t addr, const uint8_t* data, size_t len) {
-    i2c_start();
-    
-    // Send address with write bit
-    if (!i2c_write_byte(addr << 1)) {
-        printf("HT16K33 0x%02X: NO ACK on address\n", addr);
-        i2c_stop();
+    int ret = i2c_write_blocking(i2c0, addr, data, len, false);
+    if (ret != len) {
+        printf("HT16K33 0x%02X: I2C write failed (wrote %d/%zu bytes)\n", 
+               addr, ret, len);
         return false;
     }
-    
-    // Send data bytes
-    for (size_t i = 0; i < len; i++) {
-        if (!i2c_write_byte(data[i])) {
-            printf("HT16K33 0x%02X: NO ACK on data[%u] = 0x%02X\n",
-                   addr, (unsigned)i, data[i]);
-            i2c_stop();
-            return false;
-        }
-    }
-    
-    i2c_stop();
     return true;
 }
 
@@ -169,32 +94,10 @@ static void ht16k33_init_display(uint8_t addr) {
 }
 
 void display_init(void) {
-    printf("\n=== Display Initialization (Bit-Banged I2C on GPIO%d/GPIO%d) ===\n", 
-           DISPLAY_SDA_PIN, DISPLAY_SCL_PIN);
-    
-    // Initialize software I2C pins for matrix displays on GPIO8/9
-    // This keeps displays completely separate from the arcade seesaw buttons (I2C0)
-    // and haptics (I2C1)
-    
-    // Configure SDA and SCL as outputs initially (will be switched to inputs for high state)
-    gpio_init(DISPLAY_SDA_PIN);
-    gpio_init(DISPLAY_SCL_PIN);
-    gpio_set_dir(DISPLAY_SDA_PIN, GPIO_OUT);
-    gpio_set_dir(DISPLAY_SCL_PIN, GPIO_OUT);
-    gpio_put(DISPLAY_SDA_PIN, 0);
-    gpio_put(DISPLAY_SCL_PIN, 0);
-    
-    printf("GPIO pins configured for bit-bang I2C (NOT GPIO_FUNC_I2C)\n");
-    
-    // Enable pull-ups
-    gpio_pull_up(DISPLAY_SDA_PIN);
-    gpio_pull_up(DISPLAY_SCL_PIN);
-    
-    // Release lines to idle high state
-    sda_high();
-    scl_high();
-    
-    printf("I2C bus idle (lines released high)\n");
+    printf("\n=== Display Initialization (Shared I2C0 Hardware Bus) ===\n");
+    printf("Matrix displays share I2C0 with Seesaw buttons\n");
+    printf("I2C0 already initialized at %d Hz on GPIO%d (SDA) / GPIO%d (SCL)\n",
+           I2C0_FREQ, I2C0_SDA_PIN, I2C0_SCL_PIN);
     
     sleep_ms(100);
     
@@ -202,7 +105,7 @@ void display_init(void) {
     memset(framebuffer, 0, sizeof(framebuffer));
     
     // Initialize all displays
-    printf("Initializing %d HT16K33 matrix displays...\n", NUM_DISPLAYS);
+    printf("Initializing %d HT16K33 matrix displays on I2C0...\n", NUM_DISPLAYS);
     for (int i = 0; i < NUM_DISPLAYS; i++) {
         ht16k33_init_display(display_addrs[i]);
     }
