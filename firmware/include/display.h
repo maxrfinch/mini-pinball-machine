@@ -1,7 +1,7 @@
 /**
  * display.h
  * 
- * HT16K33 8x8 matrix display driver
+ * HT16K33 8x8 matrix display driver for Adafruit 1.2" 8x8 LED Matrix with I2C Backpack
  */
 
 #ifndef DISPLAY_H
