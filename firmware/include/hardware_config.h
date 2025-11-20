@@ -44,7 +44,7 @@
 
 // DRV2605L Haptic I2C Addresses
 #define HAPTIC_LEFT_ADDR 0x5A
-#define HAPTIC_RIGHT_ADDR 0x5A
+#define HAPTIC_RIGHT_ADDR 0x5B
 
 // Button Bit Masks (Seesaw)
 #define BUTTON_LEFT_MASK (1 << 0)
