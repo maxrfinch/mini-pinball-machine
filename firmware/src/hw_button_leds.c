@@ -456,26 +456,25 @@ void button_leds_on_ball_launched(void) {
 }
 
 void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
-    (void)button_state; // reserved for future use (chording, etc.)
+    (void)button_state;  // reserved for future use (chording, etc.)
 
     const bool in_menu = (g_game_state == LED_GAME_STATE_MENU);
     const bool in_game = (g_game_state == LED_GAME_STATE_IN_GAME);
 
-    // IMPORTANT: mapping based on what you observed on the wire:
-    //   left  -> bit 0 (0x01)
-    //   center-> bit 1 (0x02)
-    //   right -> bit 2 (0x04)
+    // DEBUG: see what we think was pressed
+    printf("DBG button_leds: state=0x%02x pressed=0x%02x game=%d ball_ready=%d\n",
+           button_state, pressed_bits, (int)g_game_state, (int)g_ball_ready);
 
-    // LEFT button (bit 0)
-    if (pressed_bits & 0x01u) {
+    // LEFT button (bit 0 / 0x01)
+    if (pressed_bits & BUTTON_LEFT_MASK) {
         if (in_menu) {
-            // Menu: 2x strobe
+            // Menu: 2× strobe
             hw_button_leds_set(BUTTON_LED_LEFT,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                                2);
         } else if (in_game) {
-            // In-game: 1x strobe
+            // In-game: 1× strobe
             hw_button_leds_set(BUTTON_LED_LEFT,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
@@ -483,19 +482,19 @@ void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
         }
     }
 
-    // CENTER button (bit 1)
-    if (pressed_bits & 0x02u) {
+    // CENTER button (bit 1 / 0x02)
+    if (pressed_bits & BUTTON_CENTER_MASK) {
         if (in_menu) {
-            // Menu: short feedback strobe on center
+            // Menu: feedback strobe on center (breathing resumes after)
             hw_button_leds_set(BUTTON_LED_CENTER,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                                2);
         } else if (in_game && g_ball_ready) {
-            // In-game and ball ready: treat as ball launch
+            // In-game + ball ready: treat as launch
             button_leds_on_ball_launched();
         } else if (in_game) {
-            // In-game but ball not ready: simple 1x strobe feedback
+            // In-game, ball not ready: simple 1× strobe
             hw_button_leds_set(BUTTON_LED_CENTER,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
@@ -503,8 +502,8 @@ void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
         }
     }
 
-    // RIGHT button (bit 2)
-    if (pressed_bits & 0x04u) {
+    // RIGHT button (bit 2 / 0x04)
+    if (pressed_bits & BUTTON_RIGHT_MASK) {
         if (in_menu) {
             hw_button_leds_set(BUTTON_LED_RIGHT,
                                LED_MODE_STROBE,

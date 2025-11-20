@@ -138,19 +138,25 @@ uint8_t hw_buttons_poll(void) {
     //   right  -> bit 2 (0x04)
     uint8_t new_state = 0;
 
-    // LEFT button → bit 0 (0x01)
+    // LEFT button -> bit 0 (0x01)
     if (!(gpio_raw & (1u << SW_LEFT_PIN))) {
-        new_state |= 0x01;
+        new_state |= BUTTON_LEFT_MASK;
     }
 
-    // CENTER button → bit 1 (0x02)
+    // CENTER button -> bit 1 (0x02)
     if (!(gpio_raw & (1u << SW_CENTER_PIN))) {
-        new_state |= 0x02;
+        new_state |= BUTTON_CENTER_MASK;
     }
 
-    // RIGHT button → bit 2 (0x04)
+    // RIGHT button -> bit 2 (0x04)
     if (!(gpio_raw & (1u << SW_RIGHT_PIN))) {
-        new_state |= 0x04;
+        new_state |= BUTTON_RIGHT_MASK;
+    }
+
+    // OPTIONAL DEBUG: print when state changes
+    if (new_state != button_state) {
+        printf("DBG hw_buttons: raw=0x%08lx state=0x%02x\n",
+               (unsigned long)gpio_raw, new_state);
     }
 
     button_state = new_state;

@@ -122,6 +122,7 @@ void inputShutdown(InputManager* input){
 void inputUpdate(InputManager* input){
     while (serialDataAvail(input->fd) > 0){
         input->keyState = serialGetchar(input->fd);
+        fprintf(stderr, "DBG Pi keyState=0x%02x\n", input->keyState);
     }
 }
 
@@ -139,6 +140,7 @@ int inputCenter(InputManager* input){
     // Physical center button corresponds to bit 1 (0x02)
     return (input->keyState & 2);
 }
+
 
 int inputLeftPressed(InputManager* input){
     if (inputLeft(input)){
