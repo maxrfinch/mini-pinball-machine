@@ -41,16 +41,40 @@ int main() {
     stdio_init_all();
     
     // Small delay to let USB enumerate
-    sleep_ms(100);
+    sleep_ms(1000);
+    
+    printf("\n");
+    printf("╔═══════════════════════════════════════════════════════════╗\n");
+    printf("║        Raspberry Pi Pico Pinball Controller v1.0         ║\n");
+    printf("╚═══════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+    printf("Starting initialization sequence...\n");
+    printf("\n");
     
     // Initialize hardware
     init_status_leds();
+    printf("Status LEDs initialized\n\n");
+    
     neopixel_init();
+    printf("NeoPixels initialized\n\n");
+    
     buttons_init();
     haptics_init();
     display_init();
+    
     protocol_init();
+    printf("Protocol initialized\n\n");
+    
     debug_mode_init();
+    printf("Debug mode initialized\n\n");
+    
+    printf("╔═══════════════════════════════════════════════════════════╗\n");
+    printf("║                  SYSTEM READY                             ║\n");
+    printf("╚═══════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+    printf("Awaiting commands via USB serial...\n");
+    printf("Debug mode will activate after 30 seconds of inactivity.\n");
+    printf("\n");
     
     // Send READY event
     sleep_ms(100);

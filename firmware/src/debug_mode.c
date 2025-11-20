@@ -4,7 +4,9 @@
  * Debug mode implementation
  */
 
+#include <stdio.h>
 #include "pico/stdlib.h"
+#include "hardware/i2c.h"
 #include "debug_mode.h"
 #include "protocol.h"
 #include "neopixel.h"
@@ -12,11 +14,92 @@
 #include "haptics.h"
 #include "display.h"
 #include "types.h"
+#include "hardware_config.h"
 
 static bool debug_active = false;
 static uint32_t debug_frame = 0;
 static absolute_time_t last_debug_update = 0;
 static absolute_time_t last_haptic_buzz = 0;
+static bool self_test_run = false;
+
+// Simple I2C device probe
+static bool i2c_device_probe(i2c_inst_t* i2c, uint8_t addr) {
+    uint8_t dummy;
+    int ret = i2c_read_blocking(i2c, addr, &dummy, 1, false);
+    return ret >= 0;
+}
+
+// Software I2C probe for bit-banged bus (HT16K33)
+// This is declared in display.c but we'll do a simpler version here
+static bool bitbang_device_probe(uint8_t addr);
+
+static void run_self_test(void) {
+    printf("\n");
+    printf("╔══════════════════════════════════════════════════════════════╗\n");
+    printf("║              DEBUG MODE - I2C BUS SELF-TEST                  ║\n");
+    printf("╚══════════════════════════════════════════════════════════════╝\n");
+    printf("\n");
+    
+    // Test I2C0 (Seesaw buttons)
+    printf("┌─ I2C0 Bus (Hardware) ─────────────────────────────────────┐\n");
+    printf("│ GPIOs: %d (SDA), %d (SCL)                                  \n", 
+           I2C0_SDA_PIN, I2C0_SCL_PIN);
+    printf("│ Frequency: %d Hz                                           \n", I2C0_FREQ);
+    printf("│                                                             \n");
+    printf("│ Testing Seesaw (0x%02X)... ", SEESAW_ADDR);
+    
+    if (i2c_device_probe(i2c0, SEESAW_ADDR)) {
+        printf("✓ OK - Device responding\n");
+    } else {
+        printf("✗ FAILED - No response\n");
+    }
+    printf("└────────────────────────────────────────────────────────────┘\n");
+    printf("\n");
+    
+    // Test I2C1 (Haptics)
+    printf("┌─ I2C1 Bus (Hardware) ─────────────────────────────────────┐\n");
+    printf("│ GPIOs: %d (SDA), %d (SCL)                                  \n", 
+           I2C1_SDA_PIN, I2C1_SCL_PIN);
+    printf("│ Frequency: %d Hz                                           \n", I2C1_FREQ);
+    printf("│                                                             \n");
+    
+    printf("│ Testing DRV2605L Left (0x%02X)... ", HAPTIC_LEFT_ADDR);
+    if (i2c_device_probe(i2c1, HAPTIC_LEFT_ADDR)) {
+        printf("✓ OK\n");
+    } else {
+        printf("✗ FAILED\n");
+    }
+    
+    printf("│ Testing DRV2605L Right (0x%02X)... ", HAPTIC_RIGHT_ADDR);
+    if (i2c_device_probe(i2c1, HAPTIC_RIGHT_ADDR)) {
+        printf("✓ OK\n");
+    } else {
+        printf("✗ FAILED\n");
+    }
+    printf("└────────────────────────────────────────────────────────────┘\n");
+    printf("\n");
+    
+    // Test Bit-banged bus (Matrix displays)
+    printf("┌─ Bit-Banged I2C Bus (Software) ───────────────────────────┐\n");
+    printf("│ GPIOs: %d (SDA), %d (SCL)                                  \n",
+           DISPLAY_SDA_PIN, DISPLAY_SCL_PIN);
+    printf("│ Note: Using GPIO_FUNC_SIO (NOT GPIO_FUNC_I2C)              \n");
+    printf("│                                                             \n");
+    
+    const uint8_t matrix_addrs[] = {MATRIX_ADDR_0, MATRIX_ADDR_1, MATRIX_ADDR_2, MATRIX_ADDR_3};
+    for (int i = 0; i < 4; i++) {
+        printf("│ Testing HT16K33 Matrix %d (0x%02X)... ", i, matrix_addrs[i]);
+        // We can't easily test bit-bang from here without duplicating the code
+        // But the display_init already logs this, so we'll just note it
+        printf("See init logs\n");
+    }
+    printf("└────────────────────────────────────────────────────────────┘\n");
+    printf("\n");
+    
+    printf("Self-test complete. Monitor above for any failures.\n");
+    printf("Button presses and display updates will be logged during debug mode.\n");
+    printf("\n");
+}
 
 void debug_mode_init(void) {
     debug_active = false;
@@ -26,17 +109,25 @@ void debug_mode_init(void) {
 void debug_mode_check(void) {
     if (protocol_is_debug_timeout() && !debug_active) {
         // Enter debug mode
+        printf("\n*** ENTERING DEBUG MODE ***\n");
         debug_active = true;
         debug_frame = 0;
+        self_test_run = false;
         protocol_send_debug_active();
         last_haptic_buzz = get_absolute_time();
+        
+        // Run self-test on entry
+        run_self_test();
+        self_test_run = true;
     }
 }
 
 void debug_mode_exit(void) {
     if (debug_active) {
+        printf("\n*** EXITING DEBUG MODE ***\n\n");
         debug_active = false;
         debug_frame = 0;
+        self_test_run = false;
         
         // Clear everything
         neopixel_clear();
