@@ -29,10 +29,6 @@ static bool i2c_device_probe(i2c_inst_t* i2c, uint8_t addr) {
     return ret >= 0;
 }
 
-// Software I2C probe for bit-banged bus (HT16K33)
-// This is declared in display.c but we'll do a simpler version here
-static bool bitbang_device_probe(uint8_t addr);
-
 static void run_self_test(void) {
     printf("\n");
     printf("╔══════════════════════════════════════════════════════════════╗\n");
