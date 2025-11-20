@@ -2,6 +2,31 @@
 #include "hw_buttons.h"
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
+#include <stdio.h>
+
+// -----------------------------------------------------------------------------
+// Hardware configuration for Adafruit LED Arcade Button 1x4 STEMMA QT
+// -----------------------------------------------------------------------------
+
+// Same address / I2C port as used in hw_buttons.c
+#define ARCADEQT_I2C_ADDR       0x3A
+#define I2C_PORT                i2c0
+
+// TIMER/PWM module on seesaw
+#define SEESAW_TIMER_BASE       0x08
+#define SEESAW_TIMER_PWM        0x01
+
+// LED pins on the Arcade 1x4 QT (from left to right: LED1, LED2, LED3, LED4)
+// LED1 -> pin 12, LED2 -> pin 13, LED3 -> pin 0, LED4 -> pin 1
+// We are using LED1..3 for LEFT, CENTER, RIGHT.
+static uint8_t led_idx_to_pin(uint8_t idx) {
+    switch (idx) {
+        case BUTTON_LED_LEFT:   return 12; // LED1, left
+        case BUTTON_LED_CENTER: return 13; // LED2, center
+        case BUTTON_LED_RIGHT:  return 0;  // LED3, right
+        default:                return 0xFF;
+    }
+}
 
 // -----------------------------------------------------------------------------
 // Internal representation of each button LED
@@ -18,10 +43,10 @@ typedef struct {
 
     bool is_on;
     absolute_time_t last_toggle;
-    
+
     // For BREATHE animation: phase tracking (0-255)
     uint8_t breathe_phase;
-    bool breathe_rising;
+    bool    breathe_rising;
 } ButtonLEDState;
 
 static ButtonLEDState g_leds[3];
@@ -33,8 +58,8 @@ typedef struct {
 } ButtonLedBaseline;
 
 static ButtonLedBaseline g_baseline[3];
-static LedGameState g_game_state = LED_GAME_STATE_MENU;
-static bool g_ball_ready = false;
+static LedGameState      g_game_state   = LED_GAME_STATE_MENU;
+static bool              g_ball_ready   = false;
 
 // White LED constants
 static const uint8_t LED_WHITE_R = 255;
@@ -48,53 +73,13 @@ static const uint8_t LED_WHITE_B = 255;
 #define BREATHE_FAST_STEP_MS      15u  // Fast breathe cycle for menu
 
 // -----------------------------------------------------------------------------
-// Hardware hook – implement actual LED driving via Arcade 1x4 QT (seesaw)
+// Low-level LED driver via seesaw TIMER/PWM
 // -----------------------------------------------------------------------------
 
-// Match I2C configuration used in hw_buttons.c
-#define ARCADEQT_I2C_ADDR  0x3A
-#define I2C_PORT           i2c0
-
-// Seesaw PWM module base and value register
-#define SEESAW_PWM_BASE    0x08
-#define SEESAW_PWM_VAL     0x01
-
-// Map our logical button indices to Arcade QT LED pins.
-// Adjust mapping if your physical wiring uses different LED positions.
-static uint8_t led_idx_to_pwm_pin(uint8_t idx) {
-    switch (idx) {
-        case BUTTON_LED_LEFT:
-            // Physical left LED (swap with center)
-            return 13;  // LED2
-        case BUTTON_LED_CENTER:
-            // Physical center LED (swap with left)
-            return 0;   // LED3
-        case BUTTON_LED_RIGHT:
-            // Physical right LED stays the same
-            return 12;  // LED1
-        default:
-            return 0xFF; // invalid
-    }
-}
-
-// Low-level helper: write a 16-bit PWM value to a given seesaw pin
-static void arcadeqt_pwm_write(uint8_t pwm_pin, uint16_t value) {
-    uint8_t buf[5];
-    buf[0] = SEESAW_PWM_BASE;   // module base
-    buf[1] = SEESAW_PWM_VAL;    // PWM value register
-    buf[2] = pwm_pin;           // which PWM pin
-    buf[3] = (uint8_t)(value >> 8);
-    buf[4] = (uint8_t)(value & 0xFF);
-
-    // Best-effort write; ignore error codes for now
-    i2c_write_blocking(I2C_PORT, ARCADEQT_I2C_ADDR, buf, 5, false);
-}
-
-// Drive a single LED according to our logical state
 static void apply_led(uint8_t idx, bool on, uint8_t r, uint8_t g, uint8_t b) {
-    uint8_t pwm_pin = led_idx_to_pwm_pin(idx);
-    if (pwm_pin == 0xFF) {
-        return; // Unknown LED index
+    uint8_t pin = led_idx_to_pin(idx);
+    if (pin == 0xFF) {
+        return;
     }
 
     // For single-color arcade button LEDs, treat RGB as brightness and use
@@ -102,27 +87,40 @@ static void apply_led(uint8_t idx, bool on, uint8_t r, uint8_t g, uint8_t b) {
     uint8_t brightness8 = 0;
     if (on) {
         uint8_t max1 = (r > g) ? r : g;
-        brightness8 = (max1 > b) ? max1 : b;
+        brightness8  = (max1 > b) ? max1 : b;
     }
 
     // Scale 8-bit 0–255 to 16-bit 0–65535 for seesaw PWM
-    uint16_t pwm_val = ((uint16_t)brightness8) << 8;
+    uint16_t brightness16 = ((uint16_t)brightness8) << 8;
 
-    arcadeqt_pwm_write(pwm_pin, pwm_val);
+    uint8_t buf[5];
+    buf[0] = SEESAW_TIMER_BASE;
+    buf[1] = SEESAW_TIMER_PWM;
+    buf[2] = pin;
+    buf[3] = (uint8_t)(brightness16 >> 8);
+    buf[4] = (uint8_t)(brightness16 & 0xFF);
+
+    // Best-effort write; ignore error for now
+    i2c_write_blocking(I2C_PORT, ARCADEQT_I2C_ADDR, buf, sizeof(buf), false);
 }
 
 // -----------------------------------------------------------------------------
 // Baseline pattern management
 // -----------------------------------------------------------------------------
 
-static void button_leds_set_baseline(uint8_t idx, LEDMode mode, uint8_t r, uint8_t g, uint8_t b) {
+static void button_leds_set_baseline(uint8_t idx,
+                                     LEDMode mode,
+                                     uint8_t r,
+                                     uint8_t g,
+                                     uint8_t b)
+{
     if (idx > BUTTON_LED_RIGHT) {
         return;
     }
     g_baseline[idx].mode = mode;
-    g_baseline[idx].r = r;
-    g_baseline[idx].g = g;
-    g_baseline[idx].b = b;
+    g_baseline[idx].r    = r;
+    g_baseline[idx].g    = g;
+    g_baseline[idx].b    = b;
 }
 
 static void button_leds_apply_baseline(uint8_t idx) {
@@ -134,7 +132,7 @@ static void button_leds_apply_baseline(uint8_t idx) {
                        g_baseline[idx].r,
                        g_baseline[idx].g,
                        g_baseline[idx].b,
-                       0);  // no extra blink cycles
+                       0); // no extra blink cycles
 }
 
 static void button_leds_apply_all_baselines(void) {
@@ -165,13 +163,14 @@ static void apply_ingame_baseline(void) {
     button_leds_set_baseline(BUTTON_LED_LEFT,
                              LED_MODE_STEADY,
                              LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
-    // Center LED off in normal gameplay (will blink when ball ready)
-    button_leds_set_baseline(BUTTON_LED_CENTER,
-                             LED_MODE_OFF,
-                             0, 0, 0);
     button_leds_set_baseline(BUTTON_LED_RIGHT,
                              LED_MODE_STEADY,
                              LED_WHITE_R, LED_WHITE_G, LED_WHITE_B);
+
+    // Center off during normal gameplay (only active when ball ready / launch)
+    button_leds_set_baseline(BUTTON_LED_CENTER,
+                             LED_MODE_OFF,
+                             0, 0, 0);
 
     button_leds_apply_all_baselines();
 }
@@ -187,15 +186,15 @@ static void apply_gameover_baseline(void) {
 
 void hw_button_leds_init(void) {
     for (uint8_t i = 0; i < 3; ++i) {
-        g_leds[i].mode          = LED_MODE_OFF;
-        g_leds[i].r             = 0;
-        g_leds[i].g             = 0;
-        g_leds[i].b             = 0;
-        g_leds[i].remaining     = 0;
-        g_leds[i].is_on         = false;
-        g_leds[i].last_toggle   = get_absolute_time();
-        g_leds[i].breathe_phase = 0;
-        g_leds[i].breathe_rising= true;
+        g_leds[i].mode           = LED_MODE_OFF;
+        g_leds[i].r              = 0;
+        g_leds[i].g              = 0;
+        g_leds[i].b              = 0;
+        g_leds[i].remaining      = 0;
+        g_leds[i].is_on          = false;
+        g_leds[i].last_toggle    = get_absolute_time();
+        g_leds[i].breathe_phase  = 0;
+        g_leds[i].breathe_rising = true;
 
         apply_led(i, false, 0, 0, 0);
     }
@@ -210,17 +209,18 @@ void hw_button_leds_set(uint8_t idx,
                         uint8_t r,
                         uint8_t g,
                         uint8_t b,
-                        uint8_t count) {
+                        uint8_t count)
+{
     if (idx > BUTTON_LED_RIGHT) {
         return;
     }
 
     ButtonLEDState *s = &g_leds[idx];
-    s->mode      = mode;
-    s->r         = r;
-    s->g         = g;
-    s->b         = b;
-    s->is_on     = false;
+    s->mode        = mode;
+    s->r           = r;
+    s->g           = g;
+    s->b           = b;
+    s->is_on       = false;
     s->last_toggle = get_absolute_time();
 
     if (mode == LED_MODE_BLINK || mode == LED_MODE_STROBE) {
@@ -246,7 +246,7 @@ void hw_button_leds_set(uint8_t idx,
         break;
 
     case LED_MODE_BREATHE:
-        // Start at minimum brightness, update in hw_button_leds_update
+        // Start at minimum brightness; update in hw_button_leds_update()
         s->is_on = true;
         apply_led(idx, true, 0, 0, 0);
         break;
@@ -283,28 +283,29 @@ void hw_button_leds_update(void) {
             break;
 
         case LED_MODE_BREATHE: {
-            int64_t elapsed_ms = absolute_time_diff_us(s->last_toggle, now) / 1000;
+            int64_t elapsed_ms =
+                absolute_time_diff_us(s->last_toggle, now) / 1000;
             if (elapsed_ms >= BREATHE_FAST_STEP_MS) {
                 s->last_toggle = now;
 
                 if (s->breathe_rising) {
                     s->breathe_phase += 8;
                     if (s->breathe_phase >= 248) {
-                        s->breathe_phase = 255;
+                        s->breathe_phase  = 255;
                         s->breathe_rising = false;
                     }
                 } else {
                     if (s->breathe_phase < 8) {
-                        s->breathe_phase = 0;
+                        s->breathe_phase  = 0;
                         s->breathe_rising = true;
                     } else {
                         s->breathe_phase -= 8;
                     }
                 }
 
-                uint8_t rr = (s->r * s->breathe_phase) / 255;
-                uint8_t gg = (s->g * s->breathe_phase) / 255;
-                uint8_t bb = (s->b * s->breathe_phase) / 255;
+                uint8_t rr = (uint8_t)((s->r * s->breathe_phase) / 255);
+                uint8_t gg = (uint8_t)((s->g * s->breathe_phase) / 255);
+                uint8_t bb = (uint8_t)((s->b * s->breathe_phase) / 255);
                 apply_led(idx, true, rr, gg, bb);
             }
             break;
@@ -319,12 +320,14 @@ void hw_button_leds_update(void) {
             }
 
             uint32_t interval_ms =
-                (s->mode == LED_MODE_BLINK) ? BLINK_INTERVAL_MS : STROBE_INTERVAL_MS;
+                (s->mode == LED_MODE_BLINK) ? BLINK_INTERVAL_MS
+                                            : STROBE_INTERVAL_MS;
 
-            int64_t elapsed_ms = absolute_time_diff_us(s->last_toggle, now) / 1000;
+            int64_t elapsed_ms =
+                absolute_time_diff_us(s->last_toggle, now) / 1000;
             if (elapsed_ms >= (int64_t)interval_ms) {
                 s->last_toggle = now;
-                s->is_on = !s->is_on;
+                s->is_on       = !s->is_on;
 
                 if (s->is_on) {
                     apply_led(idx, true, s->r, s->g, s->b);
@@ -343,10 +346,11 @@ void hw_button_leds_update(void) {
         }
 
         case LED_MODE_RAPID_BLINK: {
-            int64_t elapsed_ms = absolute_time_diff_us(s->last_toggle, now) / 1000;
+            int64_t elapsed_ms =
+                absolute_time_diff_us(s->last_toggle, now) / 1000;
             if (elapsed_ms >= RAPID_BLINK_INTERVAL_MS) {
                 s->last_toggle = now;
-                s->is_on = !s->is_on;
+                s->is_on       = !s->is_on;
 
                 if (s->is_on) {
                     apply_led(idx, true, s->r, s->g, s->b);
@@ -371,7 +375,7 @@ void hw_button_led_blink_left(uint8_t times) {
     if (times == 0) times = 1;
     hw_button_leds_set(BUTTON_LED_LEFT,
                        LED_MODE_BLINK,
-                       255, 255, 255,
+                       LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                        times);
 }
 
@@ -379,7 +383,7 @@ void hw_button_led_blink_center(uint8_t times) {
     if (times == 0) times = 1;
     hw_button_leds_set(BUTTON_LED_CENTER,
                        LED_MODE_BLINK,
-                       255, 255, 255,
+                       LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                        times);
 }
 
@@ -387,7 +391,7 @@ void hw_button_led_blink_right(uint8_t times) {
     if (times == 0) times = 1;
     hw_button_leds_set(BUTTON_LED_RIGHT,
                        LED_MODE_BLINK,
-                       255, 255, 255,
+                       LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                        times);
 }
 
@@ -415,22 +419,22 @@ void button_leds_set_game_state(LedGameState state) {
 }
 
 void button_leds_on_game_start(void) {
-    // Switch LEDs to in-game state and trigger the game-start strobe on center
+    // Switch LEDs to in-game baseline and trigger a 5x strobe on center
     g_game_state = LED_GAME_STATE_IN_GAME;
     g_ball_ready = false;
 
-    // 5x strobe on center when game starts
     hw_button_leds_set(BUTTON_LED_CENTER,
                        LED_MODE_STROBE,
                        LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                        5);
 
-    // Update baselines so once the strobe finishes, we are in gameplay mode
+    // After strobe finishes, LEDs fall back to in-game baseline
     apply_ingame_baseline();
 }
 
 void button_leds_on_ball_ready(void) {
     g_ball_ready = true;
+
     // Rapid blink center while ball is ready to launch
     hw_button_leds_set(BUTTON_LED_CENTER,
                        LED_MODE_RAPID_BLINK,
@@ -440,47 +444,38 @@ void button_leds_on_ball_ready(void) {
 
 void button_leds_on_ball_launched(void) {
     g_ball_ready = false;
+
     // 5x strobe on center when ball is launched
     hw_button_leds_set(BUTTON_LED_CENTER,
                        LED_MODE_STROBE,
                        LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                        5);
+
+    // Return to in-game baseline once strobe completes
+    apply_ingame_baseline();
 }
 
 void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
-    (void)pressed_bits; // not used anymore, we go off the current state byte
+    (void)button_state; // reserved for future use (chording, etc.)
 
-    // Bit layout (confirmed from hw_buttons.c and inputManagerPi.c):
-    //   left   -> bit 0 (0x01)
-    //   center -> bit 1 (0x02)
-    //   right  -> bit 2 (0x04)
+    const bool in_menu = (g_game_state == LED_GAME_STATE_MENU);
+    const bool in_game = (g_game_state == LED_GAME_STATE_IN_GAME);
 
-    bool left_pressed   = (button_state & 0x01) != 0;
-    bool center_pressed = (button_state & 0x02) != 0;
-    bool right_pressed  = (button_state & 0x04) != 0;
+    // IMPORTANT: mapping based on what you observed on the wire:
+    //   left  -> bit 0 (0x01)
+    //   center-> bit 1 (0x02)
+    //   right -> bit 2 (0x04)
 
-    // CENTER: behavior depends on game state / ball ready
-    if (center_pressed) {
-        if (g_game_state == LED_GAME_STATE_MENU) {
-            // Menu: short strobe on center button LED
-            hw_button_leds_set(BUTTON_LED_CENTER,
-                               LED_MODE_STROBE,
-                               LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
-                               2); // 2x strobe on press
-        } else if (g_game_state == LED_GAME_STATE_IN_GAME && g_ball_ready) {
-            // In-game and ball ready: treat center press as ball launch
-            button_leds_on_ball_launched();
-        }
-    }
-
-    // LEFT / RIGHT: 2x strobe in menu, 1x strobe in gameplay
-    if (left_pressed) {
-        if (g_game_state == LED_GAME_STATE_MENU) {
+    // LEFT button (bit 0)
+    if (pressed_bits & 0x01u) {
+        if (in_menu) {
+            // Menu: 2x strobe
             hw_button_leds_set(BUTTON_LED_LEFT,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                                2);
-        } else {
+        } else if (in_game) {
+            // In-game: 1x strobe
             hw_button_leds_set(BUTTON_LED_LEFT,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
@@ -488,13 +483,34 @@ void button_leds_on_button_pressed(uint8_t button_state, uint8_t pressed_bits) {
         }
     }
 
-    if (right_pressed) {
-        if (g_game_state == LED_GAME_STATE_MENU) {
+    // CENTER button (bit 1)
+    if (pressed_bits & 0x02u) {
+        if (in_menu) {
+            // Menu: short feedback strobe on center
+            hw_button_leds_set(BUTTON_LED_CENTER,
+                               LED_MODE_STROBE,
+                               LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
+                               2);
+        } else if (in_game && g_ball_ready) {
+            // In-game and ball ready: treat as ball launch
+            button_leds_on_ball_launched();
+        } else if (in_game) {
+            // In-game but ball not ready: simple 1x strobe feedback
+            hw_button_leds_set(BUTTON_LED_CENTER,
+                               LED_MODE_STROBE,
+                               LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
+                               1);
+        }
+    }
+
+    // RIGHT button (bit 2)
+    if (pressed_bits & 0x04u) {
+        if (in_menu) {
             hw_button_leds_set(BUTTON_LED_RIGHT,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
                                2);
-        } else {
+        } else if (in_game) {
             hw_button_leds_set(BUTTON_LED_RIGHT,
                                LED_MODE_STROBE,
                                LED_WHITE_R, LED_WHITE_G, LED_WHITE_B,
