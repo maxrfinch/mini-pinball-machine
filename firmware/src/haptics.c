@@ -4,6 +4,7 @@
  * DRV2605L haptic motor driver
  */
 
+#include <stdio.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "haptics.h"
@@ -30,28 +31,34 @@ static bool haptic_write_reg(uint8_t addr, uint8_t reg, uint8_t value) {
 }
 
 static bool haptic_init_device(uint8_t addr) {
+    printf("Initializing DRV2605L at 0x%02X...\n", addr);
     sleep_ms(10);
     
     // Exit standby mode
     if (!haptic_write_reg(addr, DRV2605_REG_MODE, 0x00)) {
+        printf("  Failed to exit standby mode\n");
         return false;
     }
     
     // Set to internal trigger mode
     if (!haptic_write_reg(addr, DRV2605_REG_MODE, 0x00)) {
+        printf("  Failed to set trigger mode\n");
         return false;
     }
     
     // Select library 1 (ERM)
     if (!haptic_write_reg(addr, DRV2605_REG_LIBRARY, 0x01)) {
+        printf("  Failed to select library\n");
         return false;
     }
     
     // Configure control
     if (!haptic_write_reg(addr, DRV2605_REG_CONTROL3, 0xA0)) {
+        printf("  Failed to configure control\n");
         return false;
     }
     
+    printf("  DRV2605L 0x%02X initialized successfully\n", addr);
     return true;
 }
 
@@ -65,6 +72,10 @@ static void haptic_play(uint8_t addr, uint8_t waveform) {
 }
 
 void haptics_init(void) {
+    printf("\n=== Haptics Initialization (I2C1 - Hardware I2C) ===\n");
+    printf("Initializing I2C1 at %d Hz on GPIO%d (SDA) / GPIO%d (SCL)\n",
+           I2C1_FREQ, I2C1_SDA_PIN, I2C1_SCL_PIN);
+    
     // Initialize I2C1
     i2c_init(i2c1, I2C1_FREQ);
     gpio_set_function(I2C1_SDA_PIN, GPIO_FUNC_I2C);
@@ -72,11 +83,15 @@ void haptics_init(void) {
     gpio_pull_up(I2C1_SDA_PIN);
     gpio_pull_up(I2C1_SCL_PIN);
     
+    printf("I2C1 hardware initialized\n");
+    
     sleep_ms(100);
     
     // Initialize both haptic modules
     haptic_init_device(HAPTIC_LEFT_ADDR);
     haptic_init_device(HAPTIC_RIGHT_ADDR);
+    
+    printf("=== Haptics Initialization Complete ===\n\n");
 }
 
 void haptics_trigger_left(void) {

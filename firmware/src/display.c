@@ -114,6 +114,7 @@ static bool ht16k33_write(uint8_t addr, const uint8_t* data, size_t len) {
     
     // Send address with write bit
     if (!i2c_write_byte(addr << 1)) {
+        printf("HT16K33 0x%02X: NO ACK on address\n", addr);
         i2c_stop();
         return false;
     }
@@ -121,6 +122,8 @@ static bool ht16k33_write(uint8_t addr, const uint8_t* data, size_t len) {
     // Send data bytes
     for (size_t i = 0; i < len; i++) {
         if (!i2c_write_byte(data[i])) {
+            printf("HT16K33 0x%02X: NO ACK on data[%u] = 0x%02X\n",
+                   addr, (unsigned)i, data[i]);
             i2c_stop();
             return false;
         }
@@ -132,24 +135,43 @@ static bool ht16k33_write(uint8_t addr, const uint8_t* data, size_t len) {
 
 static void ht16k33_init_display(uint8_t addr) {
     uint8_t cmd;
+    bool success = true;
+    
+    printf("Initializing HT16K33 at 0x%02X...\n", addr);
     
     // Turn on oscillator
     cmd = HT16K33_SYSTEM_SETUP | HT16K33_OSCILLATOR_ON;
-    ht16k33_write(addr, &cmd, 1);
+    if (!ht16k33_write(addr, &cmd, 1)) {
+        printf("  Failed to turn on oscillator\n");
+        success = false;
+    }
     sleep_ms(1);
     
     // Set brightness to max
     cmd = HT16K33_BRIGHTNESS_CMD | 0x0F;
-    ht16k33_write(addr, &cmd, 1);
+    if (!ht16k33_write(addr, &cmd, 1)) {
+        printf("  Failed to set brightness\n");
+        success = false;
+    }
     sleep_ms(1);
     
     // Turn on display, no blink
     cmd = HT16K33_BLINK_CMD | HT16K33_BLINK_DISPLAYON;
-    ht16k33_write(addr, &cmd, 1);
+    if (!ht16k33_write(addr, &cmd, 1)) {
+        printf("  Failed to turn on display\n");
+        success = false;
+    }
     sleep_ms(1);
+    
+    if (success) {
+        printf("  HT16K33 0x%02X initialized successfully\n", addr);
+    }
 }
 
 void display_init(void) {
+    printf("\n=== Display Initialization (Bit-Banged I2C on GPIO%d/GPIO%d) ===\n", 
+           DISPLAY_SDA_PIN, DISPLAY_SCL_PIN);
+    
     // Initialize software I2C pins for matrix displays on GPIO8/9
     // This keeps displays completely separate from the arcade seesaw buttons (I2C0)
     // and haptics (I2C1)
@@ -162,6 +184,8 @@ void display_init(void) {
     gpio_put(DISPLAY_SDA_PIN, 0);
     gpio_put(DISPLAY_SCL_PIN, 0);
     
+    printf("GPIO pins configured for bit-bang I2C (NOT GPIO_FUNC_I2C)\n");
+    
     // Enable pull-ups
     gpio_pull_up(DISPLAY_SDA_PIN);
     gpio_pull_up(DISPLAY_SCL_PIN);
@@ -170,12 +194,15 @@ void display_init(void) {
     sda_high();
     scl_high();
     
+    printf("I2C bus idle (lines released high)\n");
+    
     sleep_ms(100);
     
     // Initialize framebuffer
     memset(framebuffer, 0, sizeof(framebuffer));
     
     // Initialize all displays
+    printf("Initializing %d HT16K33 matrix displays...\n", NUM_DISPLAYS);
     for (int i = 0; i < NUM_DISPLAYS; i++) {
         ht16k33_init_display(display_addrs[i]);
     }
@@ -183,6 +210,8 @@ void display_init(void) {
     // Clear displays
     display_clear();
     display_update();
+    
+    printf("=== Display Initialization Complete ===\n\n");
 }
 
 void display_clear(void) {
