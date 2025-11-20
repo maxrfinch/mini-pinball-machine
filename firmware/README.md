@@ -61,6 +61,7 @@ CMD MODE <ATTRACT|MENU|GAME|BALL_LOST|HIGH_SCORE>
 CMD SCORE <number>
 CMD BALLS <number>
 CMD EFFECT <pattern_name>
+CMD BUTTON_EFFECT <effect_name>
 CMD BRIGHTNESS <0-255>
 CMD PING
 ```
@@ -71,6 +72,7 @@ CMD MODE GAME
 CMD SCORE 12345
 CMD BALLS 3
 CMD EFFECT RAINBOW_WAVE
+CMD BUTTON_EFFECT READY_STEADY_GLOW
 CMD BRIGHTNESS 128
 CMD PING
 ```
@@ -94,9 +96,9 @@ EVT READY
 EVT DEBUG ACTIVE
 ```
 
-## LED Effects
+## NeoPixel LED Effects
 
-The firmware includes 8 LED patterns:
+The firmware includes 8 NeoPixel LED patterns:
 
 1. **RAINBOW_BREATHE** - Slow rainbow brightness oscillation
 2. **RAINBOW_WAVE** - Full-cabinet rainbow wave
@@ -106,6 +108,55 @@ The firmware includes 8 LED patterns:
 6. **ATTRACT** - Idle attract-mode pattern (rainbow chase)
 7. **PINK_PULSE** - Sharp pink pulse
 8. **BALL_LAUNCH** - Left/right walls ripple front→back (yellow)
+
+## Button LED Effects
+
+The firmware includes 9 button LED effect modes for the arcade buttons:
+
+1. **READY_STEADY_GLOW** - Idle/attract mode
+   - Left/Right: Slow breathing fade (0→180→0), offset by 1 second
+   - Center: Steady glow at 200 brightness
+   - Use: Machine idle, attract mode, menu idle
+
+2. **FLIPPER_FEEDBACK** - Button press confirmation
+   - Fast pop to max brightness, immediate drop to 0, return to previous state
+   - Duration: ~100ms
+   - Use: Left/right flipper button presses
+
+3. **CENTER_HIT_PULSE** - Launch ready indicator
+   - Rapid double-strobe: 2 bursts at 40ms each, then 300ms dark
+   - Loops continuously
+   - Use: Center button when ball is ready to launch
+
+4. **SKILL_SHOT_BUILDUP** - Pre-launch tension
+   - All buttons ramp from 0→255 over 2 seconds, then snap to 0
+   - Loops continuously
+   - Use: Before launching ball, skill shot mode
+
+5. **BALL_SAVED** - Multiball/save mode
+   - Alternating flash left/right with decaying speed
+   - 8 cycles over ~2 seconds, then returns to attract
+   - Use: Temporary multiball or ball save mode
+
+6. **POWERUP_ALERT** - Special game state
+   - Chaotic strobe with randomized brightness
+   - Duration: 1.5 seconds, then returns to attract
+   - Use: Multiball start, jackpot, special moments
+
+7. **EXTRA_BALL_AWARD** - Celebration
+   - Three medium-speed pulses (200ms each)
+   - One long fade-out over 1 second
+   - Use: Extra ball award
+
+8. **GAME_OVER_FADE** - Cooldown
+   - All buttons: extremely slow fade (bright→off→bright, 2.5s cycle)
+   - Loops continuously
+   - Use: Game over state
+
+9. **MENU_NAVIGATION** - Menu mode
+   - Selected button: 255 brightness
+   - Other buttons: 80 brightness
+   - Use: Menu navigation mode
 
 ## Debug Mode
 

@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 #include "buttons.h"
@@ -41,6 +42,13 @@ static bool button_states[3] = {false, false, false};
 static bool last_button_states[3] = {false, false, false};
 static uint32_t button_hold_time[3] = {0, 0, 0};
 static const uint32_t HOLD_THRESHOLD_MS = 500;
+
+// Button LED effect state
+static ButtonLEDEffect current_effect = BTN_EFFECT_OFF;
+static uint32_t effect_start_time = 0;
+static uint32_t effect_frame = 0;
+static uint8_t led_brightness[3] = {0, 0, 0};
+static Button menu_selection = BUTTON_LEFT;
 
 static uint8_t button_to_led_pin(Button button) {
     switch (button) {
@@ -224,4 +232,205 @@ bool buttons_is_pressed(Button button) {
         return button_states[button];
     }
     return false;
+}
+
+void buttons_start_effect(ButtonLEDEffect effect) {
+    current_effect = effect;
+    effect_start_time = to_ms_since_boot(get_absolute_time());
+    effect_frame = 0;
+}
+
+void buttons_set_menu_selection(Button button) {
+    menu_selection = button;
+}
+
+// Helper: smooth sine wave breathing (0-255)
+static uint8_t breathe_sine(uint32_t time_ms, uint32_t period_ms, uint32_t phase_offset_ms) {
+    uint32_t phase = (time_ms + phase_offset_ms) % period_ms;
+    float angle = (float)phase / period_ms * 6.28318530718f; // 2*PI
+    float sine_val = (sinf(angle) + 1.0f) / 2.0f; // 0.0 to 1.0
+    return (uint8_t)(sine_val * 255.0f);
+}
+
+// Helper: linear ramp (0-255)
+static uint8_t ramp_linear(uint32_t time_ms, uint32_t period_ms) {
+    uint32_t phase = time_ms % period_ms;
+    return (uint8_t)((phase * 255) / period_ms);
+}
+
+// Helper: triangle wave
+static uint8_t triangle_wave(uint32_t time_ms, uint32_t period_ms) {
+    uint32_t phase = time_ms % period_ms;
+    if (phase < period_ms / 2) {
+        return (uint8_t)((phase * 255 * 2) / period_ms);
+    } else {
+        return (uint8_t)(255 - ((phase - period_ms / 2) * 255 * 2) / period_ms);
+    }
+}
+
+void buttons_update_leds(void) {
+    uint32_t elapsed_ms = to_ms_since_boot(get_absolute_time()) - effect_start_time;
+    effect_frame++;
+    
+    switch (current_effect) {
+        case BTN_EFFECT_OFF:
+            led_brightness[BUTTON_LEFT] = 0;
+            led_brightness[BUTTON_CENTER] = 0;
+            led_brightness[BUTTON_RIGHT] = 0;
+            break;
+            
+        case BTN_EFFECT_READY_STEADY_GLOW: {
+            // Slow breathing fade (2-3 Hz = 333-500ms period)
+            // LEFT: 0 → 180 → 0 with sine wave
+            // RIGHT: same but shifted by +1000ms
+            // CENTER: steady 200
+            uint32_t period_ms = 400; // ~2.5 Hz
+            led_brightness[BUTTON_LEFT] = (breathe_sine(elapsed_ms, period_ms, 0) * 180) / 255;
+            led_brightness[BUTTON_RIGHT] = (breathe_sine(elapsed_ms, period_ms, 1000) * 180) / 255;
+            led_brightness[BUTTON_CENTER] = 200;
+            break;
+        }
+            
+        case BTN_EFFECT_FLIPPER_FEEDBACK: {
+            // Fast pop to max, immediate drop, return to previous
+            // This should be triggered on button press, not continuous
+            // For now, implement as a one-shot 100ms burst
+            if (elapsed_ms < 50) {
+                led_brightness[BUTTON_LEFT] = 255;
+                led_brightness[BUTTON_RIGHT] = 255;
+            } else if (elapsed_ms < 100) {
+                led_brightness[BUTTON_LEFT] = 0;
+                led_brightness[BUTTON_RIGHT] = 0;
+            } else {
+                // Return to attract mode or previous state
+                buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
+            }
+            led_brightness[BUTTON_CENTER] = 200;
+            break;
+        }
+            
+        case BTN_EFFECT_CENTER_HIT_PULSE: {
+            // Rapid double-strobe: 2 bursts at 40ms each, then 300ms dark, loop
+            uint32_t cycle = elapsed_ms % 380; // 40+40+300
+            if (cycle < 40) {
+                led_brightness[BUTTON_CENTER] = 255;
+            } else if (cycle < 80) {
+                led_brightness[BUTTON_CENTER] = 0;
+            } else if (cycle < 120) {
+                led_brightness[BUTTON_CENTER] = 255;
+            } else {
+                led_brightness[BUTTON_CENTER] = 0;
+            }
+            led_brightness[BUTTON_LEFT] = 0;
+            led_brightness[BUTTON_RIGHT] = 0;
+            break;
+        }
+            
+        case BTN_EFFECT_SKILL_SHOT_BUILDUP: {
+            // Ramp 0→255 over 2 seconds, snap to 0, repeat
+            uint32_t cycle = elapsed_ms % 2000;
+            uint8_t brightness = ramp_linear(cycle, 2000);
+            led_brightness[BUTTON_LEFT] = brightness;
+            led_brightness[BUTTON_CENTER] = brightness;
+            led_brightness[BUTTON_RIGHT] = brightness;
+            break;
+        }
+            
+        case BTN_EFFECT_BALL_SAVED: {
+            // Alternating flash back/forth, 5-8 cycles with decaying speed
+            // Start fast, get slower. Let's do 8 cycles over ~2 seconds
+            uint32_t total_duration = 2000;
+            if (elapsed_ms > total_duration) {
+                // Effect complete, return to attract
+                buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
+                break;
+            }
+            
+            // Divide into 8 cycles, each getting progressively longer
+            // Simple approach: use accelerating period
+            uint32_t cycle_base = 100; // Start at 100ms per toggle
+            uint32_t time_acc = 0;
+            bool left_on = false;
+            
+            for (int i = 0; i < 8; i++) {
+                uint32_t cycle_period = cycle_base + (i * 20); // Increase by 20ms each cycle
+                time_acc += cycle_period;
+                if (elapsed_ms < time_acc) {
+                    left_on = (i % 2) == 0;
+                    break;
+                }
+            }
+            
+            led_brightness[BUTTON_LEFT] = left_on ? 255 : 0;
+            led_brightness[BUTTON_RIGHT] = left_on ? 0 : 255;
+            led_brightness[BUTTON_CENTER] = 0;
+            break;
+        }
+            
+        case BTN_EFFECT_POWERUP_ALERT: {
+            // Chaotic strobe with randomized brightness, 1.5s max
+            if (elapsed_ms > 1500) {
+                buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
+                break;
+            }
+            
+            // Pseudo-random using frame counter
+            uint8_t rand_val = (effect_frame * 137 + 53) & 0xFF;
+            led_brightness[BUTTON_LEFT] = (rand_val < 128) ? 255 : 0;
+            
+            rand_val = ((effect_frame + 17) * 149 + 71) & 0xFF;
+            led_brightness[BUTTON_CENTER] = (rand_val < 128) ? 255 : 0;
+            
+            rand_val = ((effect_frame + 31) * 163 + 89) & 0xFF;
+            led_brightness[BUTTON_RIGHT] = (rand_val < 128) ? 255 : 0;
+            break;
+        }
+            
+        case BTN_EFFECT_EXTRA_BALL_AWARD: {
+            // Three medium-speed pulses, then one long fade-out
+            // Pulse duration: ~200ms each, gap: 100ms
+            // Total: 3*(200+100) = 900ms, then 1000ms fade = 1900ms total
+            if (elapsed_ms < 900) {
+                uint32_t pulse_cycle = elapsed_ms % 300; // 200 on, 100 off
+                uint8_t brightness = (pulse_cycle < 200) ? 255 : 0;
+                led_brightness[BUTTON_CENTER] = brightness;
+            } else if (elapsed_ms < 1900) {
+                // Fade out over 1000ms
+                uint32_t fade_time = elapsed_ms - 900;
+                led_brightness[BUTTON_CENTER] = 255 - (uint8_t)((fade_time * 255) / 1000);
+            } else {
+                // Effect complete
+                buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
+            }
+            led_brightness[BUTTON_LEFT] = 0;
+            led_brightness[BUTTON_RIGHT] = 0;
+            break;
+        }
+            
+        case BTN_EFFECT_GAME_OVER_FADE: {
+            // Extremely slow fade: bright → off → bright → off (2.5s cycle)
+            uint32_t brightness = triangle_wave(elapsed_ms, 2500);
+            led_brightness[BUTTON_LEFT] = brightness;
+            led_brightness[BUTTON_CENTER] = brightness;
+            led_brightness[BUTTON_RIGHT] = brightness;
+            break;
+        }
+            
+        case BTN_EFFECT_MENU_NAVIGATION: {
+            // Left/Right at 160, selected button at 255, others dim to 80
+            for (int i = 0; i < 3; i++) {
+                if (i == menu_selection) {
+                    led_brightness[i] = 255;
+                } else {
+                    led_brightness[i] = 80;
+                }
+            }
+            break;
+        }
+    }
+    
+    // Apply brightness to physical LEDs
+    buttons_set_led(BUTTON_LEFT, led_brightness[BUTTON_LEFT]);
+    buttons_set_led(BUTTON_CENTER, led_brightness[BUTTON_CENTER]);
+    buttons_set_led(BUTTON_RIGHT, led_brightness[BUTTON_RIGHT]);
 }
