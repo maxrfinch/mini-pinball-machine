@@ -48,7 +48,7 @@ static bool seesaw_read(uint8_t reg_high, uint8_t reg_low, uint8_t* data, size_t
 }
 
 void buttons_init(void) {
-    // Initialize I2C0
+    // Initialize I2C0 for arcade seesaw buttons
     i2c_init(i2c0, I2C0_FREQ);
     gpio_set_function(I2C0_SDA_PIN, GPIO_FUNC_I2C);
     gpio_set_function(I2C0_SCL_PIN, GPIO_FUNC_I2C);
