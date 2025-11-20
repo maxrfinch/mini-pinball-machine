@@ -72,7 +72,15 @@ static void ht16k33_init_display(uint8_t addr) {
 }
 
 void display_init(void) {
-    // I2C0 already initialized by buttons
+    // Initialize I2C0 for matrix displays on GPIO8/9
+    // This is completely separate from the arcade seesaw buttons which are on I2C1
+    i2c_init(i2c0, I2C0_FREQ);
+    gpio_set_function(I2C0_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(I2C0_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C0_SDA_PIN);
+    gpio_pull_up(I2C0_SCL_PIN);
+    
+    sleep_ms(100);
     
     // Initialize framebuffer
     memset(framebuffer, 0, sizeof(framebuffer));

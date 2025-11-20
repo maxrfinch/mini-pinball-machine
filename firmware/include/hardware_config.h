@@ -13,19 +13,19 @@
 #define NEOPIXEL_BOARDS 6
 #define LEDS_PER_BOARD 8
 
-// I2C0 Bus Configuration (Arcade Seesaw Buttons + Matrix Displays with Backpacks)
-#define I2C0_SDA_PIN 4
-#define I2C0_SCL_PIN 5
+// I2C0 Bus Configuration (Matrix Displays with Backpacks ONLY)
+// Displays are now on GPIO8/9, completely separate from the arcade seesaw buttons
+#define I2C0_SDA_PIN 8
+#define I2C0_SCL_PIN 9
 #define I2C0_FREQ 100000
 
-// I2C1 Bus Configuration (Haptics)
+// I2C1 Bus Configuration (Arcade Seesaw Buttons + Haptics)
+// Note: Buttons and Haptics share the I2C1 bus on GPIO6/7, but have different addresses
+// Buttons: 0x30
+// Haptics: 0x5A (left), 0x5B (right)
 #define I2C1_SDA_PIN 6
 #define I2C1_SCL_PIN 7
 #define I2C1_FREQ 100000
-
-// UART1 Configuration (Optional Debug)
-#define UART1_TX_PIN 8
-#define UART1_RX_PIN 9
 
 // Misc GPIO
 #define STATUS_LED_PIN 12
