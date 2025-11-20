@@ -11,7 +11,7 @@ Comprehensive logging has been added to all I²C drivers to help identify why ce
 The firmware uses two hardware I²C buses:
 
 1. **I2C0 (Hardware I²C)** - GPIO4/5
-   - Adafruit Arcade Seesaw Button Board (0x30)
+   - Adafruit Arcade Seesaw Button Board (0x3A)
    - HT16K33 Matrix Display 0 (0x70)
    - HT16K33 Matrix Display 1 (0x71)
    - HT16K33 Matrix Display 2 (0x72)
@@ -44,7 +44,7 @@ NeoPixels initialized
 === Button Initialization (I2C0 - Hardware I2C) ===
 Initializing I2C0 at 100000 Hz on GPIO4 (SDA) / GPIO5 (SCL)
 I2C0 hardware initialized
-Configuring Seesaw at address 0x30...
+Configuring Seesaw at address 0x3A...
   Button direction configured
   Button pull-ups enabled
 === Button Initialization Complete ===
@@ -167,7 +167,7 @@ When debug mode starts, a comprehensive bus self-test runs:
 │ GPIOs: 4 (SDA), 5 (SCL)
 │ Frequency: 100000 Hz
 │
-│ Testing Seesaw (0x30)... ✓ OK - Device responding
+│ Testing Seesaw (0x3A)... ✓ OK - Device responding
 └────────────────────────────────────────────────────────────┘
 
 ┌─ I2C1 Bus (Hardware) ─────────────────────────────────────┐
@@ -209,7 +209,7 @@ Debug mode exits when any command is received:
 **Possible Causes:**
 1. Incorrect wiring - check GPIO4 (SDA) and GPIO5 (SCL)
 2. Missing pull-up resistors (4.7kΩ required)
-3. Wrong Seesaw address (should be 0x30)
+3. Wrong Seesaw address (should be 0x3A)
 4. Insufficient power to Seesaw board
 5. Defective Seesaw board
 

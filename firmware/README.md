@@ -18,7 +18,7 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 ### 2. Adafruit LED Arcade Button 1×4 I2C Breakout (Arcade Seesaw Board)
 - **Three buttons**: LEFT, CENTER, RIGHT
 - Connected via I²C0 bus (GPIO4/5)
-- I²C Address: 0x30
+- I²C Address: 0x3A
 - Product: Adafruit 5296
 
 ### 3. Haptic Motors (2× DRV2605L)
@@ -185,7 +185,7 @@ On boot, the firmware logs:
 ### Debug Mode Self-Test
 
 When debug mode activates, a comprehensive I²C bus self-test runs automatically:
-- Tests I2C0 (Seesaw buttons at 0x30, Matrix displays at 0x70-0x73)
+- Tests I2C0 (Seesaw buttons at 0x3A, Matrix displays at 0x70-0x73)
 - Tests I2C1 (Haptics at 0x5A and 0x5B)
 - Reports pass/fail status for each device
 
@@ -325,7 +325,7 @@ Use PuTTY or TeraTerm to connect to the Pico's COM port.
 - Ensure proper 3.3V power supply
 
 **Buttons not detected:**
-- Verify Arcade Seesaw board at address 0x30
+- Verify Arcade Seesaw board at address 0x3A
 - Check I²C0 bus connections
 - Test with i2cdetect utility
 
