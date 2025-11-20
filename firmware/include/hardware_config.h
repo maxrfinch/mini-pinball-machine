@@ -13,7 +13,7 @@
 #define NEOPIXEL_BOARDS 6
 #define LEDS_PER_BOARD 8
 
-// I2C0 Bus Configuration (Buttons + Matrices)
+// I2C0 Bus Configuration (Arcade Seesaw Buttons + Matrix Displays with Backpacks)
 #define I2C0_SDA_PIN 4
 #define I2C0_SCL_PIN 5
 #define I2C0_FREQ 100000
@@ -32,10 +32,11 @@
 #define MODE_LED_PIN 13
 #define BOOTSEL_TRIGGER_PIN 22
 
-// Seesaw Button I2C Address
+// Arcade Seesaw Button Board I2C Address (Adafruit 5296)
 #define SEESAW_ADDR 0x30
 
-// HT16K33 Matrix Display I2C Addresses
+// HT16K33 Matrix Display I2C Addresses (Adafruit 1855 - 1.2" 8x8 with I2C Backpack)
+// Daisy-chained on I2C0 bus with different addresses
 #define MATRIX_ADDR_0 0x70  // OPEN
 #define MATRIX_ADDR_1 0x71  // A0
 #define MATRIX_ADDR_2 0x72  // A1

@@ -6,10 +6,10 @@ This document provides detailed hardware connection information for the Pico pin
 
 1. **Raspberry Pi Pico** (or Pico W)
 2. **6× WS2812B LED Boards** (8 LEDs each = 48 total)
-3. **Adafruit Seesaw NeoKey 1x4 QT I²C Breakout** (for buttons)
-4. **4× Adafruit 8x8 LED Matrix FeatherWing** (HT16K33)
+3. **Adafruit LED Arcade Button 1×4 I2C Breakout** (Arcade Seesaw board, Adafruit 5296)
+4. **4× Adafruit 1.2" 8x8 LED Matrix with I2C Backpack** (HT16K33, Adafruit 1855)
 5. **2× Adafruit DRV2605L Haptic Motor Controller**
-6. **3× LED Arcade Buttons**
+6. **3× LED Arcade Buttons** (30mm translucent)
 7. **2× Haptic Motors** (ERM or LRA)
 8. **5V Power Supply** (for NeoPixels, 3A minimum)
 9. **3.3V Power Supply** (for Pico and I²C devices)
@@ -24,8 +24,8 @@ This document provides detailed hardware connection information for the Pico pin
 └─→ (Optional) USB power for Pico
 
 3.3V Source (from Pico or external)
-├─→ Seesaw Button Board (VIN)
-├─→ 4× Matrix Displays (VIN)
+├─→ Arcade Seesaw Button Board (VIN)
+├─→ 4× Matrix Displays with I2C Backpacks (VIN)
 ├─→ 2× DRV2605L Boards (VIN)
 └─→ Haptic Motors (through DRV2605L)
 ```
@@ -52,21 +52,25 @@ Board 4 (Left Rear) → Board 5 (Left Front) → Board 6 (Front Bar)
 
 ### I²C0 Bus (Buttons + Displays)
 
-```
-Pico GPIO4 (SDA0) ──┬─→ Seesaw (SDA) [0x30]
-                    ├─→ Matrix 1 (SDA) [0x70]
-                    ├─→ Matrix 2 (SDA) [0x71]
-                    ├─→ Matrix 3 (SDA) [0x72]
-                    └─→ Matrix 4 (SDA) [0x73]
+All devices on the I²C0 bus share the same SDA and SCL lines with different I²C addresses:
 
-Pico GPIO5 (SCL0) ──┬─→ Seesaw (SCL)
-                    ├─→ Matrix 1 (SCL)
-                    ├─→ Matrix 2 (SCL)
-                    ├─→ Matrix 3 (SCL)
-                    └─→ Matrix 4 (SCL)
+```
+Pico GPIO4 (SDA0) ──┬─→ Arcade Seesaw (SDA) [0x30]
+                    ├─→ Matrix 1 w/ Backpack (SDA) [0x70]
+                    ├─→ Matrix 2 w/ Backpack (SDA) [0x71]
+                    ├─→ Matrix 3 w/ Backpack (SDA) [0x72]
+                    └─→ Matrix 4 w/ Backpack (SDA) [0x73]
+
+Pico GPIO5 (SCL0) ──┬─→ Arcade Seesaw (SCL)
+                    ├─→ Matrix 1 w/ Backpack (SCL)
+                    ├─→ Matrix 2 w/ Backpack (SCL)
+                    ├─→ Matrix 3 w/ Backpack (SCL)
+                    └─→ Matrix 4 w/ Backpack (SCL)
 
 Pull-up: 4.7kΩ resistors on SDA0 and SCL0 to 3.3V
 ```
+
+**Note:** The matrix displays use daisy-chained I²C backpacks (HT16K33), each with a unique address configured via solder jumpers.
 
 ### I²C1 Bus (Haptics)
 
@@ -82,7 +86,7 @@ Pull-up: 4.7kΩ resistors on SDA1 and SCL1 to 3.3V
 
 ### Button Connections
 
-Buttons connect to the Seesaw board:
+Buttons connect to the Arcade Seesaw board:
 - **Button 0** (Left) → Left Flipper
 - **Button 1** (Center) → Start/Menu
 - **Button 2** (Right) → Right Flipper
@@ -183,8 +187,8 @@ Expected devices:
 - Try reducing bus speed in code
 
 ### Buttons Not Responsive
-- Verify Seesaw board is at address 0x30
-- Check button wiring to Seesaw board
+- Verify Arcade Seesaw board is at address 0x30
+- Check button wiring to Arcade Seesaw board
 - Ensure buttons are normally-open (NO) type
 - Verify pull-up configuration in firmware
 
@@ -215,8 +219,8 @@ Expected devices:
 |-----------|----------|-------|
 | Raspberry Pi Pico | 1 | Or Pico W |
 | WS2812B LED Board | 6 | 8 LEDs each |
-| Seesaw NeoKey 1x4 | 1 | Adafruit 4980 |
-| 8x8 LED Matrix | 4 | Adafruit 3149 |
+| LED Arcade Button 1×4 I2C Breakout | 1 | Adafruit 5296 |
+| 1.2" 8x8 LED Matrix w/ Backpack | 4 | Adafruit 1855 |
 | DRV2605L Haptic | 2 | Adafruit 2305 |
 | LED Arcade Buttons | 3 | 30mm or 24mm |
 | ERM Motors | 2 | 3V vibration motors |

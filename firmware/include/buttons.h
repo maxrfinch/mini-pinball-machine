@@ -1,7 +1,7 @@
 /**
  * buttons.h
  * 
- * Adafruit Seesaw button driver
+ * Adafruit LED Arcade Button 1×4 I2C Breakout (Arcade Seesaw) driver
  */
 
 #ifndef BUTTONS_H

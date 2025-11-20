@@ -27,7 +27,7 @@ Complete firmware implementation for Raspberry Pi Pico pinball controller has be
 - [x] Effect animation system
 
 #### Button Driver (buttons.c/h)
-- [x] Seesaw I²C communication
+- [x] Arcade Seesaw I²C communication (Adafruit 5296)
 - [x] 3 button support (LEFT, CENTER, RIGHT)
 - [x] Button state tracking
 - [x] Debouncing via polling interval
@@ -45,8 +45,8 @@ Complete firmware implementation for Raspberry Pi Pico pinball controller has be
 - [x] Waveform selection (sharp click, soft buzz, light click)
 
 #### Display Driver (display.c/h)
-- [x] HT16K33 I²C communication
-- [x] 4 matrix display support (32×8 total)
+- [x] HT16K33 I²C communication (Adafruit 1855 - 1.2" 8x8 with I2C Backpack)
+- [x] 4 matrix display support (32×8 total, daisy-chained with different addresses)
 - [x] Framebuffer management
 - [x] 5×5 digit font (0-9)
 - [x] Score rendering (right-aligned, rows 0-4)
@@ -205,8 +205,8 @@ typedef struct {
 
 ### I²C Addresses
 - **I²C0 Bus:**
-  - 0x30: Seesaw button board
-  - 0x70-0x73: HT16K33 matrix displays
+  - 0x30: Arcade Seesaw button board (Adafruit 5296)
+  - 0x70-0x73: HT16K33 matrix displays (Adafruit 1855, daisy-chained)
 - **I²C1 Bus:**
   - 0x5A: DRV2605L left haptic
   - 0x5B: DRV2605L right haptic
@@ -254,7 +254,7 @@ Output: `build/pinball_firmware.uf2`
 2. **Fixed timing** - No configurable frame rates
 3. **Limited font** - Only 5×5 digits (0-9)
 4. **No EEPROM** - Settings not persisted
-5. **Button LED control** - Stubbed (Seesaw PWM not implemented)
+5. **Button LED control** - Stubbed (Arcade Seesaw PWM not implemented)
 
 ## Future Enhancements
 
