@@ -50,6 +50,24 @@ static uint32_t effect_frame = 0;
 static uint8_t led_brightness[3] = {0, 0, 0};
 static Button menu_selection = BUTTON_LEFT;
 
+// Effect timing constants
+#define TWO_PI 6.28318530718f
+#define BALL_SAVED_CYCLES 8
+#define BALL_SAVED_CYCLE_INCREMENT_MS 20
+#define EXTRA_BALL_PULSE_ON_MS 200
+#define EXTRA_BALL_PULSE_OFF_MS 100
+#define EXTRA_BALL_PULSE_PERIOD_MS (EXTRA_BALL_PULSE_ON_MS + EXTRA_BALL_PULSE_OFF_MS)
+
+// Pseudo-random constants for chaotic effects
+#define PRNG_MULT_1 137
+#define PRNG_ADD_1 53
+#define PRNG_OFFSET_1 17
+#define PRNG_MULT_2 149
+#define PRNG_ADD_2 71
+#define PRNG_OFFSET_2 31
+#define PRNG_MULT_3 163
+#define PRNG_ADD_3 89
+
 static uint8_t button_to_led_pin(Button button) {
     switch (button) {
         case BUTTON_LEFT:   return SEESAW_LED_PIN_LEFT;
@@ -247,7 +265,7 @@ void buttons_set_menu_selection(Button button) {
 // Helper: smooth sine wave breathing (0-255)
 static uint8_t breathe_sine(uint32_t time_ms, uint32_t period_ms, uint32_t phase_offset_ms) {
     uint32_t phase = (time_ms + phase_offset_ms) % period_ms;
-    float angle = (float)phase / period_ms * 6.28318530718f; // 2*PI
+    float angle = (float)phase / period_ms * TWO_PI;
     float sine_val = (sinf(angle) + 1.0f) / 2.0f; // 0.0 to 1.0
     return (uint8_t)(sine_val * 255.0f);
 }
@@ -346,14 +364,14 @@ void buttons_update_leds(void) {
                 break;
             }
             
-            // Divide into 8 cycles, each getting progressively longer
+            // Divide into cycles, each getting progressively longer
             // Simple approach: use accelerating period
             uint32_t cycle_base = 100; // Start at 100ms per toggle
             uint32_t time_acc = 0;
             bool left_on = false;
             
-            for (int i = 0; i < 8; i++) {
-                uint32_t cycle_period = cycle_base + (i * 20); // Increase by 20ms each cycle
+            for (int i = 0; i < BALL_SAVED_CYCLES; i++) {
+                uint32_t cycle_period = cycle_base + (i * BALL_SAVED_CYCLE_INCREMENT_MS);
                 time_acc += cycle_period;
                 if (elapsed_ms < time_acc) {
                     left_on = (i % 2) == 0;
@@ -375,24 +393,23 @@ void buttons_update_leds(void) {
             }
             
             // Pseudo-random using frame counter
-            uint8_t rand_val = (effect_frame * 137 + 53) & 0xFF;
+            uint8_t rand_val = (effect_frame * PRNG_MULT_1 + PRNG_ADD_1) & 0xFF;
             led_brightness[BUTTON_LEFT] = (rand_val < 128) ? 255 : 0;
             
-            rand_val = ((effect_frame + 17) * 149 + 71) & 0xFF;
+            rand_val = ((effect_frame + PRNG_OFFSET_1) * PRNG_MULT_2 + PRNG_ADD_2) & 0xFF;
             led_brightness[BUTTON_CENTER] = (rand_val < 128) ? 255 : 0;
             
-            rand_val = ((effect_frame + 31) * 163 + 89) & 0xFF;
+            rand_val = ((effect_frame + PRNG_OFFSET_2) * PRNG_MULT_3 + PRNG_ADD_3) & 0xFF;
             led_brightness[BUTTON_RIGHT] = (rand_val < 128) ? 255 : 0;
             break;
         }
             
         case BTN_EFFECT_EXTRA_BALL_AWARD: {
             // Three medium-speed pulses, then one long fade-out
-            // Pulse duration: ~200ms each, gap: 100ms
-            // Total: 3*(200+100) = 900ms, then 1000ms fade = 1900ms total
+            // Total: 3*(PULSE_ON+PULSE_OFF) = 900ms, then 1000ms fade = 1900ms total
             if (elapsed_ms < 900) {
-                uint32_t pulse_cycle = elapsed_ms % 300; // 200 on, 100 off
-                uint8_t brightness = (pulse_cycle < 200) ? 255 : 0;
+                uint32_t pulse_cycle = elapsed_ms % EXTRA_BALL_PULSE_PERIOD_MS;
+                uint8_t brightness = (pulse_cycle < EXTRA_BALL_PULSE_ON_MS) ? 255 : 0;
                 led_brightness[BUTTON_CENTER] = brightness;
             } else if (elapsed_ms < 1900) {
                 // Fade out over 1000ms
