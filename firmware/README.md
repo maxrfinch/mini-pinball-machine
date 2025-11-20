@@ -17,18 +17,18 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 
 ### 2. Adafruit LED Arcade Button 1×4 I2C Breakout (Arcade Seesaw Board)
 - **Three buttons**: LEFT, CENTER, RIGHT
-- Connected via I²C1 bus (GPIO6/7), shared with haptics
+- Connected via I²C0 bus (GPIO4/5)
 - I²C Address: 0x30
 - Product: Adafruit 5296
 
 ### 3. Haptic Motors (2× DRV2605L)
-- Two haptic modules on I²C1 bus (GPIO6/7), shared with buttons
+- Two haptic modules on I²C1 bus (GPIO6/7)
 - Left haptic address: 0x5A
 - Right haptic address: 0x5B
 
 ### 4. 1.2" 8×8 Matrix Displays with I2C Backpacks (4 Total)
 - **4× Adafruit 1.2" 8x8 LED Matrix with HT16K33 backpack** (Adafruit 1855)
-- Connected via I²C0 bus (GPIO8/9), completely separate from arcade seesaw buttons
+- Connected via software I²C on GPIO8/9, completely separate from arcade seesaw buttons
 - Addresses: 0x70, 0x71, 0x72, 0x73
 - Combined into 32×8 display surface
 
@@ -37,13 +37,17 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 ### NeoPixel Data
 - **GPIO 2**: NeoPixel Data OUT
 
-### I²C0 (Matrix Displays Only)
-- **GPIO 8**: SDA0
-- **GPIO 9**: SCL0
+### I²C0 (Arcade Seesaw Buttons Only)
+- **GPIO 4**: SDA0
+- **GPIO 5**: SCL0
 
-### I²C1 (Buttons + Haptics)
+### I²C1 (Haptics Only)
 - **GPIO 6**: SDA1
 - **GPIO 7**: SCL1
+
+### Software I²C (Matrix Displays Only)
+- **GPIO 8**: SDA (bit-bang)
+- **GPIO 9**: SCL (bit-bang)
 
 ### Misc GPIO
 - **GPIO 12**: Status LED (heartbeat)

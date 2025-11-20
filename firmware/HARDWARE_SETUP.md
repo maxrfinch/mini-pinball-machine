@@ -50,41 +50,46 @@ Board 4 (Left Rear) → Board 5 (Left Front) → Board 6 (Front Bar)
 - Each LED draws ~60mA at full white
 - 48 LEDs × 60mA = 2.88A maximum current
 
-### I²C0 Bus (Matrix Displays Only)
-
-The matrix displays are on a separate I²C bus, completely isolated from the arcade seesaw buttons:
+### I²C0 Bus (Arcade Seesaw Buttons Only)
 
 ```
-Pico GPIO8 (SDA0) ──┬─→ Matrix 1 w/ Backpack (SDA) [0x70]
-                    ├─→ Matrix 2 w/ Backpack (SDA) [0x71]
-                    ├─→ Matrix 3 w/ Backpack (SDA) [0x72]
-                    └─→ Matrix 4 w/ Backpack (SDA) [0x73]
-
-Pico GPIO9 (SCL0) ──┬─→ Matrix 1 w/ Backpack (SCL)
-                    ├─→ Matrix 2 w/ Backpack (SCL)
-                    ├─→ Matrix 3 w/ Backpack (SCL)
-                    └─→ Matrix 4 w/ Backpack (SCL)
+Pico GPIO4 (SDA0) ──→ Arcade Seesaw (SDA) [0x30]
+Pico GPIO5 (SCL0) ──→ Arcade Seesaw (SCL)
 
 Pull-up: 4.7kΩ resistors on SDA0 and SCL0 to 3.3V
 ```
 
-**Note:** The matrix displays use daisy-chained I²C backpacks (HT16K33), each with a unique address configured via solder jumpers.
-
-### I²C1 Bus (Buttons + Haptics)
-
-The arcade seesaw buttons and haptic motors share the I²C1 bus with different addresses:
+### I²C1 Bus (Haptics Only)
 
 ```
-Pico GPIO6 (SDA1) ──┬─→ Arcade Seesaw (SDA) [0x30]
-                    ├─→ DRV2605L Left (SDA) [0x5A]
+Pico GPIO6 (SDA1) ──┬─→ DRV2605L Left (SDA) [0x5A]
                     └─→ DRV2605L Right (SDA) [0x5B]
 
-Pico GPIO7 (SCL1) ──┬─→ Arcade Seesaw (SCL)
-                    ├─→ DRV2605L Left (SCL)
+Pico GPIO7 (SCL1) ──┬─→ DRV2605L Left (SCL)
                     └─→ DRV2605L Right (SCL)
 
 Pull-up: 4.7kΩ resistors on SDA1 and SCL1 to 3.3V
 ```
+
+### Software I²C (Matrix Displays Only)
+
+The matrix displays use software I²C (bit-bang) on GPIO8/9, completely isolated from all other I²C devices:
+
+```
+Pico GPIO8 (SDA) ──┬─→ Matrix 1 w/ Backpack (SDA) [0x70]
+                   ├─→ Matrix 2 w/ Backpack (SDA) [0x71]
+                   ├─→ Matrix 3 w/ Backpack (SDA) [0x72]
+                   └─→ Matrix 4 w/ Backpack (SDA) [0x73]
+
+Pico GPIO9 (SCL) ──┬─→ Matrix 1 w/ Backpack (SCL)
+                   ├─→ Matrix 2 w/ Backpack (SCL)
+                   ├─→ Matrix 3 w/ Backpack (SCL)
+                   └─→ Matrix 4 w/ Backpack (SCL)
+
+Pull-up: 4.7kΩ resistors on SDA and SCL to 3.3V
+```
+
+**Note:** The matrix displays use daisy-chained I²C backpacks (HT16K33), each with a unique address configured via solder jumpers. Software I²C is used to achieve complete bus isolation from the arcade seesaw buttons, as the RP2040 only has 2 hardware I²C controllers.
 
 ### Button Connections
 
@@ -162,8 +167,9 @@ i2cdetect -y 1  # Check I²C1 bus
 ```
 
 Expected devices:
-- **I²C0:** 0x70, 0x71, 0x72, 0x73 (Matrix Displays)
-- **I²C1:** 0x30 (Arcade Seesaw), 0x5A, 0x5B (Haptics)
+- **I²C0:** 0x30 (Arcade Seesaw Buttons)
+- **I²C1:** 0x5A, 0x5B (Haptics)
+- **Software I²C (GPIO8/9):** 0x70, 0x71, 0x72, 0x73 (Matrix Displays)
 
 ### Quick Function Tests
 

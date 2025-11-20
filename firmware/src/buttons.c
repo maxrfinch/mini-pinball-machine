@@ -33,24 +33,27 @@ static bool seesaw_write(uint8_t reg_high, uint8_t reg_low, const uint8_t* data,
     if (len > 0 && data != NULL) {
         memcpy(buf + 2, data, len);
     }
-    int ret = i2c_write_blocking(i2c1, SEESAW_ADDR, buf, 2 + len, false);
+    int ret = i2c_write_blocking(i2c0, SEESAW_ADDR, buf, 2 + len, false);
     return ret == (2 + len);
 }
 
 static bool seesaw_read(uint8_t reg_high, uint8_t reg_low, uint8_t* data, size_t len) {
     uint8_t buf[2] = {reg_high, reg_low};
-    int ret = i2c_write_blocking(i2c1, SEESAW_ADDR, buf, 2, true);
+    int ret = i2c_write_blocking(i2c0, SEESAW_ADDR, buf, 2, true);
     if (ret != 2) return false;
     
     sleep_ms(1);
-    ret = i2c_read_blocking(i2c1, SEESAW_ADDR, data, len, false);
+    ret = i2c_read_blocking(i2c0, SEESAW_ADDR, data, len, false);
     return ret == len;
 }
 
 void buttons_init(void) {
-    // I2C1 already initialized by haptics_init()
-    // Buttons share the I2C1 bus with haptics (different addresses)
-    // No need to initialize I2C again
+    // Initialize I2C0 for arcade seesaw buttons
+    i2c_init(i2c0, I2C0_FREQ);
+    gpio_set_function(I2C0_SDA_PIN, GPIO_FUNC_I2C);
+    gpio_set_function(I2C0_SCL_PIN, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C0_SDA_PIN);
+    gpio_pull_up(I2C0_SCL_PIN);
     
     sleep_ms(100);
     
