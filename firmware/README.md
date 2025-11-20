@@ -123,6 +123,42 @@ When no commands are received for 30 seconds, the firmware enters debug mode:
 
 Debug mode exits immediately upon receiving any command.
 
+## Diagnostics and Troubleshooting
+
+The firmware includes comprehensive diagnostic logging to help identify hardware issues. All diagnostic messages are sent via USB serial (115200 baud).
+
+### Startup Diagnostics
+
+On boot, the firmware logs:
+- System banner and version
+- I²C bus initialization (I2C0, I2C1, bit-banged)
+- Device detection and configuration status
+- GPIO pin assignments
+
+### Debug Mode Self-Test
+
+When debug mode activates, a comprehensive I²C bus self-test runs automatically:
+- Tests I2C0 (Seesaw buttons at 0x30)
+- Tests I2C1 (Haptics at 0x5A and 0x5B)
+- Reports pass/fail status for each device
+- Documents bit-banged I²C configuration
+
+### Runtime Monitoring
+
+During operation:
+- Button press/release events are logged
+- I²C communication failures are tracked
+- Raw GPIO states logged periodically
+- Display ACK/NACK status reported
+
+### Complete Documentation
+
+See **[DIAGNOSTICS.md](DIAGNOSTICS.md)** for:
+- Complete message reference
+- Troubleshooting procedures
+- Expected output examples
+- Hardware debugging guide
+
 ## Building the Firmware
 
 ### Prerequisites
