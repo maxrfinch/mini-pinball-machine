@@ -17,10 +17,10 @@ The firmware uses two hardware I²C buses:
    - HT16K33 Matrix Display 2 (0x72)
    - HT16K33 Matrix Display 3 (0x73)
    
-2. **I2C1 (Hardware I²C)** - GPIO6/7
+2. **I²C1 (Hardware I²C)** - GPIO6/7
    - DRV2605L Left Haptic (0x5A)
 
-**Note:** The right haptic (0x5A) shares I²C0 with buttons and displays. DRV2605L chips have a fixed address, requiring separate I²C buses.
+**Note:** The right haptic (0x5A) shares I²C0 with buttons and displays. This design uses both haptics at the default address 0x5A on separate I²C buses.
 
 ## Startup Logging
 
@@ -173,15 +173,15 @@ When debug mode starts, a comprehensive bus self-test runs:
 │ Testing Seesaw (0x30)... ✓ OK - Device responding
 └────────────────────────────────────────────────────────────┘
 
-┌─ I2C1 Bus (Hardware) ─────────────────────────────────────┐
+┌─ I²C1 Bus (Hardware) ─────────────────────────────────────┐
 │ GPIOs: 6 (SDA), 7 (SCL)
 │ Frequency: 100000 Hz
 │
 │ Testing DRV2605L Left (0x5A)... ✓ OK
 └────────────────────────────────────────────────────────────┘
 
-┌─ Right Haptic (On I2C0, Shared Bus) ──────────────────────┐
-│ Note: Right haptic shares I2C0 with Seesaw and Matrices
+┌─ Right Haptic (On I²C0, Shared Bus) ──────────────────────┐
+│ Note: Right haptic shares I²C0 with Seesaw and Matrices
 │
 │ Testing DRV2605L Right (0x5A)... ✓ OK
 └────────────────────────────────────────────────────────────┘

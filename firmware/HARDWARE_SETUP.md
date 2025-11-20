@@ -153,9 +153,11 @@ The 4 matrix displays need different I²C addresses. Configure using solder jump
 
 ### Setting DRV2605L Configuration
 
-DRV2605L haptic controllers have a fixed I²C address of 0x5A and cannot be changed via jumpers. Therefore, the two haptic modules must be connected to separate I²C buses:
+This project uses two DRV2605L haptic modules, both at I²C address 0x5A. While the DRV2605L chip has an ADDR pin to change the address to 0x5B, this design connects the modules to separate I²C buses instead:
 - **Left Module**: I²C1 bus (GPIO6/7) at address 0x5A
 - **Right Module**: I²C0 bus (GPIO4/5) at address 0x5A (shared with buttons and displays)
+
+This approach avoids needing to modify the ADDR pin on either module and allows both to use the default address.
 
 ## Testing Connections
 
