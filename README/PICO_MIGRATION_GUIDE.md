@@ -154,7 +154,7 @@ cd src
 - Check wiring: SDA to GPIO 4, SCL to GPIO 5
 - Verify pull-up resistors (4.7kΩ to 3.3V)
 - Check I2C addresses:
-  - NeoKey: 0x30
+  - Arcade Seesaw: 0x3A
   - Matrices: 0x70, 0x71, 0x72, 0x73
 - Voltage: Ensure all devices run at 3.3V
 
@@ -166,7 +166,7 @@ cd src
 
 ### Buttons not responding
 
-- Check NeoKey at correct address (0x30)
+- Check Arcade Seesaw at correct address (0x3A)
 - Verify button index mapping
 - Test I2C communication manually
 
@@ -188,7 +188,7 @@ sudo apt-get install i2c-tools
 i2cdetect -y 1
 
 # Should show:
-# 0x30 - NeoKey board
+# 0x3A - Arcade Seesaw button board
 # 0x70, 0x71, 0x72, 0x73 - Matrix displays
 ```
 

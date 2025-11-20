@@ -10,6 +10,7 @@
 #include "pico/stdlib.h"
 #include "protocol.h"
 #include "neopixel.h"
+#include "buttons.h"
 #include "display.h"
 #include "debug_mode.h"
 #include "hardware_config.h"
@@ -77,6 +78,32 @@ static void parse_command(const char* cmd) {
             neopixel_start_effect(EFFECT_PINK_PULSE);
         } else if (strcmp(effect, "BALL_LAUNCH") == 0) {
             neopixel_start_effect(EFFECT_BALL_LAUNCH);
+        }
+        
+    } else if (strncmp(cmd, "CMD BUTTON_EFFECT ", 18) == 0) {
+        // CMD BUTTON_EFFECT <effect_name>
+        const char* effect = cmd + 18;
+        
+        if (strcmp(effect, "OFF") == 0) {
+            buttons_start_effect(BTN_EFFECT_OFF);
+        } else if (strcmp(effect, "READY_STEADY_GLOW") == 0) {
+            buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
+        } else if (strcmp(effect, "FLIPPER_FEEDBACK") == 0) {
+            buttons_start_effect(BTN_EFFECT_FLIPPER_FEEDBACK);
+        } else if (strcmp(effect, "CENTER_HIT_PULSE") == 0) {
+            buttons_start_effect(BTN_EFFECT_CENTER_HIT_PULSE);
+        } else if (strcmp(effect, "SKILL_SHOT_BUILDUP") == 0) {
+            buttons_start_effect(BTN_EFFECT_SKILL_SHOT_BUILDUP);
+        } else if (strcmp(effect, "BALL_SAVED") == 0) {
+            buttons_start_effect(BTN_EFFECT_BALL_SAVED);
+        } else if (strcmp(effect, "POWERUP_ALERT") == 0) {
+            buttons_start_effect(BTN_EFFECT_POWERUP_ALERT);
+        } else if (strcmp(effect, "EXTRA_BALL_AWARD") == 0) {
+            buttons_start_effect(BTN_EFFECT_EXTRA_BALL_AWARD);
+        } else if (strcmp(effect, "GAME_OVER_FADE") == 0) {
+            buttons_start_effect(BTN_EFFECT_GAME_OVER_FADE);
+        } else if (strcmp(effect, "MENU_NAVIGATION") == 0) {
+            buttons_start_effect(BTN_EFFECT_MENU_NAVIGATION);
         }
         
     } else if (strncmp(cmd, "CMD BRIGHTNESS ", 15) == 0) {

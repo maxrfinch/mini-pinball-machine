@@ -205,7 +205,7 @@ typedef struct {
 
 ### I²C Addresses
 - **I²C0 Bus:**
-  - 0x30: Arcade Seesaw button board (Adafruit 5296)
+  - 0x3A: Arcade Seesaw button board (Adafruit 5296)
   - 0x70-0x73: HT16K33 matrix displays (Adafruit 1855, daisy-chained)
 - **I²C1 Bus:**
   - 0x5A: DRV2605L left haptic

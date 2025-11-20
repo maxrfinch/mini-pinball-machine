@@ -53,7 +53,7 @@ Board 4 (Left Rear) → Board 5 (Left Front) → Board 6 (Front Bar)
 ### I²C0 Bus (Arcade Seesaw Buttons + Matrix Displays)
 
 ```
-Pico GPIO4 (SDA0) ──┬─→ Arcade Seesaw (SDA) [0x30]
+Pico GPIO4 (SDA0) ──┬─→ Arcade Seesaw (SDA) [0x3A]
                     ├─→ Matrix 1 w/ Backpack (SDA) [0x70]
                     ├─→ Matrix 2 w/ Backpack (SDA) [0x71]
                     ├─→ Matrix 3 w/ Backpack (SDA) [0x72]
@@ -158,7 +158,7 @@ i2cdetect -y 1  # Check I²C1 bus
 ```
 
 Expected devices:
-- **I²C0:** 0x30 (Arcade Seesaw Buttons), 0x70-0x73 (Matrix Displays)
+- **I²C0:** 0x3A (Arcade Seesaw Buttons), 0x70-0x73 (Matrix Displays)
 - **I²C1:** 0x5A, 0x5B (Haptics)
 
 ### Quick Function Tests
@@ -185,7 +185,7 @@ Expected devices:
 - Try reducing bus speed in code
 
 ### Buttons Not Responsive
-- Verify Arcade Seesaw board is at address 0x30
+- Verify Arcade Seesaw board is at address 0x3A
 - Check button wiring to Arcade Seesaw board
 - Ensure buttons are normally-open (NO) type
 - Verify pull-up configuration in firmware

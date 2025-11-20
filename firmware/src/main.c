@@ -158,6 +158,10 @@ int main() {
     debug_mode_init();
     printf("Debug mode initialized\n\n");
     
+    // Start with attract mode button effect
+    buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
+    printf("Button LED effects initialized (READY_STEADY_GLOW)\n\n");
+    
     printf("╔═══════════════════════════════════════════════════════════╗\n");
     printf("║                  SYSTEM READY                             ║\n");
     printf("╚═══════════════════════════════════════════════════════════╝\n");
@@ -191,6 +195,7 @@ int main() {
             debug_mode_update();
         } else {
             neopixel_update_effect();
+            buttons_update_leds();
         }
         
         // Update displays
