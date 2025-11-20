@@ -11,6 +11,7 @@
 #include "protocol.h"
 #include "neopixel.h"
 #include "display.h"
+#include "debug_mode.h"
 #include "hardware_config.h"
 
 #define CMD_BUFFER_SIZE 128
@@ -36,8 +37,9 @@ bool protocol_is_debug_timeout(void) {
 }
 
 static void parse_command(const char* cmd) {
-    // Update activity timestamp
+    // Update activity timestamp and exit debug mode if active
     protocol_update_activity();
+    debug_mode_exit();
     
     // Parse command
     if (strncmp(cmd, "CMD MODE ", 9) == 0) {
