@@ -1,7 +1,6 @@
 /**
  * display.c
- * 
- * HT16K33 8x8 matrix display driver for Adafruit 1.2" 8x8 LED Matrix with I2C Backpack
+ * * HT16K33 8x8 matrix display driver for Adafruit 1.2" 8x8 LED Matrix with I2C Backpack
  * Uses hardware I2C0 bus (shared with Seesaw buttons)
  */
 
@@ -34,18 +33,19 @@ static const uint8_t display_addrs[NUM_DISPLAYS] = {
 // Framebuffer (32x8 = 256 pixels)
 static uint8_t framebuffer[DISPLAY_WIDTH][DISPLAY_HEIGHT];
 
-// 5x5 digit font (0-9)
-static const uint8_t digit_font[10][5] = {
-    {0x3E, 0x51, 0x49, 0x45, 0x3E}, // 0
-    {0x00, 0x42, 0x7F, 0x40, 0x00}, // 1
-    {0x42, 0x61, 0x51, 0x49, 0x46}, // 2
-    {0x21, 0x41, 0x45, 0x4B, 0x31}, // 3
-    {0x18, 0x14, 0x12, 0x7F, 0x10}, // 4
-    {0x27, 0x45, 0x45, 0x45, 0x39}, // 5
-    {0x3C, 0x4A, 0x49, 0x49, 0x30}, // 6
-    {0x01, 0x71, 0x09, 0x05, 0x03}, // 7
-    {0x36, 0x49, 0x49, 0x49, 0x36}, // 8
-    {0x06, 0x49, 0x49, 0x29, 0x1E}  // 9
+// 3x5 digit font (0–9), 3 columns wide, 5 rows tall
+// Each byte uses lowest 5 bits as vertical pixels (bit0 = top)
+static const uint8_t digit_font[10][3] = {
+    {0b11111, 0b10001, 0b11111}, // 0
+    {0b11111, 0b00000, 0b00000}, // 1
+    {0b11101, 0b10101, 0b10111}, // 2
+    {0b10101, 0b10101, 0b11111}, // 3
+    {0b00111, 0b00100, 0b11111}, // 4
+    {0b10111, 0b10101, 0b11101}, // 5
+    {0b11111, 0b10101, 0b11101}, // 6
+    {0b00001, 0b00001, 0b11111}, // 7
+    {0b11111, 0b10101, 0b11111}, // 8
+    {0b10111, 0b10101, 0b11111}  // 9
 };
 
 static bool ht16k33_write(uint8_t addr, const uint8_t* data, size_t len) {
@@ -73,7 +73,7 @@ static void ht16k33_init_display(uint8_t addr) {
     sleep_ms(1);
     
     // Set brightness to max
-    cmd = HT16K33_BRIGHTNESS_CMD | 0x0F;
+    cmd = HT16K33_BRIGHTNESS_CMD | 0x0;
     if (!ht16k33_write(addr, &cmd, 1)) {
         printf("  Failed to set brightness\n");
         success = false;
@@ -121,17 +121,22 @@ void display_clear(void) {
     memset(framebuffer, 0, sizeof(framebuffer));
 }
 
-static void draw_digit(uint8_t x, uint8_t y, uint8_t digit) {
-    if (digit > 9 || x + 3 >= DISPLAY_WIDTH || y + 5 > DISPLAY_HEIGHT) {
+static void draw_digit(uint8_t x, uint8_t y_phys, uint8_t digit) {
+    // y_phys is the top physical row for this 3x5 digit
+    if (digit > 9 || x + 3 >= DISPLAY_WIDTH || y_phys + 5 > DISPLAY_HEIGHT) {
         return;
     }
-    
-    for (int col = 0; col < 5; col++) {
+
+    int digit_width = (digit == 1 ? 1 : 3);
+    for (int col = 0; col < digit_width; col++) {
         uint8_t column_data = digit_font[digit][col];
         for (int row = 0; row < 5; row++) {
             if (column_data & (1 << row)) {
-                if (x + col < DISPLAY_WIDTH && y + row < DISPLAY_HEIGHT) {
-                    framebuffer[x + col][y + row] = 1;
+                uint8_t phys_row = y_phys + row;              // 0..7 physical
+                uint8_t fb_row   = (phys_row + 7) % 8;        // map to framebuffer row
+
+                if (x + col < DISPLAY_WIDTH) {
+                    framebuffer[x + col][fb_row] = 1;
                 }
             }
         }
@@ -139,71 +144,125 @@ static void draw_digit(uint8_t x, uint8_t y, uint8_t digit) {
 }
 
 void display_set_score(uint32_t score) {
-    // Clear score area (rows 0-4)
+    // Clear score area: physical rows 0-4 → framebuffer rows 7,0,1,2,3
     for (int x = 0; x < DISPLAY_WIDTH; x++) {
-        for (int y = 0; y < 5; y++) {
-            framebuffer[x][y] = 0;
-        }
+        framebuffer[x][7] = 0; // physical row 0
+        framebuffer[x][0] = 0; // physical row 1
+        framebuffer[x][1] = 0; // physical row 2
+        framebuffer[x][2] = 0; // physical row 3
+        framebuffer[x][3] = 0; // physical row 4
     }
-    
+
     // Convert score to string
     char score_str[12];
     snprintf(score_str, sizeof(score_str), "%lu", (unsigned long)score);
     
-    // Draw digits right-aligned
+    // Draw digits left-aligned (increasing score grows to the right)
     int len = strlen(score_str);
-    int x = DISPLAY_WIDTH - (len * 4);  // 3 pixels per digit + 1 space
-    if (x < 0) x = 0;
-    
+    int x = 0;  // start at left edge
+
     for (int i = 0; i < len && x < DISPLAY_WIDTH; i++) {
         uint8_t digit = score_str[i] - '0';
         if (digit <= 9) {
+            // Draw starting at physical top row 0
             draw_digit(x, 0, digit);
         }
-        x += 4; // 3 pixels + 1 space
+        int w = (digit == 1 ? 1 : 3);
+        x += w + 1; // digit width + 1 space
     }
 }
 
-void display_set_balls(uint8_t balls) {
-    // Clear ball area (rows 6-7)
+void display_set_balls(uint8_t balls)
+{
+    // Layout:
+    //   Score: physical rows 0–4
+    //   Row 5: empty separator
+    //   Balls: physical rows 6–7 (2×2 blocks, bottom‑right)
+
+    // Clear physical rows 5, 6, 7
     for (int x = 0; x < DISPLAY_WIDTH; x++) {
-        for (int y = 6; y < DISPLAY_HEIGHT; y++) {
-            framebuffer[x][y] = 0;
+        for (int phys = 5; phys <= 7; phys++) {
+            uint8_t fb = (phys + 7) % 8;   // physical → framebuffer
+            framebuffer[x][fb] = 0;
         }
     }
-    
-    // Draw 2x2 blocks from right to left
+
+    // Draw balls from right to left, max 5
     for (int i = 0; i < balls && i < 5; i++) {
-        int x = DISPLAY_WIDTH - 2 - (i * 4); // 2 pixels + 2 space per ball
-        
-        // Draw 2x2 block
+        int x_phys = DISPLAY_WIDTH - 2 - (i * 4);   // 2px ball + 2px gap
+
         for (int dx = 0; dx < 2; dx++) {
+            int px = x_phys + dx;
+            if (px < 0 || px >= DISPLAY_WIDTH) continue;
+
+            // Ball occupies physical rows 6 and 7
             for (int dy = 0; dy < 2; dy++) {
-                if (x + dx < DISPLAY_WIDTH) {
-                    framebuffer[x + dx][6 + dy] = 1;
-                }
+                uint8_t phys = 6 + dy;            // 6,7
+                uint8_t fb   = (phys + 7) % 8;
+                framebuffer[px][fb] = 1;
             }
         }
     }
 }
 
+// ** TEST FUNCTION **
+void display_draw_small_C_test(void) {
+    display_clear();
+
+    // Draw a small 3x3 'C' shape aligned to the top-left corner of each 8x8 board.
+    for (int disp = 0; disp < NUM_DISPLAYS; disp++) {
+        int x_offset = disp * 8; // Starting X coordinate for the current display (left edge)
+
+        // NOTE: Due to the HT16K33 row mapping, physical top row corresponds to
+        // framebuffer row 7, then rows wrap 0,1,... downward.
+
+        // Vertical spine (left column of 3x3 block) on physical rows 0,1,2
+        framebuffer[x_offset + 0][7] = 1; // physical row 0 (top)
+        framebuffer[x_offset + 0][0] = 1; // physical row 1
+        framebuffer[x_offset + 0][1] = 1; // physical row 2
+
+        // Top bar (physical row 0, x = 1..2) -> framebuffer row 7
+        framebuffer[x_offset + 1][7] = 1;
+        framebuffer[x_offset + 2][7] = 1;
+
+        // Bottom bar (physical row 2, x = 1..2) -> framebuffer row 1
+        framebuffer[x_offset + 1][1] = 1;
+        framebuffer[x_offset + 2][1] = 1;
+    }
+}
+
+// ** FINAL MAPPING: Swap Axes + Register Flip + Bit Flip **
 void display_update(void) {
     // Each display is 8x8, we have 4 displays side-by-side
     for (int disp = 0; disp < NUM_DISPLAYS; disp++) {
-        uint8_t buffer[17]; // 0x00 register address + 16 bytes data
-        buffer[0] = 0x00;   // Start at register 0
+        uint8_t buffer[17];
+        buffer[0] = 0x00; // Start at register 0
         
-        // Convert framebuffer to display format
-        for (int row = 0; row < 8; row++) {
-            uint8_t row_data = 0;
-            for (int col = 0; col < 8; col++) {
-                int fb_x = disp * 8 + col;
-                if (framebuffer[fb_x][row]) {
-                    row_data |= (1 << col);
+        // 1. OUTER LOOP: Iterate over Framebuffer Columns (X) 
+        //    - This maps to the HT16K33 Register Address (Physical Row)
+        for (int fb_col = 0; fb_col < 8; fb_col++) {
+            uint8_t row_data = 0; 
+            
+            // *** FIX 1: Apply Horizontal Flip (to the Register Address) ***
+            // Maps FB X=0 (left edge) to HT16K33 Register 7 (bottom physical row)
+            // This handles the Horizontal orientation (X axis)
+            int ht_reg_index = 7 - fb_col;
+            
+            // 2. INNER LOOP: Iterate over Framebuffer Rows (Y)
+            //    - This maps to the HT16K33 Bit Position (Physical Column)
+            for (int fb_row = 0; fb_row < 8; fb_row++) {
+                int fb_x = disp * 8 + fb_col;
+
+                if (framebuffer[fb_x][fb_row]) {
+                    // Map framebuffer row directly to HT16K33 bit index
+                    int ht_bit_index = fb_row;
+                    row_data |= (1 << ht_bit_index);
                 }
             }
-            buffer[1 + row * 2] = row_data;
-            buffer[2 + row * 2] = 0;
+            
+            // Store the calculated byte using the flipped register index
+            buffer[1 + ht_reg_index * 2] = row_data;
+            buffer[2 + ht_reg_index * 2] = 0;
         }
         
         ht16k33_write(display_addrs[disp], buffer, 17);
@@ -221,8 +280,11 @@ void display_test_pattern(void) {
     
     if (pattern == 0) {
         // Show all digits
-        for (int i = 0; i < 10 && i * 4 < DISPLAY_WIDTH; i++) {
-            draw_digit(i * 4, 1, i);
+        int tx = 0;
+        for (int i = 0; i < 10 && tx < DISPLAY_WIDTH; i++) {
+            int w = (i == 1 ? 1 : 3);
+            draw_digit(tx, 1, i);
+            tx += w + 1;
         }
     } else if (pattern == 1) {
         // Draw ball icons

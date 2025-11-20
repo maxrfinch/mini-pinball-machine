@@ -27,4 +27,7 @@ void display_update(void);
 // Debug test pattern (scroll "TEST", show digits, draw ball icons)
 void display_test_pattern(void);
 
+// Test pattern to draw an L in the bottom-right of each board
+void display_draw_small_C_test(void);
+
 #endif // DISPLAY_H

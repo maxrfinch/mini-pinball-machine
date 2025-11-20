@@ -22,10 +22,34 @@
 #define SEESAW_GPIO_BULK 0x04
 #define SEESAW_GPIO_PULLENSET 0x0B
 
+// Seesaw timer/PWM function
+#define SEESAW_TIMER_PWM 0x01
+
+// Seesaw LED pin numbers for the Arcade QT board
+// LED pins in order (1, 2, 3, 4) per Adafruit example: 12, 13, 0, 1
+#define SEESAW_LED_PIN_LEFT   12
+#define SEESAW_LED_PIN_CENTER 13
+#define SEESAW_LED_PIN_RIGHT  0
+
+// Seesaw GPIO pin numbers for the Arcade QT buttons
+// Button pins in order (1, 2, 3, 4) per Adafruit example: 18, 19, 20, 2
+#define SEESAW_BTN_PIN_0 18  // logical button index 0
+#define SEESAW_BTN_PIN_1 19  // logical button index 1
+#define SEESAW_BTN_PIN_2 20  // logical button index 2
+
 static bool button_states[3] = {false, false, false};
 static bool last_button_states[3] = {false, false, false};
 static uint32_t button_hold_time[3] = {0, 0, 0};
 static const uint32_t HOLD_THRESHOLD_MS = 500;
+
+static uint8_t button_to_led_pin(Button button) {
+    switch (button) {
+        case BUTTON_LEFT:   return SEESAW_LED_PIN_LEFT;
+        case BUTTON_CENTER: return SEESAW_LED_PIN_CENTER;
+        case BUTTON_RIGHT:  return SEESAW_LED_PIN_RIGHT;
+        default:            return 0xFF; // invalid
+    }
+}
 
 static bool seesaw_write(uint8_t reg_high, uint8_t reg_low, const uint8_t* data, size_t len) {
     uint8_t buf[32];
@@ -66,8 +90,10 @@ void buttons_init(void) {
     
     printf("Configuring Seesaw at address 0x%02X...\n", SEESAW_ADDR);
     
-    // Configure buttons as inputs with pull-ups
-    uint32_t mask = (1 << 0) | (1 << 1) | (1 << 2); // Buttons 0, 1, 2
+    // Configure buttons as inputs with pull-ups (use Seesaw GPIO pins 18, 19, 20)
+    uint32_t mask = (1u << SEESAW_BTN_PIN_0) |
+                    (1u << SEESAW_BTN_PIN_1) |
+                    (1u << SEESAW_BTN_PIN_2);
     uint8_t mask_bytes[4] = {
         (mask >> 24) & 0xFF,
         (mask >> 16) & 0xFF,
@@ -104,7 +130,7 @@ void buttons_poll(void) {
         error_count++;
         // Log first few errors and then periodically
         if (error_count <= 5 || (error_count % 100) == 0) {
-            printf("SEESAW: read FAILED on i2c0 (error #%lu)\n", (unsigned long)error_count);
+            //printf("SEESAW: read FAILED on i2c0 (error #%lu)\n", (unsigned long)error_count);
         }
         return;
     }
@@ -124,10 +150,10 @@ void buttons_poll(void) {
                (unsigned long)gpio_state, (unsigned long)poll_count);
     }
     
-    // Buttons are active low
-    button_states[BUTTON_LEFT] = !(gpio_state & (1 << 0));
-    button_states[BUTTON_CENTER] = !(gpio_state & (1 << 1));
-    button_states[BUTTON_RIGHT] = !(gpio_state & (1 << 2));
+    // Buttons are active low; map Seesaw GPIO pins to logical buttons
+    button_states[BUTTON_LEFT]   = !(gpio_state & (1u << SEESAW_BTN_PIN_0));
+    button_states[BUTTON_CENTER] = !(gpio_state & (1u << SEESAW_BTN_PIN_1));
+    button_states[BUTTON_RIGHT]  = !(gpio_state & (1u << SEESAW_BTN_PIN_2));
     
     // Check for state changes and generate events
     for (int i = 0; i < 3; i++) {
@@ -172,8 +198,21 @@ void buttons_poll(void) {
 }
 
 void buttons_set_led(Button button, uint8_t brightness) {
-    // LED control via Seesaw - stub for now
-    // Would need to use PWM registers on Seesaw
+    uint8_t pin = button_to_led_pin(button);
+    if (pin == 0xFF) {
+        return; // invalid button
+    }
+
+    // Map 0–255 brightness to 16-bit duty (0–65535)
+    uint16_t duty = (uint16_t)brightness * 257u; // 255 -> ~65535
+
+    uint8_t payload[3];
+    payload[0] = pin;                 // PWM channel / pin
+    payload[1] = (duty >> 8) & 0xFF;  // high byte
+    payload[2] = duty & 0xFF;         // low byte
+
+    // Write PWM duty cycle to Seesaw timer module
+    (void)seesaw_write(SEESAW_TIMER_BASE, SEESAW_TIMER_PWM, payload, 3);
 }
 
 void buttons_set_led_pulse(Button button, bool slow) {

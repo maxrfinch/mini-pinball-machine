@@ -33,7 +33,7 @@
 #define BOOTSEL_TRIGGER_PIN 22
 
 // Arcade Seesaw Button Board I2C Address (Adafruit 5296)
-#define SEESAW_ADDR 0x30
+#define SEESAW_ADDR 0x3A
 
 // HT16K33 Matrix Display I2C Addresses (Adafruit 1855 - 1.2" 8x8 with I2C Backpack)
 // Connected on I2C0 bus (shared with Seesaw buttons)
@@ -44,7 +44,7 @@
 
 // DRV2605L Haptic I2C Addresses
 #define HAPTIC_LEFT_ADDR 0x5A
-#define HAPTIC_RIGHT_ADDR 0x5B
+#define HAPTIC_RIGHT_ADDR 0x5A
 
 // Button Bit Masks (Seesaw)
 #define BUTTON_LEFT_MASK (1 << 0)
