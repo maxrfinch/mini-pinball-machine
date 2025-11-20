@@ -8,22 +8,18 @@ Comprehensive logging has been added to all I²C drivers to help identify why ce
 
 ## Architecture Summary
 
-The firmware uses three separate I²C buses to avoid conflicts:
+The firmware uses two hardware I²C buses:
 
 1. **I2C0 (Hardware I²C)** - GPIO4/5
    - Adafruit Arcade Seesaw Button Board (0x30)
-   
-2. **I2C1 (Hardware I²C)** - GPIO6/7
-   - DRV2605L Left Haptic (0x5A)
-   - DRV2605L Right Haptic (0x5B)
-   
-3. **Bit-Banged I²C (Software)** - GPIO8/9
    - HT16K33 Matrix Display 0 (0x70)
    - HT16K33 Matrix Display 1 (0x71)
    - HT16K33 Matrix Display 2 (0x72)
    - HT16K33 Matrix Display 3 (0x73)
-
-**Important:** GPIO8/9 are configured as GPIO_FUNC_SIO (standard I/O) for bit-banging, NOT GPIO_FUNC_I2C.
+   
+2. **I2C1 (Hardware I²C)** - GPIO6/7
+   - DRV2605L Left Haptic (0x5A)
+   - DRV2605L Right Haptic (0x5B)
 
 ## Startup Logging
 
@@ -76,12 +72,12 @@ Initializing DRV2605L at 0x5B...
 - `Failed to select library` - Communication error
 - `Failed to configure control` - Communication error
 
-#### Displays (Bit-Banged I2C)
+#### Displays (Shared I2C0 Hardware Bus)
 ```
-=== Display Initialization (Bit-Banged I2C on GPIO8/GPIO9) ===
-GPIO pins configured for bit-bang I2C (NOT GPIO_FUNC_I2C)
-I2C bus idle (lines released high)
-Initializing 4 HT16K33 matrix displays...
+=== Display Initialization (Shared I2C0 Hardware Bus) ===
+Matrix displays share I2C0 with Seesaw buttons
+I2C0 already initialized at 100000 Hz on GPIO4 (SDA) / GPIO5 (SCL)
+Initializing 4 HT16K33 matrix displays on I2C0...
 Initializing HT16K33 at 0x70...
   HT16K33 0x70 initialized successfully
 Initializing HT16K33 at 0x71...
@@ -94,8 +90,7 @@ Initializing HT16K33 at 0x73...
 ```
 
 **Error Indicators:**
-- `HT16K33 0xXX: NO ACK on address` - Device not responding at this address
-- `HT16K33 0xXX: NO ACK on data[N] = 0xXX` - Device stopped ACKing during data transfer
+- `HT16K33 0xXX: I2C write failed (wrote N/M bytes)` - Device not responding or communication error
 - `Failed to turn on oscillator` - Device communication failed
 - `Failed to set brightness` - Device communication failed
 - `Failed to turn on display` - Device communication failed
@@ -183,14 +178,13 @@ When debug mode starts, a comprehensive bus self-test runs:
 │ Testing DRV2605L Right (0x5B)... ✓ OK
 └────────────────────────────────────────────────────────────┘
 
-┌─ Bit-Banged I2C Bus (Software) ───────────────────────────┐
-│ GPIOs: 8 (SDA), 9 (SCL)
-│ Note: Using GPIO_FUNC_SIO (NOT GPIO_FUNC_I2C)
+┌─ Matrix Displays (Shared on I2C0) ────────────────────────┐
+│ Note: Matrices share I2C0 hardware bus with Seesaw
 │
-│ Testing HT16K33 Matrix 0 (0x70)... See init logs
-│ Testing HT16K33 Matrix 1 (0x71)... See init logs
-│ Testing HT16K33 Matrix 2 (0x72)... See init logs
-│ Testing HT16K33 Matrix 3 (0x73)... See init logs
+│ Testing HT16K33 Matrix 0 (0x70)... ✓ OK
+│ Testing HT16K33 Matrix 1 (0x71)... ✓ OK
+│ Testing HT16K33 Matrix 2 (0x72)... ✓ OK
+│ Testing HT16K33 Matrix 3 (0x73)... ✓ OK
 └────────────────────────────────────────────────────────────┘
 
 Self-test complete. Monitor above for any failures.
@@ -225,20 +219,22 @@ Debug mode exits when any command is received:
 3. Run debug mode and check self-test results
 4. Verify no "SEESAW: read FAILED" messages appear
 
-### Problem: "HT16K33 NO ACK on address"
+### Problem: "HT16K33 I2C write failed"
 
 **Possible Causes:**
 1. Incorrect address configuration (solder jumpers)
-2. Wiring issue on GPIO8 (SDA) or GPIO9 (SCL)
+2. Wiring issue on GPIO4 (SDA) or GPIO5 (SCL)
 3. Missing pull-up resistors (4.7kΩ required)
 4. Power supply issue
 5. Defective display backpack
+6. I2C bus contention with Seesaw
 
 **Diagnostic Steps:**
-1. Verify "GPIO pins configured for bit-bang I2C (NOT GPIO_FUNC_I2C)" message
-2. Check which displays ACK successfully during init
-3. Verify address jumpers on non-responding displays
-4. Check pull-ups on GPIO8/9
+1. Verify "I2C0 already initialized" message during display init
+2. Check which displays initialize successfully during init
+3. Verify address jumpers on non-responding displays (0x70-0x73)
+4. Check pull-ups on GPIO4/5
+5. Run debug mode self-test to probe all I2C0 devices
 
 ### Problem: "DRV2605L initialization failed"
 

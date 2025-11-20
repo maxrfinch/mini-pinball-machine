@@ -28,7 +28,7 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 
 ### 4. 1.2" 8×8 Matrix Displays with I2C Backpacks (4 Total)
 - **4× Adafruit 1.2" 8x8 LED Matrix with HT16K33 backpack** (Adafruit 1855)
-- Connected via software I²C on GPIO8/9, completely separate from arcade seesaw buttons
+- Connected via I²C0 bus (GPIO4/5), shared with arcade seesaw buttons
 - Addresses: 0x70, 0x71, 0x72, 0x73
 - Combined into 32×8 display surface
 
@@ -37,17 +37,13 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 ### NeoPixel Data
 - **GPIO 2**: NeoPixel Data OUT
 
-### I²C0 (Arcade Seesaw Buttons Only)
+### I²C0 (Arcade Seesaw Buttons + Matrix Displays)
 - **GPIO 4**: SDA0
 - **GPIO 5**: SCL0
 
 ### I²C1 (Haptics Only)
 - **GPIO 6**: SDA1
 - **GPIO 7**: SCL1
-
-### Software I²C (Matrix Displays Only)
-- **GPIO 8**: SDA (bit-bang)
-- **GPIO 9**: SCL (bit-bang)
 
 ### Misc GPIO
 - **GPIO 12**: Status LED (heartbeat)
@@ -131,17 +127,16 @@ The firmware includes comprehensive diagnostic logging to help identify hardware
 
 On boot, the firmware logs:
 - System banner and version
-- I²C bus initialization (I2C0, I2C1, bit-banged)
+- I²C bus initialization (I2C0, I2C1)
 - Device detection and configuration status
 - GPIO pin assignments
 
 ### Debug Mode Self-Test
 
 When debug mode activates, a comprehensive I²C bus self-test runs automatically:
-- Tests I2C0 (Seesaw buttons at 0x30)
+- Tests I2C0 (Seesaw buttons at 0x30, Matrix displays at 0x70-0x73)
 - Tests I2C1 (Haptics at 0x5A and 0x5B)
 - Reports pass/fail status for each device
-- Documents bit-banged I²C configuration
 
 ### Runtime Monitoring
 
