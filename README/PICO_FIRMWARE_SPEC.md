@@ -45,7 +45,7 @@ Used for:
 | 3        | —      | Reserved      |
 
 **I2C Configuration:**
-* Address: 0x30
+* Address: 0x3A
 * SDA: GPIO 4
 * SCL: GPIO 5
 * Baudrate: 100 kHz
