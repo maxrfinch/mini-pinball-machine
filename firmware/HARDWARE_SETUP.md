@@ -68,19 +68,31 @@ Pico GPIO5 (SCL0) ──┬─→ Arcade Seesaw (SCL)
 Pull-up: 4.7kΩ resistors on SDA0 and SCL0 to 3.3V
 ```
 
-### I²C1 Bus (Haptics Only)
+### I²C0 Bus - Right Haptic (Shared with buttons and displays)
 
 ```
-Pico GPIO6 (SDA1) ──┬─→ DRV2605L Left (SDA) [0x5A]
-                    └─→ DRV2605L Right (SDA) [0x5B]
+Pico GPIO4 (SDA0) ──┬─→ Arcade Seesaw (SDA) [0x30]
+                    ├─→ Matrix 1-4 w/ Backpacks (SDA) [0x70-0x73]
+                    └─→ DRV2605L Right (SDA) [0x5A]
 
-Pico GPIO7 (SCL1) ──┬─→ DRV2605L Left (SCL)
+Pico GPIO5 (SCL0) ──┬─→ Arcade Seesaw (SCL)
+                    ├─→ Matrix 1-4 w/ Backpacks (SCL)
                     └─→ DRV2605L Right (SCL)
+
+Pull-up: 4.7kΩ resistors on SDA0 and SCL0 to 3.3V
+```
+
+### I²C1 Bus (Left Haptic Only)
+
+```
+Pico GPIO6 (SDA1) ───→ DRV2605L Left (SDA) [0x5A]
+
+Pico GPIO7 (SCL1) ───→ DRV2605L Left (SCL)
 
 Pull-up: 4.7kΩ resistors on SDA1 and SCL1 to 3.3V
 ```
 
-**Note:** The matrix displays use daisy-chained I²C backpacks (HT16K33), each with a unique address configured via solder jumpers. They share the I²C0 hardware bus with the Arcade Seesaw buttons. GPIO8/9 are now available for other uses.
+**Note:** The matrix displays use daisy-chained I²C backpacks (HT16K33), each with a unique address configured via solder jumpers. They share the I²C0 hardware bus with the Arcade Seesaw buttons. DRV2605L haptic controllers have a fixed I²C address of 0x5A, so the two haptic modules must be on separate I²C buses (left on I²C1, right on I²C0). GPIO8/9 are now available for other uses.
 
 ### Button Connections
 
@@ -139,11 +151,13 @@ The 4 matrix displays need different I²C addresses. Configure using solder jump
 | 3       | 0x72    | A1            |
 | 4       | 0x73    | A1 + A2       |
 
-### Setting DRV2605L Addresses
+### Setting DRV2605L Configuration
 
-Default DRV2605L address is 0x5A. To change to 0x5B:
-- **Left Module**: Keep default (0x5A)
-- **Right Module**: Bridge the ADDR jumper to VIN (becomes 0x5B)
+This project uses two DRV2605L haptic modules, both at I²C address 0x5A. While the DRV2605L chip has an ADDR pin to change the address to 0x5B, this design connects the modules to separate I²C buses instead:
+- **Left Module**: I²C1 bus (GPIO6/7) at address 0x5A
+- **Right Module**: I²C0 bus (GPIO4/5) at address 0x5A (shared with buttons and displays)
+
+This approach avoids needing to modify the ADDR pin on either module and allows both to use the default address.
 
 ## Testing Connections
 
@@ -158,8 +172,8 @@ i2cdetect -y 1  # Check I²C1 bus
 ```
 
 Expected devices:
-- **I²C0:** 0x3A (Arcade Seesaw Buttons), 0x70-0x73 (Matrix Displays)
-- **I²C1:** 0x5A, 0x5B (Haptics)
+- **I²C0:** 0x30 (Arcade Seesaw Buttons), 0x5A (Right Haptic), 0x70-0x73 (Matrix Displays)
+- **I²C1:** 0x5A (Left Haptic)
 
 ### Quick Function Tests
 
