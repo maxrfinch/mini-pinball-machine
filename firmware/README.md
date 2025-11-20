@@ -22,9 +22,10 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 - Product: Adafruit 5296
 
 ### 3. Haptic Motors (2× DRV2605L)
-- Two haptic modules on I²C1 bus (GPIO6/7)
-- Left haptic address: 0x5A
-- Right haptic address: 0x5B
+- Two haptic modules on separate I²C buses
+- Left haptic: I²C1 bus (GPIO6/7) at address 0x5A
+- Right haptic: I²C0 bus (GPIO4/5) at address 0x5A
+- Note: DRV2605L chips have a fixed address (0x5A), so they must be on separate I²C buses
 
 ### 4. 1.2" 8×8 Matrix Displays with I2C Backpacks (4 Total)
 - **4× Adafruit 1.2" 8x8 LED Matrix with HT16K33 backpack** (Adafruit 1855)
@@ -41,7 +42,7 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 - **GPIO 4**: SDA0
 - **GPIO 5**: SCL0
 
-### I²C1 (Haptics Only)
+### I²C1 (Left Haptic Only)
 - **GPIO 6**: SDA1
 - **GPIO 7**: SCL1
 
@@ -134,8 +135,8 @@ On boot, the firmware logs:
 ### Debug Mode Self-Test
 
 When debug mode activates, a comprehensive I²C bus self-test runs automatically:
-- Tests I2C0 (Seesaw buttons at 0x30, Matrix displays at 0x70-0x73)
-- Tests I2C1 (Haptics at 0x5A and 0x5B)
+- Tests I2C0 (Seesaw buttons at 0x30, Matrix displays at 0x70-0x73, Right haptic at 0x5A)
+- Tests I2C1 (Left haptic at 0x5A)
 - Reports pass/fail status for each device
 
 ### Runtime Monitoring
@@ -279,8 +280,9 @@ Use PuTTY or TeraTerm to connect to the Pico's COM port.
 - Test with i2cdetect utility
 
 **Haptics not working:**
-- Verify DRV2605L addresses (0x5A, 0x5B)
-- Check I²C1 bus connections
+- Verify DRV2605L addresses (both at 0x5A, but on different buses)
+- Check I²C0 bus connections (right haptic)
+- Check I²C1 bus connections (left haptic)
 - Ensure motors are properly connected to DRV2605L outputs
 
 ### Debug Mode Not Activating

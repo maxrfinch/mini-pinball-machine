@@ -19,7 +19,8 @@ The firmware uses two hardware I²C buses:
    
 2. **I2C1 (Hardware I²C)** - GPIO6/7
    - DRV2605L Left Haptic (0x5A)
-   - DRV2605L Right Haptic (0x5B)
+
+**Note:** The right haptic (0x5A) shares I²C0 with buttons and displays. DRV2605L chips have a fixed address, requiring separate I²C buses.
 
 ## Startup Logging
 
@@ -54,17 +55,19 @@ Configuring Seesaw at address 0x30...
 - `WARNING: Failed to set button direction (Seesaw not responding?)` - I²C write failed
 - `WARNING: Failed to enable button pull-ups` - I²C write failed
 
-#### Haptics (I2C1)
+#### Haptics (I2C1 for Left, I2C0 for Right)
 ```
-=== Haptics Initialization (I2C1 - Hardware I2C) ===
-Initializing I2C1 at 100000 Hz on GPIO6 (SDA) / GPIO7 (SCL)
-I2C1 hardware initialized
-Initializing DRV2605L at 0x5A...
-  DRV2605L 0x5A initialized successfully
-Initializing DRV2605L at 0x5B...
-  DRV2605L 0x5B initialized successfully
+=== Haptics Initialization ===
+Initializing LEFT haptic on I2C1 at 100000 Hz on GPIO6 (SDA) / GPIO7 (SCL)
+I2C1 hardware initialized for LEFT haptic
+Initializing DRV2605L LEFT (I2C1) at 0x5A...
+  DRV2605L LEFT (I2C1) (0x5A) initialized successfully
+Initializing DRV2605L RIGHT (I2C0 via STEMMA) at 0x5A...
+  DRV2605L RIGHT (I2C0 via STEMMA) (0x5A) initialized successfully
 === Haptics Initialization Complete ===
 ```
+
+**Note:** Right haptic uses I²C0 (shared with buttons/displays). Both haptics use address 0x5A but on different buses.
 
 **Error Indicators:**
 - `Failed to exit standby mode` - Device not responding
@@ -175,7 +178,12 @@ When debug mode starts, a comprehensive bus self-test runs:
 │ Frequency: 100000 Hz
 │
 │ Testing DRV2605L Left (0x5A)... ✓ OK
-│ Testing DRV2605L Right (0x5B)... ✓ OK
+└────────────────────────────────────────────────────────────┘
+
+┌─ Right Haptic (On I2C0, Shared Bus) ──────────────────────┐
+│ Note: Right haptic shares I2C0 with Seesaw and Matrices
+│
+│ Testing DRV2605L Right (0x5A)... ✓ OK
 └────────────────────────────────────────────────────────────┘
 
 ┌─ Matrix Displays (Shared on I2C0) ────────────────────────┐
@@ -239,17 +247,19 @@ Debug mode exits when any command is received:
 ### Problem: "DRV2605L initialization failed"
 
 **Possible Causes:**
-1. Wrong I2C address (left should be 0x5A, right 0x5B)
-2. Wiring issue on GPIO6 (SDA) or GPIO7 (SCL)
-3. Missing pull-up resistors (4.7kΩ required)
-4. Power supply issue
-5. Defective DRV2605L board
+1. Wrong I2C bus (left should be I²C1, right should be I²C0)
+2. Both haptics use address 0x5A (fixed, cannot be changed)
+3. Wiring issue on GPIO6/7 (left) or GPIO4/5 (right)
+4. Missing pull-up resistors (4.7kΩ required)
+5. Power supply issue
+6. Defective DRV2605L board
 
 **Diagnostic Steps:**
-1. Check for "I2C1 hardware initialized" message
-2. Look for specific error messages (standby, trigger, library, control)
-3. Run debug mode self-test
-4. Verify haptics work (should buzz every 10 seconds in debug mode)
+1. Check for "I2C1 hardware initialized for LEFT haptic" message
+2. Verify right haptic initializes on I²C0 (shared with buttons/displays)
+3. Look for specific error messages (standby, trigger, library, control)
+4. Run debug mode self-test
+5. Verify haptics work (should buzz every 10 seconds in debug mode)
 
 ### Problem: No button events logged when pressing buttons
 
