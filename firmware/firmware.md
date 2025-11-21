@@ -71,7 +71,7 @@ The controller tracks several boolean flags that affect behavior:
 - **ball_ready**: When true in GAME mode, indicates ball is ready to launch
   - Activates BALL_LAUNCH effect on NeoPixels
   - Activates CENTER_HIT_PULSE on center button
-  - Center button press triggers ball launch and emits `EVT BALL_LAUNCH`
+  - Center button press triggers ball launch (host detects from raw button event)
 
 - **skill_shot_active**: Indicates skill shot window is active
   - Can be used to modify visual effects during launch
@@ -229,8 +229,9 @@ CMD STATE MULTIBALL <0|1>
 ```
 CMD STATE BALL_READY 1    # Ball loaded, show launch prompt
 # (Player presses center button)
-# Controller emits: EVT BALL_LAUNCH
-CMD STATE BALL_READY 0    # Ball now in play
+# Controller emits: EVT BUTTON CENTER DOWN
+# Controller automatically clears ball_ready flag
+# Host detects launch from button event while in ball_ready state
 ```
 
 ### Menu Configuration
@@ -379,12 +380,9 @@ EVT BUTTON CENTER DOWN       # Raw button event
 EVT MENU_SELECT 1            # Menu semantic event
 ```
 
-### Game Flow Events
-```
-EVT BALL_LAUNCH
-```
+### Game Flow - Ball Launch Detection
 
-Sent when player presses CENTER button while `ball_ready == true` in GAME mode.
+The controller handles ball launch internally but does not emit a separate launch event. The host detects ball launch by monitoring raw button events.
 
 **Example flow:**
 ```
@@ -395,13 +393,14 @@ CMD STATE BALL_READY 1
 # Controller shows ball-ready visuals (BALL_LAUNCH effect, CENTER_HIT_PULSE)
 
 # Player presses CENTER:
-EVT BUTTON CENTER DOWN       # Raw button event
-EVT BALL_LAUNCH              # Launch semantic event
+EVT BUTTON CENTER DOWN       # Raw button event (only event sent)
 
-# Controller automatically:
+# Controller automatically (internal to controller):
 # - Sets ball_ready = false
 # - Changes substate to SUB_BALL_IN_PLAY
 # - Reverts to in-play base profile
+
+# Host detects launch by receiving CENTER DOWN while ball_ready was true
 ```
 
 ### System Events
@@ -461,13 +460,12 @@ When `CMD MENU_MODE DUMB`:
    - Activates CENTER_HIT_PULSE on center button
 5. Player presses center button
 6. Controller:
-   - Strobes center button
-   - **Emits `EVT BALL_LAUNCH`**
+   - Emits `EVT BUTTON CENTER DOWN` (raw button event)
    - Sets ball_ready = false, substate = SUB_BALL_IN_PLAY
    - Reverts to in-play base profile
-7. Host receives `EVT BALL_LAUNCH` and transitions game logic to ball-in-play
+7. Host receives `EVT BUTTON CENTER DOWN` and knows ball_ready was true, so transitions game logic to ball-in-play
 
-This approach allows the controller to provide immediate tactile feedback while the host manages game state transitions.
+This approach allows the controller to provide immediate tactile feedback while the host manages game state transitions based on raw button events.
 
 ---
 

@@ -203,11 +203,6 @@ static void send_menu_event(const char* event_type, uint8_t index) {
     printf("EVT MENU_%s %d\n", event_type, index);
 }
 
-// Helper to send ball launch event
-static void send_ball_launch_event(void) {
-    printf("EVT BALL_LAUNCH\n");
-}
-
 bool controller_handle_button_press(Button button) {
     // Handle button presses based on current mode
     switch (g_state.mode) {
@@ -254,8 +249,7 @@ bool controller_handle_button_press(Button button) {
                 // Trigger launch animation
                 controller_apply_base_profile();
                 
-                // Send event to host
-                send_ball_launch_event();
+                // Note: No EVT BALL_LAUNCH sent - host detects launch from raw button event
                 return true;
             }
             break;
