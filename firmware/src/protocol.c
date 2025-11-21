@@ -38,9 +38,13 @@ bool protocol_is_debug_timeout(void) {
 }
 
 static void parse_command(const char* cmd) {
-    // Update activity timestamp and exit debug mode if active
+    // Update activity timestamp
     protocol_update_activity();
-    debug_mode_exit();
+    
+    // Exit debug mode if active (unless entering debug mode)
+    if (strcmp(cmd, "CMD DEBUG") != 0) {
+        debug_mode_exit();
+    }
     
     // Parse command
     if (strncmp(cmd, "CMD MODE ", 9) == 0) {
@@ -114,6 +118,10 @@ static void parse_command(const char* cmd) {
     } else if (strcmp(cmd, "CMD PING") == 0) {
         // CMD PING
         protocol_send_pong();
+        
+    } else if (strcmp(cmd, "CMD DEBUG") == 0) {
+        // CMD DEBUG
+        debug_mode_enter();
     }
 }
 

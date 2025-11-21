@@ -56,6 +56,7 @@ CMD EFFECT <pattern_name>
 CMD BUTTON_EFFECT <effect_name>
 CMD BRIGHTNESS <0-255>
 CMD PING
+CMD DEBUG
 ```
 
 **Examples:**
@@ -67,6 +68,7 @@ CMD EFFECT RAINBOW_WAVE
 CMD BUTTON_EFFECT READY_STEADY_GLOW
 CMD BRIGHTNESS 128
 CMD PING
+CMD DEBUG
 ```
 
 ### Events FROM Pico
@@ -165,7 +167,7 @@ The onboard NeoPixel cycles through these animations continuously at 60 FPS. In 
 
 ## Debug Mode
 
-When no commands are received for 30 seconds, the firmware enters debug mode:
+Debug mode can be manually entered by sending the `CMD DEBUG` command:
 
 1. **Button LEDs**: Left slow pulse, Center steady, Right fast pulse
 2. **External NeoPixels**: Board-ID chase, global rainbow, reverse-direction test
@@ -280,7 +282,7 @@ The firmware will compile but cannot be fully tested without hardware components
 ### Debug Mode Testing
 
 1. Flash firmware and power up
-2. Wait 30 seconds without sending commands
+2. Send `CMD DEBUG` via serial
 3. Observe debug animations on all hardware
 4. Serial output should show `EVT DEBUG ACTIVE`
 5. Send any command to exit debug mode
@@ -335,7 +337,7 @@ Use PuTTY or TeraTerm to connect to the Pico's COM port.
 
 ### Debug Mode Not Activating
 
-- Ensure 30 seconds have passed without commands
+- Ensure you've sent the `CMD DEBUG` command
 - Check that commands are properly terminated with newline
 - Verify USB CDC connection is active
 
