@@ -13,7 +13,6 @@
 #include "protocol.h"
 #include "neopixel.h"
 #include "buttons.h"
-#include "haptics.h"
 #include "display.h"
 
 #include "debug_mode.h"
@@ -135,7 +134,7 @@ int main() {
     
     printf("\n");
     printf("╔═══════════════════════════════════════════════════════════╗\n");
-    printf("║        Raspberry Pi Pico Pinball Controller v1.0         ║\n");
+    printf("║       Adafruit KB2040 Pinball Controller v1.1            ║\n");
     printf("╚═══════════════════════════════════════════════════════════╝\n");
     printf("\n");
     printf("Starting initialization sequence...\n");
@@ -149,7 +148,6 @@ int main() {
     printf("NeoPixels initialized\n\n");
     
     buttons_init();
-    haptics_init();
     display_init();
     
     protocol_init();

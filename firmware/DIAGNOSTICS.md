@@ -8,26 +8,21 @@ Comprehensive logging has been added to all I²C drivers to help identify why ce
 
 ## Architecture Summary
 
-The firmware uses two hardware I²C buses:
+The firmware uses the KB2040 STEMMA QT I²C bus:
 
-1. **I2C0 (Hardware I²C)** - GPIO4/5
+1. **I2C0 (Hardware I²C - STEMMA QT)** - GPIO12/13
    - Adafruit Arcade Seesaw Button Board (0x3A)
    - HT16K33 Matrix Display 0 (0x70)
    - HT16K33 Matrix Display 1 (0x71)
    - HT16K33 Matrix Display 2 (0x72)
    - HT16K33 Matrix Display 3 (0x73)
-   
-2. **I²C1 (Hardware I²C)** - GPIO6/7
-   - DRV2605L Left Haptic (0x5A)
-
-**Note:** The right haptic (0x5A) shares I²C0 with buttons and displays. This design uses both haptics at the default address 0x5A on separate I²C buses.
 
 ## Startup Logging
 
 ### System Banner
 ```
 ╔═══════════════════════════════════════════════════════════╗
-║        Raspberry Pi Pico Pinball Controller v1.0         ║
+║       Adafruit KB2040 Pinball Controller v1.1            ║
 ╚═══════════════════════════════════════════════════════════╝
 ```
 
@@ -40,10 +35,10 @@ Each subsystem logs its initialization:
 NeoPixels initialized
 ```
 
-#### Buttons (I2C0)
+#### Buttons (I2C0 - STEMMA QT)
 ```
 === Button Initialization (I2C0 - Hardware I2C) ===
-Initializing I2C0 at 100000 Hz on GPIO4 (SDA) / GPIO5 (SCL)
+Initializing I2C0 at 100000 Hz on GPIO12 (SDA) / GPIO13 (SCL)
 I2C0 hardware initialized
 Configuring Seesaw at address 0x3A...
   Button direction configured
@@ -55,31 +50,11 @@ Configuring Seesaw at address 0x3A...
 - `WARNING: Failed to set button direction (Seesaw not responding?)` - I²C write failed
 - `WARNING: Failed to enable button pull-ups` - I²C write failed
 
-#### Haptics (I2C1 for Left, I2C0 for Right)
-```
-=== Haptics Initialization ===
-Initializing LEFT haptic on I2C1 at 100000 Hz on GPIO6 (SDA) / GPIO7 (SCL)
-I2C1 hardware initialized for LEFT haptic
-Initializing DRV2605L LEFT (I2C1) at 0x5A...
-  DRV2605L LEFT (I2C1) (0x5A) initialized successfully
-Initializing DRV2605L RIGHT (I2C0 via STEMMA) at 0x5A...
-  DRV2605L RIGHT (I2C0 via STEMMA) (0x5A) initialized successfully
-=== Haptics Initialization Complete ===
-```
-
-**Note:** Right haptic uses I²C0 (shared with buttons/displays). Both haptics use address 0x5A but on different buses.
-
-**Error Indicators:**
-- `Failed to exit standby mode` - Device not responding
-- `Failed to set trigger mode` - Communication error
-- `Failed to select library` - Communication error
-- `Failed to configure control` - Communication error
-
-#### Displays (Shared I2C0 Hardware Bus)
+#### Displays (Shared I2C0 STEMMA QT Bus)
 ```
 === Display Initialization (Shared I2C0 Hardware Bus) ===
 Matrix displays share I2C0 with Seesaw buttons
-I2C0 already initialized at 100000 Hz on GPIO4 (SDA) / GPIO5 (SCL)
+I2C0 already initialized at 100000 Hz on GPIO12 (SDA) / GPIO13 (SCL)
 Initializing 4 HT16K33 matrix displays on I2C0...
 Initializing HT16K33 at 0x70...
   HT16K33 0x70 initialized successfully
@@ -166,28 +141,11 @@ When debug mode starts, a comprehensive bus self-test runs:
 ║              DEBUG MODE - I2C BUS SELF-TEST                  ║
 ╚══════════════════════════════════════════════════════════════╝
 
-┌─ I2C0 Bus (Hardware) ─────────────────────────────────────┐
-│ GPIOs: 4 (SDA), 5 (SCL)
+┌─ I2C0 Bus (STEMMA QT) ────────────────────────────────────┐
+│ GPIOs: 12 (SDA), 13 (SCL)
 │ Frequency: 100000 Hz
 │
 │ Testing Seesaw (0x3A)... ✓ OK - Device responding
-└────────────────────────────────────────────────────────────┘
-
-┌─ I²C1 Bus (Hardware) ─────────────────────────────────────┐
-│ GPIOs: 6 (SDA), 7 (SCL)
-│ Frequency: 100000 Hz
-│
-│ Testing DRV2605L Left (0x5A)... ✓ OK
-└────────────────────────────────────────────────────────────┘
-
-┌─ Right Haptic (On I²C0, Shared Bus) ──────────────────────┐
-│ Note: Right haptic shares I²C0 with Seesaw and Matrices
-│
-│ Testing DRV2605L Right (0x5A)... ✓ OK
-└────────────────────────────────────────────────────────────┘
-
-┌─ Matrix Displays (Shared on I2C0) ────────────────────────┐
-│ Note: Matrices share I2C0 hardware bus with Seesaw
 │
 │ Testing HT16K33 Matrix 0 (0x70)... ✓ OK
 │ Testing HT16K33 Matrix 1 (0x71)... ✓ OK
@@ -215,8 +173,8 @@ Debug mode exits when any command is received:
 ### Problem: "Seesaw not responding" during initialization
 
 **Possible Causes:**
-1. Incorrect wiring - check GPIO4 (SDA) and GPIO5 (SCL)
-2. Missing pull-up resistors (4.7kΩ required)
+1. Incorrect wiring - check GPIO12 (SDA) and GPIO13 (SCL)
+2. Missing pull-up resistors (STEMMA QT includes 2.2kΩ, may need 4.7kΩ for long runs)
 3. Wrong Seesaw address (should be 0x3A)
 4. Insufficient power to Seesaw board
 5. Defective Seesaw board
@@ -231,8 +189,8 @@ Debug mode exits when any command is received:
 
 **Possible Causes:**
 1. Incorrect address configuration (solder jumpers)
-2. Wiring issue on GPIO4 (SDA) or GPIO5 (SCL)
-3. Missing pull-up resistors (4.7kΩ required)
+2. Wiring issue on GPIO12 (SDA) or GPIO13 (SCL)
+3. Missing pull-up resistors (check STEMMA QT connection)
 4. Power supply issue
 5. Defective display backpack
 6. I2C bus contention with Seesaw
@@ -241,25 +199,8 @@ Debug mode exits when any command is received:
 1. Verify "I2C0 already initialized" message during display init
 2. Check which displays initialize successfully during init
 3. Verify address jumpers on non-responding displays (0x70-0x73)
-4. Check pull-ups on GPIO4/5
+4. Check STEMMA QT connection or pull-ups on GPIO12/13
 5. Run debug mode self-test to probe all I2C0 devices
-
-### Problem: "DRV2605L initialization failed"
-
-**Possible Causes:**
-1. Wrong I2C bus (left should be I²C1, right should be I²C0)
-2. Both haptics use address 0x5A (fixed, cannot be changed)
-3. Wiring issue on GPIO6/7 (left) or GPIO4/5 (right)
-4. Missing pull-up resistors (4.7kΩ required)
-5. Power supply issue
-6. Defective DRV2605L board
-
-**Diagnostic Steps:**
-1. Check for "I2C1 hardware initialized for LEFT haptic" message
-2. Verify right haptic initializes on I²C0 (shared with buttons/displays)
-3. Look for specific error messages (standby, trigger, library, control)
-4. Run debug mode self-test
-5. Verify haptics work (should buzz every 10 seconds in debug mode)
 
 ### Problem: No button events logged when pressing buttons
 
@@ -321,8 +262,7 @@ Wait 1 second after connecting USB for the device to enumerate before the banner
 | `BUTTON X: PRESSED/RELEASED` | buttons.c poll | Button event detected | ✓ Good |
 | `HT16K33 0xXX initialized successfully` | display.c init | Display acknowledged commands | ✓ Good |
 | `HT16K33 0xXX: NO ACK on address` | display.c write | Display not responding | Check address jumpers, wiring |
-| `DRV2605L 0xXX initialized successfully` | haptics.c init | Haptic driver ready | ✓ Good |
-| `Failed to exit standby mode` | haptics.c init | Haptic not responding on I2C1 | Check wiring, address, power |
+
 | `Testing X... ✓ OK` | debug_mode.c | Device responds to probe | ✓ Good |
 | `Testing X... ✗ FAILED` | debug_mode.c | Device does not respond | Check connection |
 
@@ -332,8 +272,7 @@ All changes are additive (logging only). No functional behavior was modified:
 
 - **display.c**: Added 35 lines of logging
 - **buttons.c**: Added 53 lines of logging
-- **haptics.c**: Added 15 lines of logging
 - **debug_mode.c**: Added 87 lines of logging and self-test
 - **main.c**: Added 26 lines of startup logging
 
-Total: 216 lines added, 6 lines removed (cleanup)
+Total: 201 lines added, 6 lines removed (cleanup)

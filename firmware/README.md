@@ -1,12 +1,12 @@
-# Pinball Cabinet Firmware - Raspberry Pi Pico
+# Pinball Cabinet Firmware - Adafruit KB2040
 
-This firmware controls all pinball cabinet hardware components via a Raspberry Pi Pico microcontroller.
+This firmware controls all pinball cabinet hardware components via an Adafruit KB2040 microcontroller (RP2040-based).
 
 ## Hardware Components
 
 ### 1. NeoPixel LED Boards
 - **48 total LEDs** (8 LEDs per board × 6 boards)
-- **Single data line daisy chain** from GPIO2
+- **Single data line daisy chain** from GPIO6
 - **Board positions** (player's perspective):
   - Board 1: Right Front (LEDs 0-7)
   - Board 2: Right Rear (LEDs 8-15)
@@ -17,38 +17,28 @@ This firmware controls all pinball cabinet hardware components via a Raspberry P
 
 ### 2. Adafruit LED Arcade Button 1×4 I2C Breakout (Arcade Seesaw Board)
 - **Three buttons**: LEFT, CENTER, RIGHT
-- Connected via I²C0 bus (GPIO4/5)
+- Connected via I²C0 bus (GPIO12/13 - STEMMA QT)
 - I²C Address: 0x3A
 - Product: Adafruit 5296
 
-### 3. Haptic Motors (2× DRV2605L)
-- Two haptic modules on separate I²C buses
-- Left haptic: I²C1 bus (GPIO6/7) at address 0x5A
-- Right haptic: I²C0 bus (GPIO4/5) at address 0x5A
-- Note: DRV2605L chips have a fixed address (0x5A), so they must be on separate I²C buses
-
-### 4. 1.2" 8×8 Matrix Displays with I2C Backpacks (4 Total)
+### 3. 1.2" 8×8 Matrix Displays with I2C Backpacks (4 Total)
 - **4× Adafruit 1.2" 8x8 LED Matrix with HT16K33 backpack** (Adafruit 1855)
-- Connected via I²C0 bus (GPIO4/5), shared with arcade seesaw buttons
+- Connected via I²C0 bus (GPIO12/13 - STEMMA QT), shared with arcade seesaw buttons
 - Addresses: 0x70, 0x71, 0x72, 0x73
 - Combined into 32×8 display surface
 
 ## GPIO Pinout
 
 ### NeoPixel Data
-- **GPIO 2**: NeoPixel Data OUT
+- **GPIO 6**: NeoPixel Data OUT
 
-### I²C0 (Arcade Seesaw Buttons + Matrix Displays)
-- **GPIO 4**: SDA0
-- **GPIO 5**: SCL0
-
-### I²C1 (Left Haptic Only)
-- **GPIO 6**: SDA1
-- **GPIO 7**: SCL1
+### I²C0 (STEMMA QT - Arcade Seesaw Buttons + Matrix Displays)
+- **GPIO 12**: SDA0
+- **GPIO 13**: SCL0
 
 ### Misc GPIO
-- **GPIO 12**: Status LED (heartbeat)
-- **GPIO 13**: Mode indicator
+- **GPIO 7**: Status LED (heartbeat)
+- **GPIO 8**: Mode indicator
 - **GPIO 22**: Optional BOOTSEL trigger
 
 ## Command Protocol
@@ -166,8 +156,7 @@ When no commands are received for 30 seconds, the firmware enters debug mode:
 1. **Button LEDs**: Left slow pulse, Center steady, Right fast pulse
 2. **NeoPixels**: Board-ID chase, global rainbow, reverse-direction test
 3. **8×8 Matrices**: Test patterns (digits, ball icons, scrolling)
-4. **Haptics**: Light buzz every 10 seconds
-5. **Serial output**: `EVT DEBUG ACTIVE`
+4. **Serial output**: `EVT DEBUG ACTIVE`
 
 Debug mode exits immediately upon receiving any command.
 
@@ -186,10 +175,7 @@ On boot, the firmware logs:
 ### Debug Mode Self-Test
 
 When debug mode activates, a comprehensive I²C bus self-test runs automatically:
-- Tests I2C0 (Seesaw buttons at 0x30, Matrix displays at 0x70-0x73, Right haptic at 0x5A)
-- Tests I2C1 (Left haptic at 0x5A)
 - Tests I2C0 (Seesaw buttons at 0x3A, Matrix displays at 0x70-0x73)
-- Tests I2C1 (Haptics at 0x5A and 0x5B)
 - Reports pass/fail status for each device
 
 ### Runtime Monitoring
@@ -254,11 +240,11 @@ The output file will be: `build/pinball_firmware.uf2`
 
 ## Flashing the Firmware
 
-1. **Hold BOOTSEL button** on the Raspberry Pi Pico
+1. **Hold BOOTSEL button** on the Adafruit KB2040
 2. **Connect USB cable** to your computer
-3. The Pico will appear as a USB mass storage device
-4. **Copy** `build/pinball_firmware.uf2` to the Pico drive
-5. The Pico will **automatically reboot** and start running the firmware
+3. The KB2040 will appear as a USB mass storage device
+4. **Copy** `build/pinball_firmware.uf2` to the KB2040 drive
+5. The KB2040 will **automatically reboot** and start running the firmware
 
 ## Testing
 
@@ -268,11 +254,11 @@ The firmware will compile but cannot be fully tested without hardware components
 
 ### With Hardware
 
-1. Flash firmware to Pico
-2. Connect all I²C devices with proper pull-up resistors
-3. Connect NeoPixel strip to GPIO2
+1. Flash firmware to KB2040
+2. Connect all I²C devices to STEMMA QT connector (GP12/GP13)
+3. Connect NeoPixel strip to GPIO6
 4. Connect USB to Raspberry Pi
-5. The Pico will send `EVT READY` on startup
+5. The KB2040 will send `EVT READY` on startup
 6. Press buttons to verify events are sent
 7. Send commands via serial to test functionality
 
@@ -316,27 +302,21 @@ Use PuTTY or TeraTerm to connect to the Pico's COM port.
 ### Hardware Issues
 
 **NeoPixels not working:**
-- Check GPIO2 connection
+- Check GPIO6 connection
 - Verify 5V power supply for LEDs
 - Add a 330Ω resistor in series with data line
 - Add a 1000µF capacitor across power supply
 
 **I²C devices not responding:**
-- Verify SDA/SCL connections
-- Add 4.7kΩ pull-up resistors on SDA and SCL lines
+- Verify STEMMA QT connection (GP12/GP13)
+- Add 4.7kΩ pull-up resistors on SDA and SCL lines if not using STEMMA QT
 - Check I²C addresses with i2c-tools
 - Ensure proper 3.3V power supply
 
 **Buttons not detected:**
 - Verify Arcade Seesaw board at address 0x3A
-- Check I²C0 bus connections
+- Check I²C0 STEMMA QT connection
 - Test with i2cdetect utility
-
-**Haptics not working:**
-- Verify DRV2605L addresses (both at 0x5A, but on different buses)
-- Check I²C0 bus connections (right haptic)
-- Check I²C1 bus connections (left haptic)
-- Ensure motors are properly connected to DRV2605L outputs
 
 ### Debug Mode Not Activating
 
@@ -357,7 +337,6 @@ firmware/
 │   ├── protocol.h          # Command protocol
 │   ├── neopixel.h          # NeoPixel driver
 │   ├── buttons.h           # Button driver
-│   ├── haptics.h           # Haptic driver
 │   ├── display.h           # Matrix display driver
 │   └── debug_mode.h        # Debug mode
 └── src/                    # Source files
@@ -365,7 +344,6 @@ firmware/
     ├── protocol.c          # Command parser
     ├── neopixel.c          # NeoPixel implementation
     ├── buttons.c           # Button implementation
-    ├── haptics.c           # Haptic implementation
     ├── display.c           # Display implementation
     ├── debug_mode.c        # Debug mode implementation
     └── ws2812.pio          # PIO program for WS2812 LEDs
@@ -374,7 +352,7 @@ firmware/
 ## Future Enhancements
 
 - Configurable LED effect parameters
-- Custom waveform support for haptics
+
 - Adjustable button debounce timing
 - Display brightness control
 - EEPROM storage for settings

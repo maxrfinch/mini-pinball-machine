@@ -103,7 +103,7 @@ The firmware includes a comprehensive button LED effect system with 9 different 
 
 ### Via Serial Commands
 
-Connect to the Pico via USB serial and send commands:
+Connect to the KB2040 via USB serial and send commands:
 
 ```bash
 # Screen
