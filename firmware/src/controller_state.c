@@ -19,6 +19,9 @@ static controller_state_t g_state;
 static uint32_t np_event_deadline_ms = 0;
 static uint32_t btn_event_deadline_ms = 0;
 
+// Constants
+#define NUM_BUTTONS 3  // Number of physical buttons (LEFT, CENTER, RIGHT)
+
 // Forward declarations
 static void apply_mode_effects(void);
 static void send_menu_event(const char* event_type, uint8_t index);
@@ -111,14 +114,14 @@ void controller_set_menu_size(uint8_t count) {
 }
 
 void controller_set_menu_index(uint8_t index) {
-    if (index < g_state.menu_count) {
+    if (g_state.menu_count > 0 && index < g_state.menu_count) {
         g_state.menu_index = index;
         printf("[CONTROLLER] Menu index: %d\n", index);
         
         // Update button effect if in menu mode
-        // Map menu index to button for visual feedback (0=LEFT, 1=CENTER, 2=RIGHT, wrap if >2)
+        // Map menu index to button for visual feedback (0=LEFT, 1=CENTER, 2=RIGHT, wrap if >NUM_BUTTONS)
         if (g_state.mode == MODE_MENU) {
-            Button button = (Button)(index % 3);
+            Button button = (Button)(index % NUM_BUTTONS);
             buttons_set_menu_selection(button);
         }
     }
@@ -147,7 +150,7 @@ void controller_apply_base_profile(void) {
             if (g_state.btn_prio == PRIORITY_BASE) {
                 buttons_start_effect(BTN_EFFECT_MENU_NAVIGATION);
                 // Map menu index to button for visual feedback
-                Button button = (Button)(g_state.menu_index % 3);
+                Button button = (Button)(g_state.menu_index % NUM_BUTTONS);
                 buttons_set_menu_selection(button);
             }
             break;
@@ -218,7 +221,7 @@ bool controller_handle_button_press(Button button) {
                         g_state.menu_index = g_state.menu_count - 1;
                     }
                     // Update visual feedback
-                    Button visual_button = (Button)(g_state.menu_index % 3);
+                    Button visual_button = (Button)(g_state.menu_index % NUM_BUTTONS);
                     buttons_set_menu_selection(visual_button);
                     send_menu_event("MOVE", g_state.menu_index);
                     return true;
@@ -229,7 +232,7 @@ bool controller_handle_button_press(Button button) {
                         g_state.menu_index = (g_state.menu_index + 1) % g_state.menu_count;
                     }
                     // Update visual feedback
-                    Button visual_button = (Button)(g_state.menu_index % 3);
+                    Button visual_button = (Button)(g_state.menu_index % NUM_BUTTONS);
                     buttons_set_menu_selection(visual_button);
                     send_menu_event("MOVE", g_state.menu_index);
                     return true;
@@ -308,6 +311,7 @@ void controller_button_play_one_shot(ButtonLEDEffect effect, effect_priority_t p
 // Check and handle event timeouts (call from main loop)
 void controller_check_event_timeouts(void) {
     uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+    bool need_reapply = false;
     
     // Check NeoPixel event timeout
     if (g_state.np_prio == PRIORITY_EVENT && np_event_deadline_ms > 0) {
@@ -315,7 +319,7 @@ void controller_check_event_timeouts(void) {
             printf("[CONTROLLER] NeoPixel event timeout, returning to BASE\n");
             g_state.np_prio = PRIORITY_BASE;
             np_event_deadline_ms = 0;
-            controller_apply_base_profile();
+            need_reapply = true;
         }
     }
     
@@ -325,8 +329,13 @@ void controller_check_event_timeouts(void) {
             printf("[CONTROLLER] Button event timeout, returning to BASE\n");
             g_state.btn_prio = PRIORITY_BASE;
             btn_event_deadline_ms = 0;
-            controller_apply_base_profile();
+            need_reapply = true;
         }
+    }
+    
+    // Apply base profile once if any timeout occurred
+    if (need_reapply) {
+        controller_apply_base_profile();
     }
 }
 
