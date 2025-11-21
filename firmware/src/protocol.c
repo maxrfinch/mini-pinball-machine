@@ -140,6 +140,9 @@ static void parse_command(const char* cmd) {
         
         // Draw the text if any remains
         if (*args) {
+            // Note: Display is cleared before drawing text
+            // This ensures clean rendering and matches typical use case
+            // For multi-line or multi-element displays, use animations or custom sequences
             display_clear();
             display_set_text(args, (uint8_t)x, (uint8_t)y);
         }

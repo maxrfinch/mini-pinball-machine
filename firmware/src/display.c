@@ -40,7 +40,10 @@ static uint32_t animation_start_time = 0;
 static uint32_t animation_frame = 0;
 
 // Animation constants
-#define TWO_PI 6.28318530718f
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#define TWO_PI (2.0f * M_PI)
 
 // 3x5 digit font (0–9), 3 columns wide, 5 rows tall
 // Each byte uses lowest 5 bits as vertical pixels (bit0 = top)
