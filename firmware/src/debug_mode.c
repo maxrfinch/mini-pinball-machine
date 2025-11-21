@@ -11,7 +11,6 @@
 #include "protocol.h"
 #include "neopixel.h"
 #include "buttons.h"
-#include "haptics.h"
 #include "display.h"
 #include "types.h"
 #include "hardware_config.h"
@@ -19,7 +18,6 @@
 static bool debug_active = false;
 static uint32_t debug_frame = 0;
 static absolute_time_t last_debug_update = 0;
-static absolute_time_t last_haptic_buzz = 0;
 static bool self_test_run = false;
 
 // Simple I2C device probe
@@ -48,29 +46,6 @@ static void run_self_test(void) {
         printf("✓ OK - Device responding\n");
     } else {
         printf("✗ FAILED - No response\n");
-    }
-    printf("└────────────────────────────────────────────────────────────┘\n");
-    printf("\n");
-    
-    // Test I2C1 (Haptics)
-    printf("┌─ I2C1 Bus (Hardware) ─────────────────────────────────────┐\n");
-    printf("│ GPIOs: %d (SDA), %d (SCL)                                  \n", 
-           I2C1_SDA_PIN, I2C1_SCL_PIN);
-    printf("│ Frequency: %d Hz                                           \n", I2C1_FREQ);
-    printf("│                                                             \n");
-    
-    printf("│ Testing DRV2605L Left (0x%02X)... ", HAPTIC_LEFT_ADDR);
-    if (i2c_device_probe(i2c1, HAPTIC_LEFT_ADDR)) {
-        printf("✓ OK\n");
-    } else {
-        printf("✗ FAILED\n");
-    }
-    
-    printf("│ Testing DRV2605L Right (0x%02X)... ", HAPTIC_RIGHT_ADDR);
-    if (i2c_device_probe(i2c1, HAPTIC_RIGHT_ADDR)) {
-        printf("✓ OK\n");
-    } else {
-        printf("✗ FAILED\n");
     }
     printf("└────────────────────────────────────────────────────────────┘\n");
     printf("\n");
@@ -110,7 +85,6 @@ void debug_mode_check(void) {
         debug_frame = 0;
         self_test_run = false;
         protocol_send_debug_active();
-        last_haptic_buzz = get_absolute_time();
         
         // Run self-test on entry
         run_self_test();
@@ -201,17 +175,6 @@ static void debug_displays(void) {
     display_test_pattern();
 }
 
-static void debug_haptics_periodic(void) {
-    // Light buzz every 10 seconds
-    absolute_time_t now = get_absolute_time();
-    int64_t diff_ms = absolute_time_diff_us(last_haptic_buzz, now) / 1000;
-    
-    if (diff_ms > 10000) {
-        haptics_light_buzz();
-        last_haptic_buzz = now;
-    }
-}
-
 void debug_mode_update(void) {
     absolute_time_t now = get_absolute_time();
     int64_t diff_ms = absolute_time_diff_us(last_debug_update, now) / 1000;
@@ -227,5 +190,4 @@ void debug_mode_update(void) {
     debug_neopixels();
     debug_button_leds();
     debug_displays();
-    debug_haptics_periodic();
 }

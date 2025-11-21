@@ -11,7 +11,6 @@
 #include "hardware/i2c.h"
 #include "buttons.h"
 #include "protocol.h"
-#include "haptics.h"
 #include "hardware_config.h"
 
 // Seesaw registers
@@ -191,15 +190,6 @@ void buttons_poll(void) {
             
             protocol_send_button_event(i, BUTTON_STATE_DOWN);
             button_hold_time[i] = to_ms_since_boot(get_absolute_time());
-            
-            // Trigger haptics
-            if (i == BUTTON_LEFT) {
-                haptics_trigger_left();
-            } else if (i == BUTTON_RIGHT) {
-                haptics_trigger_right();
-            } else if (i == BUTTON_CENTER) {
-                haptics_trigger_both();
-            }
             
         } else if (!button_states[i] && last_button_states[i]) {
             // Button released
