@@ -73,7 +73,7 @@ static void ht16k33_init_display(uint8_t addr) {
     sleep_ms(1);
     
     // Set brightness to max
-    cmd = HT16K33_BRIGHTNESS_CMD | 0x0;
+    cmd = HT16K33_BRIGHTNESS_CMD | 0x7;
     if (!ht16k33_write(addr, &cmd, 1)) {
         printf("  Failed to set brightness\n");
         success = false;

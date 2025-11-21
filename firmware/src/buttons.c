@@ -169,13 +169,6 @@ void buttons_poll(void) {
     
     uint32_t gpio_state = (data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3];
     
-    // Log raw GPIO state periodically (every 500 polls ~ 5 seconds at 10ms polling)
-    poll_count++;
-    if ((poll_count % 500) == 0) {
-        printf("SEESAW: raw GPIO = 0x%08lX (poll #%lu)\n", 
-               (unsigned long)gpio_state, (unsigned long)poll_count);
-    }
-    
     // Buttons are active low; map Seesaw GPIO pins to logical buttons
     button_states[BUTTON_LEFT]   = !(gpio_state & (1u << SEESAW_BTN_PIN_0));
     button_states[BUTTON_CENTER] = !(gpio_state & (1u << SEESAW_BTN_PIN_1));
