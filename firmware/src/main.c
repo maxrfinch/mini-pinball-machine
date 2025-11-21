@@ -16,6 +16,7 @@
 #include "display.h"
 
 #include "debug_mode.h"
+#include "onboard_neopixel.h"
 
 // Application-level mode and effect enums matching the command protocol
 
@@ -147,6 +148,9 @@ int main() {
     neopixel_init();
     printf("NeoPixels initialized\n\n");
     
+    onboard_neopixel_init();
+    printf("Onboard NeoPixel initialized (GPIO 17)\n\n");
+    
     buttons_init();
     display_init();
     
@@ -195,6 +199,9 @@ int main() {
             neopixel_update_effect();
             buttons_update_leds();
         }
+        
+        // Update onboard NeoPixel (always running)
+        onboard_neopixel_update();
         
         // Update displays
         display_update();

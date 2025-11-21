@@ -10,6 +10,7 @@
 #include "debug_mode.h"
 #include "protocol.h"
 #include "neopixel.h"
+#include "onboard_neopixel.h"
 #include "buttons.h"
 #include "display.h"
 #include "types.h"
@@ -86,6 +87,9 @@ void debug_mode_check(void) {
         self_test_run = false;
         protocol_send_debug_active();
         
+        // Set onboard NeoPixel to steady orange (debug mode)
+        onboard_neopixel_set_debug_mode(true);
+        
         // Run self-test on entry
         run_self_test();
         self_test_run = true;
@@ -98,6 +102,9 @@ void debug_mode_exit(void) {
         debug_active = false;
         debug_frame = 0;
         self_test_run = false;
+        
+        // Exit onboard NeoPixel debug mode (return to animations)
+        onboard_neopixel_set_debug_mode(false);
         
         // Clear everything
         neopixel_clear();

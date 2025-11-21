@@ -30,7 +30,8 @@ This firmware controls all pinball cabinet hardware components via an Adafruit K
 ## GPIO Pinout
 
 ### NeoPixel Data
-- **GPIO 6**: NeoPixel Data OUT
+- **GPIO 6**: External NeoPixel strip (48 LEDs, PIO0)
+- **GPIO 17**: Onboard NeoPixel (KB2040 built-in, PIO1)
 
 ### I²C0 (STEMMA QT - Arcade Seesaw Buttons + Matrix Displays)
 - **GPIO 12**: SDA0
@@ -149,14 +150,28 @@ The firmware includes 9 button LED effect modes for the arcade buttons:
    - Other buttons: 80 brightness
    - Use: Menu navigation mode
 
+## Onboard NeoPixel Animations
+
+The KB2040 has a built-in NeoPixel on GPIO 17 that displays cycling animations:
+
+1. **Rainbow Cycle** - Smooth rainbow color cycle (~10 seconds)
+2. **Pulse Blue** - Blue pulsing effect (~10 seconds)
+3. **Pulse Purple** - Purple pulsing effect (~10 seconds)
+4. **Fire** - Red-orange-yellow flickering fire effect (~10 seconds)
+5. **Ocean** - Cyan-blue wave effect (~10 seconds)
+6. **Candy** - Pink-white transition effect (~10 seconds)
+
+The onboard NeoPixel cycles through these animations continuously at 60 FPS. In debug mode, it displays a steady orange color using HSL (H=30°, S=100%, L=50%).
+
 ## Debug Mode
 
 When no commands are received for 30 seconds, the firmware enters debug mode:
 
 1. **Button LEDs**: Left slow pulse, Center steady, Right fast pulse
-2. **NeoPixels**: Board-ID chase, global rainbow, reverse-direction test
-3. **8×8 Matrices**: Test patterns (digits, ball icons, scrolling)
-4. **Serial output**: `EVT DEBUG ACTIVE`
+2. **External NeoPixels**: Board-ID chase, global rainbow, reverse-direction test
+3. **Onboard NeoPixel**: Steady orange (HSL)
+4. **8×8 Matrices**: Test patterns (digits, ball icons, scrolling)
+5. **Serial output**: `EVT DEBUG ACTIVE`
 
 Debug mode exits immediately upon receiving any command.
 
