@@ -1,5 +1,5 @@
 # Mini Pinball Machine
-A mini pinball machine formerly based on the Raspberry Pi 4 + Arduino Uno, now based on the Raspberry Pi 5 + Pico.
+A mini pinball machine formerly based on the Raspberry Pi 4 + Arduino Uno, now based on the Raspberry Pi 5 + Adafruit KB2040.
 The game contains several powerups, high scores, and is optimized to run at 60fps.
 
 This Fork is updated to include:
@@ -9,7 +9,7 @@ This Fork is updated to include:
 - Full Build Instructions
 
 Optional:
-- This build includes the ability to add up to 65 NEOPIXEL RGB leds for light effects + haptic motors
+- This build includes the ability to add up to 48 NEOPIXEL RGB leds for light effects
 - This build includes the ability to add LED arcade buttons
 - This build includes the ability to add a camera for high score pictures (one of my favorite features of the Elton John pinball machine)
 

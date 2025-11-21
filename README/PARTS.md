@@ -59,8 +59,8 @@ A **SendCutSend order link** will be added here once finalized. Ordering through
   https://www.adafruit.com/product/5812
 - Aluminum Passive Heatsink Case for Pi 5 *(no fan to reduce power draw)*  
   https://www.adafruit.com/product/6307
-- Raspberry Pi Pico H (headers included)  
-  https://www.adafruit.com/product/5525
+- Adafruit KB2040 - RP2040 Kee Boar Driver  
+  https://www.adafruit.com/product/5302
 
 ### Power
 - [Geekworm X1206 21700 Battery System](https://geekworm.com/products/x1206) (1)
@@ -109,16 +109,8 @@ A **SendCutSend order link** will be added here once finalized. Ordering through
 ---
 
 ## Lighting (Neopixels)
-- WS2812B LED Stick — 8 LEDs per stick (10‑pack)  
+- WS2812B LED Stick — 8 LEDs per stick (6 needed for 48 LEDs)  
   https://www.amazon.com/dp/B0BWH95XSH
-
----
-
-## Haptics
-- Vibrating Mini Motor Disc (x2)  
-  https://www.adafruit.com/product/1201
-- Adafruit DRV2605L Haptic Motor Controller (x2)  
-  https://www.adafruit.com/product/2305
 
 ---
 

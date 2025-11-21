@@ -2,7 +2,7 @@
 
 ## Overview
 
-Complete firmware implementation for Raspberry Pi Pico pinball controller has been created. All required components have been implemented according to the specification.
+Complete firmware implementation for Adafruit KB2040 pinball controller has been created. All required components have been implemented according to the specification.
 
 ## Implementation Checklist
 
@@ -33,16 +33,7 @@ Complete firmware implementation for Raspberry Pi Pico pinball controller has be
 - [x] Debouncing via polling interval
 - [x] Hold detection (500ms threshold)
 - [x] Event generation (DOWN/UP/HELD)
-- [x] Haptic feedback integration
 - [x] Button LED control stubs
-
-#### Haptic Driver (haptics.c/h)
-- [x] DRV2605L I²C communication
-- [x] 2 haptic module support
-- [x] Device initialization
-- [x] Left/right/both trigger functions
-- [x] Light buzz for debug mode
-- [x] Waveform selection (sharp click, soft buzz, light click)
 
 #### Display Driver (display.c/h)
 - [x] HT16K33 I²C communication (Adafruit 1855 - 1.2" 8x8 with I2C Backpack)
@@ -103,7 +94,6 @@ Each effect:
   - [x] NeoPixels: Board-ID chase, global rainbow, reverse test
   - [x] Button LEDs: Left slow pulse, Center steady, Right fast pulse
   - [x] Displays: Test patterns (digits, balls, scroll)
-  - [x] Haptics: Light buzz every 10 seconds
 - [x] `EVT DEBUG ACTIVE` notification
 
 ### ✅ Main Loop (main.c)
@@ -140,7 +130,7 @@ Each effect:
   - Bill of Materials
 
 - [x] **Build system** (CMakeLists.txt)
-  - Pico SDK integration
+  - Raspberry Pi Pico SDK integration (KB2040 uses RP2040)
   - PIO header generation
   - Library linking
   - USB CDC configuration
@@ -153,7 +143,7 @@ Each effect:
 - `protocol.h` - Command protocol interface
 - `neopixel.h` - NeoPixel driver interface
 - `buttons.h` - Button driver interface
-- `haptics.h` - Haptic driver interface
+
 - `display.h` - Display driver interface
 - `debug_mode.h` - Debug mode interface
 
@@ -162,7 +152,7 @@ Each effect:
 - `protocol.c` - Command parser (141 lines)
 - `neopixel.c` - LED driver with effects (283 lines)
 - `buttons.c` - Button I²C driver (144 lines)
-- `haptics.c` - Haptic I²C driver (92 lines)
+
 - `display.c` - Matrix display driver (209 lines)
 - `debug_mode.c` - Debug mode logic (140 lines)
 - `ws2812.pio` - PIO program for WS2812 (47 lines)
@@ -192,10 +182,11 @@ typedef struct {
 ## Hardware Configuration
 
 ### GPIO Assignments
-- GPIO 2: NeoPixel data
-- GPIO 4: I²C0 SDA (buttons + displays)
-- GPIO 5: I²C0 SCL
-- GPIO 6: I²C1 SDA (haptics)
+- GPIO 6: NeoPixel data
+- GPIO 7: Status LED
+- GPIO 8: Mode LED
+- GPIO 12: I²C0 SDA (STEMMA QT - buttons + displays)
+- GPIO 13: I²C0 SCL (STEMMA QT)
 - GPIO 7: I²C1 SCL
 - GPIO 8: UART1 TX (optional)
 - GPIO 9: UART1 RX (optional)
@@ -204,15 +195,9 @@ typedef struct {
 - GPIO 22: BOOTSEL trigger (optional)
 
 ### I²C Addresses
-- **I²C0 Bus:**
-  - 0x30: Arcade Seesaw button board (Adafruit 5296)
-  - 0x5A: DRV2605L right haptic (shared bus)
+- **I²C0 Bus (STEMMA QT):**
   - 0x3A: Arcade Seesaw button board (Adafruit 5296)
   - 0x70-0x73: HT16K33 matrix displays (Adafruit 1855, daisy-chained)
-- **I²C1 Bus:**
-  - 0x5A: DRV2605L left haptic
-
-**Note:** Both DRV2605L haptics use address 0x5A (fixed, cannot be changed), requiring separate I²C buses.
 
 ## Build Requirements
 
@@ -234,7 +219,7 @@ Output: `build/pinball_firmware.uf2`
 ## Testing Status
 
 ### Without Hardware
-- [x] Code compiles (requires Pico SDK)
+- [x] Code compiles (requires Raspberry Pi Pico SDK - KB2040 uses RP2040)
 - [x] No syntax errors
 - [x] All includes resolved
 - [x] Proper header guards
@@ -244,7 +229,6 @@ Output: `build/pinball_firmware.uf2`
 - [ ] USB CDC enumeration
 - [ ] I²C device detection
 - [ ] Button events generation
-- [ ] Haptic feedback
 - [ ] NeoPixel display
 - [ ] LED effects animation
 - [ ] Matrix display rendering
@@ -309,4 +293,4 @@ The code follows best practices for embedded systems:
 - Non-blocking main loop design
 - Comprehensive error checking where applicable
 
-**Next steps:** Flash to Pico hardware and perform integration testing with all components.
+**Next steps:** Flash to KB2040 hardware and perform integration testing with all components.
