@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "types.h"
+#include "buttons.h"
 
 // Controller substate - finer-grained state within a mode
 typedef enum {
