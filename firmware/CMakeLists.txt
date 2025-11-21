@@ -16,6 +16,7 @@ add_executable(pinball_firmware
     src/main.c
     src/protocol.c
     src/neopixel.c
+    src/onboard_neopixel.c
     src/buttons.c
     src/display.c
     src/debug_mode.c
