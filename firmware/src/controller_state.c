@@ -156,7 +156,15 @@ void controller_apply_base_profile(void) {
             break;
 
         case MODE_GAME:
-            if (g_state.ball_ready) {
+            if (g_state.skill_shot_active) {
+                // Skill shot active - use buildup effect
+                if (g_state.np_prio == PRIORITY_BASE) {
+                    neopixel_start_effect(EFFECT_BALL_LAUNCH);
+                }
+                if (g_state.btn_prio == PRIORITY_BASE) {
+                    buttons_start_effect(BTN_EFFECT_SKILL_SHOT_BUILDUP);
+                }
+            } else if (g_state.ball_ready) {
                 if (g_state.np_prio == PRIORITY_BASE) {
                     neopixel_start_effect(EFFECT_BALL_LAUNCH);
                 }
@@ -250,6 +258,11 @@ bool controller_handle_button_press(Button button) {
                 controller_apply_base_profile();
                 
                 // Note: No EVT BALL_LAUNCH sent - host detects launch from raw button event
+                return true;
+            } else if (!g_state.ball_ready && (button == BUTTON_LEFT || button == BUTTON_RIGHT)) {
+                // Flipper button pressed during gameplay - trigger feedback effect
+                // Use one-shot with very short duration (100ms) so it auto-returns
+                controller_button_play_one_shot(BTN_EFFECT_FLIPPER_FEEDBACK, PRIORITY_EVENT, 100);
                 return true;
             }
             break;

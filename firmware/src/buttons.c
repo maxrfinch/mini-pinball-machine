@@ -248,6 +248,23 @@ void buttons_start_effect(ButtonLEDEffect effect) {
 
 void buttons_set_menu_selection(Button button) {
     menu_selection = button;
+    
+    // Immediately update the LED brightness for menu navigation if that effect is active
+    if (current_effect == BTN_EFFECT_MENU_NAVIGATION) {
+        // Apply the menu navigation brightness pattern immediately
+        for (int i = 0; i < 3; i++) {
+            if (i == menu_selection) {
+                led_brightness[i] = 255;
+            } else {
+                led_brightness[i] = 80;
+            }
+        }
+        
+        // Apply brightness to physical LEDs immediately
+        buttons_set_led(BUTTON_LEFT, led_brightness[BUTTON_LEFT]);
+        buttons_set_led(BUTTON_CENTER, led_brightness[BUTTON_CENTER]);
+        buttons_set_led(BUTTON_RIGHT, led_brightness[BUTTON_RIGHT]);
+    }
 }
 
 // Helper: smooth sine wave breathing (0-255)

@@ -208,6 +208,9 @@ int main() {
         // Update onboard NeoPixel (always running)
         onboard_neopixel_update();
         
+        // Update display animations
+        display_update_animation();
+        
         // Update displays
         display_update();
         //i2c0_scan();
