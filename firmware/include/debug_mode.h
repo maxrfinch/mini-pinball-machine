@@ -15,6 +15,9 @@ void debug_mode_init(void);
 // Check and enter debug mode if needed
 void debug_mode_check(void);
 
+// Manually enter debug mode
+void debug_mode_enter(void);
+
 // Exit debug mode
 void debug_mode_exit(void);
 

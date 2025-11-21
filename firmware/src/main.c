@@ -169,7 +169,7 @@ int main() {
     printf("╚═══════════════════════════════════════════════════════════╝\n");
     printf("\n");
     printf("Awaiting commands via USB serial...\n");
-    printf("Debug mode will activate after 30 seconds of inactivity.\n");
+    printf("Use 'CMD DEBUG' to manually enter debug mode.\n");
     printf("\n");
     
     // Send READY event
@@ -188,9 +188,6 @@ int main() {
         
         // Poll button states
         buttons_poll();
-        
-        // Check for debug mode timeout
-        debug_mode_check();
         
         // Update animations
         if (debug_mode_is_active()) {

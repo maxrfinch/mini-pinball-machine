@@ -96,6 +96,24 @@ void debug_mode_check(void) {
     }
 }
 
+void debug_mode_enter(void) {
+    if (!debug_active) {
+        // Enter debug mode
+        printf("\n*** ENTERING DEBUG MODE ***\n");
+        debug_active = true;
+        debug_frame = 0;
+        self_test_run = false;
+        protocol_send_debug_active();
+        
+        // Set onboard NeoPixel to steady orange (debug mode)
+        onboard_neopixel_set_debug_mode(true);
+        
+        // Run self-test on entry
+        run_self_test();
+        self_test_run = true;
+    }
+}
+
 void debug_mode_exit(void) {
     if (debug_active) {
         printf("\n*** EXITING DEBUG MODE ***\n\n");
