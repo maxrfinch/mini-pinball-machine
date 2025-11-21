@@ -9,7 +9,7 @@ MiniPinball is a modernized fork of the original **ChrisDalke Mini Pinball Proje
 - LED‑lit arcade buttons with full I2C control
 - Battery‑powered wireless play via a Geekworm X1206 21700 power system
 - Fully acrylic laser‑cut enclosure with 3D‑printed standoffs
-- Support for haptic feedback motors (2 zones)
+
 - Forward‑compatible accessory design
 
 This document lists every major component used so far and includes placeholders for laser‑cut files, 3D‑printed models, and future SendCutSend ordering links.
@@ -135,7 +135,7 @@ A **SendCutSend order link** will be added here once finalized. Ordering through
 - Add Pico firmware documentation
 - Add Pi 5 software setup guide
 - Add LED animation spec
-- Add haptic feedback mapping
+
 - Add camera capture module documentation
 - Add gameplay logic overview
 - Add bill of materials pricing

@@ -227,7 +227,7 @@ Expected devices:
 After hardware is assembled:
 1. Flash the firmware (see README.md)
 2. Verify all devices respond in debug mode
-3. Test each button for events and haptics
+3. Test each button for events
 4. Verify LED effects display correctly
 5. Test score and ball display on matrices
 6. Calibrate timing and brightness as needed

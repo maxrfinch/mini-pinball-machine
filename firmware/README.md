@@ -352,7 +352,7 @@ firmware/
 ## Future Enhancements
 
 - Configurable LED effect parameters
-- Custom waveform support for haptics
+
 - Adjustable button debounce timing
 - Display brightness control
 - EEPROM storage for settings
