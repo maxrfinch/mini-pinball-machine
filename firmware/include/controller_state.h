@@ -11,16 +11,6 @@
 #include <stdbool.h>
 #include "types.h"
 
-// Controller mode - top-level game state
-typedef enum {
-    MODE_ATTRACT = 0,
-    MODE_MENU,
-    MODE_GAME,
-    MODE_BALL_LOST,
-    MODE_HIGH_SCORE,
-    MODE_DEBUG
-} controller_mode_t;
-
 // Controller substate - finer-grained state within a mode
 typedef enum {
     SUB_NONE = 0,
@@ -41,7 +31,7 @@ typedef enum {
 
 // Controller state structure
 typedef struct {
-    controller_mode_t      mode;
+    GameMode               mode;
     controller_substate_t  substate;
 
     // Menu state
@@ -66,7 +56,7 @@ void controller_state_init(void);
 const controller_state_t* controller_get_state(void);
 
 // Set mode and apply base profile
-void controller_set_mode(controller_mode_t mode);
+void controller_set_mode(GameMode mode);
 
 // Set game state flags
 void controller_set_ball_ready(bool ready);

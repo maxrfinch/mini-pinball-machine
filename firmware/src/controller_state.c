@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include "pico/stdlib.h"
 #include "controller_state.h"
 #include "neopixel.h"
 #include "buttons.h"
@@ -45,7 +46,7 @@ const controller_state_t* controller_get_state(void) {
     return &g_state;
 }
 
-void controller_set_mode(controller_mode_t mode) {
+void controller_set_mode(GameMode mode) {
     g_state.mode = mode;
     
     // Reset substate when mode changes
@@ -286,8 +287,6 @@ void controller_neopixel_play_one_shot(LedEffect effect, effect_priority_t prior
     controller_neopixel_set_effect(effect, priority);
     
     // Set deadline for returning to base priority
-    extern uint32_t to_ms_since_boot(absolute_time_t t);
-    extern absolute_time_t get_absolute_time(void);
     np_event_deadline_ms = to_ms_since_boot(get_absolute_time()) + duration_ms;
 }
 
@@ -295,15 +294,11 @@ void controller_button_play_one_shot(ButtonLEDEffect effect, effect_priority_t p
     controller_button_set_effect(effect, priority);
     
     // Set deadline for returning to base priority
-    extern uint32_t to_ms_since_boot(absolute_time_t t);
-    extern absolute_time_t get_absolute_time(void);
     btn_event_deadline_ms = to_ms_since_boot(get_absolute_time()) + duration_ms;
 }
 
 // Check and handle event timeouts (call from main loop)
 void controller_check_event_timeouts(void) {
-    extern uint32_t to_ms_since_boot(absolute_time_t t);
-    extern absolute_time_t get_absolute_time(void);
     uint32_t now_ms = to_ms_since_boot(get_absolute_time());
     
     // Check NeoPixel event timeout
