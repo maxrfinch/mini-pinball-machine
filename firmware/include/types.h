@@ -47,7 +47,8 @@ typedef enum {
     MODE_MENU,
     MODE_GAME,
     MODE_BALL_LOST,
-    MODE_HIGH_SCORE
+    MODE_HIGH_SCORE,
+    MODE_DEBUG
 } GameMode;
 
 // Button States

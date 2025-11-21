@@ -2,19 +2,20 @@
 
 ## Table of Contents
 1. System Overview
-2. Hardware Architecture
-3. Wiring & Setup
-4. Build & Flash Instructions
-5. Host Communication Protocol
-6. Button Input & LED Effects (Full Reference)
-7. Matrix Display System
-8. NeoPixel Lighting System
-9. Debug Mode & Diagnostics (Consolidated)
-10. Troubleshooting Guide
-11. Implementation Summary
-12. Project Structure
-13. Customization Guide
-14. Appendix: Recommended Game‑State Mapping
+2. Controller State Machine
+3. Hardware Architecture
+4. Wiring & Setup
+5. Build & Flash Instructions
+6. Host Communication Protocol
+7. Button Input & LED Effects (Full Reference)
+8. Matrix Display System
+9. NeoPixel Lighting System
+10. Debug Mode & Diagnostics (Consolidated)
+11. Troubleshooting Guide
+12. Implementation Summary
+13. Project Structure
+14. Customization Guide
+15. Appendix: Recommended Game‑State Mapping
 
 ---
 
@@ -32,7 +33,81 @@ The microcontroller manages *all cabinet hardware* so the host game only sends s
 
 ---
 
-# 2. Hardware Architecture
+# 2. Controller State Machine
+
+The firmware implements a central state machine that manages the controller's mode, visual behavior, and button interactions. This allows the KB2040 to own more of the visual/feel logic while the Pi sends high-level game state and events.
+
+## 2.1. Controller Modes
+
+The controller operates in one of six top-level modes:
+
+| Mode | Description | Default Visual Behavior |
+|------|-------------|------------------------|
+| **ATTRACT** | Idle/demo mode | NeoPixels: ATTRACT effect<br>Buttons: READY_STEADY_GLOW |
+| **MENU** | Menu navigation | NeoPixels: ATTRACT effect<br>Buttons: MENU_NAVIGATION |
+| **GAME** | Active gameplay | Depends on ball state (see substates) |
+| **BALL_LOST** | Ball drain sequence | NeoPixels: RED_STROBE_5X<br>Buttons: READY_STEADY_GLOW |
+| **HIGH_SCORE** | High score entry/display | NeoPixels: PINK_PULSE<br>Buttons: READY_STEADY_GLOW |
+| **DEBUG** | Diagnostic mode | Special debug patterns |
+
+## 2.2. Controller Substates
+
+Within modes, the controller tracks finer-grained states:
+
+| Substate | Used In Mode | Meaning |
+|----------|--------------|---------|
+| **SUB_NONE** | Multiple | Default/unspecified |
+| **SUB_MENU_IDLE** | MENU | Menu displayed, no active navigation |
+| **SUB_MENU_NAV** | MENU | User actively navigating menu |
+| **SUB_BALL_READY** | GAME | Ball loaded, ready to launch |
+| **SUB_BALL_IN_PLAY** | GAME | Ball actively in play |
+| **SUB_SKILL_SHOT** | GAME | Skill shot opportunity active |
+| **SUB_MULTIBALL** | GAME | Multiball mode active |
+
+## 2.3. Game State Flags
+
+The controller tracks several boolean flags that affect behavior:
+
+- **ball_ready**: When true in GAME mode, indicates ball is ready to launch
+  - Activates BALL_LAUNCH effect on NeoPixels
+  - Activates CENTER_HIT_PULSE on center button
+  - Center button press triggers ball launch (host detects from raw button event)
+
+- **skill_shot_active**: Indicates skill shot window is active
+  - Can be used to modify visual effects during launch
+
+- **multiball_active**: Indicates multiball mode is active
+  - May affect base visual profiles in future enhancements
+
+## 2.4. Menu State
+
+For menu navigation, the controller maintains:
+
+- **menu_index**: Current selected menu item (0-based)
+- **menu_count**: Total number of menu items
+- **menu_smart**: Navigation mode
+  - `true` (SMART): Controller manages index, emits MENU_MOVE/MENU_SELECT events
+  - `false` (DUMB): Host manages index, controller only handles visuals
+
+## 2.5. Effect Priority System
+
+Visual effects operate on a three-level priority system:
+
+| Priority | Value | Description | Use Cases |
+|----------|-------|-------------|-----------|
+| **BASE** | 0 | Long-lived defaults | Mode-driven base visuals |
+| **EVENT** | 1 | Short-lived events | Jackpot, ball save, extra ball (1-3s) |
+| **CRITICAL** | 2 | Manual overrides | Debug commands, error conditions |
+
+Priority rules:
+- Lower priority effects cannot override higher priority effects
+- EVENT priority effects automatically revert to BASE after their duration expires
+- CRITICAL priority persists until explicitly cleared
+- Both NeoPixels and button LEDs have independent priority tracking
+
+---
+
+# 3. Hardware Architecture
 
 ### Microcontroller
 - **Adafruit KB2040** (RP2040 MCU, USB‑native, STEMMA QT I²C)
@@ -55,7 +130,7 @@ The microcontroller manages *all cabinet hardware* so the host game only sends s
 
 ---
 
-# 3. Wiring & Setup
+# 4. Wiring & Setup
 
 ### NeoPixels
 - Data: **GPIO6 → 330Ω resistor → first LED board**
@@ -90,7 +165,7 @@ Buttons connect to Seesaw:
 
 ---
 
-# 4. Build & Flash Instructions
+# 5. Build & Flash Instructions
 
 ### Requirements
 - Raspberry Pi Pico SDK  
@@ -115,33 +190,286 @@ build/pinball_firmware.uf2
 
 ---
 
-# 5. Host Communication Protocol
+# 6. Host Communication Protocol
 
-ASCII messages over USB CDC, newline‑terminated.
+ASCII messages over USB CDC, newline‑terminated. The protocol is organized into three categories: state commands (long-lived configuration), event commands (short-lived events), and override commands (manual control).
 
-### Commands (Pi → KB2040)
+## 6.1. State Commands (Pi → KB2040)
+
+Long-lived configuration and game state. These commands set the controller's persistent state and trigger base profile updates.
+
+### Mode Control
 ```
-CMD MODE <ATTRACT|MENU|GAME|BALL_LOST|HIGH_SCORE>
+CMD MODE <ATTRACT|MENU|GAME|BALL_LOST|HIGH_SCORE|DEBUG>
+```
+Sets the top-level controller mode. Automatically applies the appropriate base visual profile for the new mode.
+
+**Examples:**
+```
+CMD MODE ATTRACT        # Enter attract/demo mode
+CMD MODE GAME           # Start active gameplay
+CMD MODE MENU           # Enter menu navigation
+CMD MODE BALL_LOST      # Ball drain sequence
+CMD MODE HIGH_SCORE     # High score entry
+```
+
+### Game State Flags
+```
+CMD STATE BALL_READY <0|1>
+CMD STATE SKILL_SHOT <0|1>
+CMD STATE MULTIBALL <0|1>
+```
+
+- `BALL_READY 1`: Ball is loaded and ready to launch (activates launch-ready visuals)
+- `BALL_READY 0`: Ball is in play or not available
+- `SKILL_SHOT 1`: Skill shot opportunity window is active
+- `MULTIBALL 1`: Multiple balls in play
+
+**Example sequence:**
+```
+CMD STATE BALL_READY 1    # Ball loaded, show launch prompt
+# (Player presses center button)
+# Controller emits: EVT BUTTON CENTER DOWN
+# Controller automatically clears ball_ready flag
+# Host detects launch from button event while in ball_ready state
+```
+
+### Menu Configuration
+```
+CMD MENU_MODE <SMART|DUMB>
+CMD MENU_SIZE <n>
+CMD MENU_INDEX <i>
+```
+
+- `MENU_MODE SMART`: Controller manages menu_index internally, emits navigation events
+- `MENU_MODE DUMB`: Host manages menu_index, controller only handles visuals
+- `MENU_SIZE`: Total number of menu items (for wrap-around)
+- `MENU_INDEX`: Set current selection (DUMB mode) or initial selection (SMART mode)
+
+### Score & Display
+```
 CMD SCORE <number>
 CMD BALLS <number>
-CMD EFFECT <pattern>
-CMD BUTTON_EFFECT <pattern>
+```
+
+Updates the LED matrix display with current score and ball count.
+
+### Brightness
+```
 CMD BRIGHTNESS <0-255>
+```
+
+Sets global NeoPixel brightness. Does not affect button LEDs.
+
+### System Commands
+```
 CMD PING
 CMD DEBUG
 ```
 
-### Events (KB2040 → Pi)
+- `PING`: Controller responds with `EVT PONG`
+- `DEBUG`: Enter debug/diagnostic mode
+
+---
+
+## 6.2. Event Commands (Pi → KB2040)
+
+Short-lived game events that trigger temporary visual effects at EVENT priority. Effects automatically revert to base profile after their duration expires.
+
+```
+CMD EVENT BALL_SAVED
+CMD EVENT EXTRA_BALL
+CMD EVENT JACKPOT
+CMD EVENT MULTIBALL_START
+CMD EVENT MULTIBALL_END
+```
+
+| Event | NeoPixel Effect | Button Effect | Duration |
+|-------|----------------|---------------|----------|
+| BALL_SAVED | RED_STROBE_5X | BALL_SAVED | 1.5s |
+| EXTRA_BALL | PINK_PULSE | EXTRA_BALL_AWARD | 2.0s |
+| JACKPOT | RAINBOW_WAVE | POWERUP_ALERT | 2.5s |
+| MULTIBALL_START | PINK_PULSE | POWERUP_ALERT | 2.0s |
+| MULTIBALL_END | *(reverts to base)* | *(reverts to base)* | immediate |
+
+**When to send:**
+- `BALL_SAVED`: Ball save feature activates, preventing drain
+- `EXTRA_BALL`: Player awarded an extra ball
+- `JACKPOT`: Major scoring event achieved
+- `MULTIBALL_START`: Multiball mode begins (also sets multiball_active flag)
+- `MULTIBALL_END`: Multiball mode ends (clears multiball_active flag)
+
+---
+
+## 6.3. Override Commands (Pi → KB2040)
+
+Manual control at CRITICAL priority. Overrides persist until explicitly cleared, blocking all base and event updates.
+
+**Intended use:** Debug sequences, special modes, testing.
+
+### NeoPixel Override
+```
+CMD EFFECT_OVERRIDE <EFFECT_NAME>
+CMD EFFECT_CLEAR
+```
+
+Effect names: RAINBOW_BREATHE, RAINBOW_WAVE, CAMERA_FLASH, RED_STROBE_5X, WATER, ATTRACT, PINK_PULSE, BALL_LAUNCH, NONE
+
+**Example:**
+```
+CMD EFFECT_OVERRIDE WATER     # Force water effect
+# (mode changes, events, etc. will not change NeoPixels)
+CMD EFFECT_CLEAR              # Release override, return to base profile
+```
+
+### Button LED Override
+```
+CMD BUTTON_EFFECT_OVERRIDE <EFFECT_NAME>
+CMD BUTTON_EFFECT_CLEAR
+```
+
+Effect names: OFF, READY_STEADY_GLOW, FLIPPER_FEEDBACK, CENTER_HIT_PULSE, SKILL_SHOT_BUILDUP, BALL_SAVED, POWERUP_ALERT, EXTRA_BALL_AWARD, GAME_OVER_FADE, MENU_NAVIGATION
+
+---
+
+## 6.4. Events (KB2040 → Pi)
+
+**Important:** The controller only sends button-originated events back to the Pi. No autonomous telemetry or game-state-derived events are sent.
+
+### Button Events (Always Sent)
+```
+EVT BUTTON <LEFT|CENTER|RIGHT> <DOWN|UP|HELD>
+```
+
+Raw button state changes:
+- `DOWN`: Button pressed
+- `UP`: Button released
+- `HELD`: Button held for >500ms
+
+**Example:**
+```
+EVT BUTTON LEFT DOWN
+EVT BUTTON LEFT UP
+EVT BUTTON CENTER HELD
+```
+
+### Menu Events (SMART Mode Only)
+```
+EVT MENU_MOVE <index>
+EVT MENU_SELECT <index>
+```
+
+Sent when `MENU_MODE SMART` is active and player navigates menu:
+- `MENU_MOVE`: Player pressed LEFT/RIGHT, index updated (with wrap-around)
+- `MENU_SELECT`: Player pressed CENTER, selecting current item
+
+**Example flow:**
+```
+# Host:
+CMD MODE MENU
+CMD MENU_MODE SMART
+CMD MENU_SIZE 5
+CMD MENU_INDEX 0
+
+# Player presses RIGHT:
+EVT BUTTON RIGHT DOWN        # Raw button event
+EVT MENU_MOVE 1              # Menu semantic event
+
+# Player presses CENTER:
+EVT BUTTON CENTER DOWN       # Raw button event
+EVT MENU_SELECT 1            # Menu semantic event
+```
+
+### Game Flow - Ball Launch Detection
+
+The controller handles ball launch internally but does not emit a separate launch event. The host detects ball launch by monitoring raw button events.
+
+**Example flow:**
+```
+# Host:
+CMD MODE GAME
+CMD STATE BALL_READY 1
+
+# Controller shows ball-ready visuals (BALL_LAUNCH effect, CENTER_HIT_PULSE)
+
+# Player presses CENTER:
+EVT BUTTON CENTER DOWN       # Raw button event (only event sent)
+
+# Controller automatically (internal to controller):
+# - Sets ball_ready = false
+# - Changes substate to SUB_BALL_IN_PLAY
+# - Reverts to in-play base profile
+
+# Host detects launch by receiving CENTER DOWN while ball_ready was true
+```
+
+### System Events
 ```
 EVT READY
 EVT PONG
 EVT DEBUG ACTIVE
-EVT BUTTON <LEFT|CENTER|RIGHT> <DOWN|UP|HELD>
 ```
+
+- `READY`: Sent once at startup when controller is initialized
+- `PONG`: Response to `CMD PING`
+- `DEBUG ACTIVE`: Confirmation that debug mode was entered
 
 ---
 
-# 6. Button Input & LED Effects (Full Consolidated Reference)
+## 6.5. Menu Behavior
+
+### SMART Mode (Controller-Managed)
+
+When `CMD MENU_MODE SMART`:
+
+**Left Button:**
+- Visual: Slow breathing LED in idle
+- On press: Decrements menu_index (with wrap to last item), emits `EVT MENU_MOVE <index>`
+
+**Right Button:**
+- Visual: Slow breathing LED in idle
+- On press: Increments menu_index (with wrap to 0), emits `EVT MENU_MOVE <index>`
+
+**Center Button:**
+- Visual: Breathing "hit me" pattern
+- On press: Emits `EVT MENU_SELECT <index>`
+
+The host receives events and can update UI or change modes accordingly. The controller handles all menu index logic.
+
+### DUMB Mode (Host-Managed)
+
+When `CMD MENU_MODE DUMB`:
+
+- Host sets `CMD MENU_INDEX <i>` to control which item is highlighted
+- Button presses still generate raw `EVT BUTTON` events
+- No `EVT MENU_MOVE` or `EVT MENU_SELECT` events are generated
+- Controller only updates visual indicators based on host-provided index
+
+---
+
+## 6.6. Game Flow Signals
+
+### Ball Ready Sequence
+
+1. Host sets `CMD MODE GAME`
+2. Host updates `CMD SCORE` / `CMD BALLS` as needed
+3. **Host sets `CMD STATE BALL_READY 1` when ball is loaded**
+4. Controller automatically:
+   - Sets substate to SUB_BALL_READY
+   - Activates BALL_LAUNCH NeoPixel effect
+   - Activates CENTER_HIT_PULSE on center button
+5. Player presses center button
+6. Controller:
+   - Emits `EVT BUTTON CENTER DOWN` (raw button event)
+   - Sets ball_ready = false, substate = SUB_BALL_IN_PLAY
+   - Reverts to in-play base profile
+7. Host receives `EVT BUTTON CENTER DOWN` and knows ball_ready was true, so transitions game logic to ball-in-play
+
+This approach allows the controller to provide immediate tactile feedback while the host manages game state transitions based on raw button events.
+
+---
+
+# 7. Button Input & LED Effects (Full Consolidated Reference)
 
 ### Button Input Behavior
 - Polled every ~10 ms
@@ -190,7 +518,7 @@ Controlled via `buttons_set_menu_selection()`.
 
 ---
 
-# 7. Matrix Display System
+# 8. Matrix Display System
 
 - Four 8×8 HT16K33 matrices → **32×8 logical surface**
 - Score uses 5×5 digit font, right‑aligned
@@ -200,7 +528,7 @@ Controlled via `buttons_set_menu_selection()`.
 
 ---
 
-# 8. NeoPixel Lighting System
+# 9. NeoPixel Lighting System
 
 ### Global Characteristics
 - 48 LEDs
@@ -220,7 +548,7 @@ Controlled via `buttons_set_menu_selection()`.
 
 ---
 
-# 9. Debug Mode & Diagnostics (Consolidated)
+# 10. Debug Mode & Diagnostics (Consolidated)
 
 ### Entering Debug Mode
 ```
@@ -263,7 +591,7 @@ Testing HT16K33 0x73... ✓ OK
 
 ---
 
-# 10. Troubleshooting Guide
+# 11. Troubleshooting Guide
 
 ### Buttons Not Responding
 - Check Seesaw at 0x3A  
@@ -287,11 +615,12 @@ Testing HT16K33 0x73... ✓ OK
 
 ---
 
-# 11. Implementation Summary
+# 12. Implementation Summary
 
 Total firmware size: **~1,100 lines of C + 47 lines of PIO ASM**.
 
 ### Modules
+- `controller_state.c` – central state machine + priority handling
 - `neopixel.c` – WS2812 driver + effects  
 - `buttons.c` – Seesaw driver + LED effects  
 - `display.c` – HT16K33 driver + rendering  
@@ -301,12 +630,13 @@ Total firmware size: **~1,100 lines of C + 47 lines of PIO ASM**.
 
 ---
 
-# 12. Project Structure
+# 13. Project Structure
 
 ```
 firmware/
 ├── include/
 │   ├── hardware_config.h
+│   ├── controller_state.h
 │   ├── protocol.h
 │   ├── neopixel.h
 │   ├── buttons.h
@@ -315,6 +645,7 @@ firmware/
 │   └── types.h
 └── src/
     ├── main.c
+    ├── controller_state.c
     ├── protocol.c
     ├── neopixel.c
     ├── buttons.c
@@ -325,7 +656,7 @@ firmware/
 
 ---
 
-# 13. Customization Guide
+# 14. Customization Guide
 
 ### Add New NeoPixel Effect
 1. Add enum entry  
@@ -341,7 +672,7 @@ firmware/
 
 ---
 
-# 14. Appendix: Recommended Game‑State Mapping
+# 15. Appendix: Recommended Game‑State Mapping
 
 | Game State | NeoPixel Effect | Button Effect | Notes |
 |-----------|-----------------|---------------|-------|
