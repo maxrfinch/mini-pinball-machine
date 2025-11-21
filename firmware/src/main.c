@@ -17,6 +17,7 @@
 
 #include "debug_mode.h"
 #include "onboard_neopixel.h"
+#include "controller_state.h"
 
 // Application-level mode and effect enums matching the command protocol
 
@@ -160,9 +161,13 @@ int main() {
     debug_mode_init();
     printf("Debug mode initialized\n\n");
     
-    // Start with attract mode button effect
-    buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
-    printf("Button LED effects initialized (READY_STEADY_GLOW)\n\n");
+    // Initialize controller state machine
+    controller_state_init();
+    printf("Controller state machine initialized\n\n");
+    
+    // Start with attract mode (will apply base profile)
+    controller_set_mode(MODE_ATTRACT);
+    printf("Attract mode activated\n\n");
     
     printf("╔═══════════════════════════════════════════════════════════╗\n");
     printf("║                  SYSTEM READY                             ║\n");
@@ -188,6 +193,9 @@ int main() {
         
         // Poll button states
         buttons_poll();
+        
+        // Check event timeouts and revert to base priority if needed
+        controller_check_event_timeouts();
         
         // Update animations
         if (debug_mode_is_active()) {

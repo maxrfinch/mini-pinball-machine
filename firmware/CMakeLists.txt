@@ -20,6 +20,7 @@ add_executable(pinball_firmware
     src/buttons.c
     src/display.c
     src/debug_mode.c
+    src/controller_state.c
 )
 
 # Generate PIO header for ws2812

@@ -12,6 +12,7 @@
 #include "buttons.h"
 #include "protocol.h"
 #include "hardware_config.h"
+#include "controller_state.h"
 
 // Seesaw registers
 #define SEESAW_STATUS_BASE 0x00
@@ -188,6 +189,10 @@ void buttons_poll(void) {
                                      (i == BUTTON_CENTER) ? "CENTER" : "RIGHT";
             printf("BUTTON %s: PRESSED\n", button_name);
             
+            // Let controller state machine handle button press first
+            bool handled = controller_handle_button_press(i);
+            
+            // Always send raw button event to host (requirement #8)
             protocol_send_button_event(i, BUTTON_STATE_DOWN);
             button_hold_time[i] = to_ms_since_boot(get_absolute_time());
             
