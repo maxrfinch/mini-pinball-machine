@@ -101,6 +101,8 @@ static inline void put_pixel(uint32_t pixel_grb) {
     pio_sm_put_blocking(pio, sm, pixel_grb << 8u);
 }
 
+// Convert RGB to GRB format for WS2812
+// WS2812 uses GRB format: G in bits 23-16, R in bits 15-8, B in bits 7-0
 static inline uint32_t urgb_u32(uint8_t r, uint8_t g, uint8_t b) {
     uint8_t r_scaled = (r * brightness) / 255;
     uint8_t g_scaled = (g * brightness) / 255;
@@ -153,8 +155,11 @@ static void animate_ocean(void) {
 // Animation: Candy (pink-white transition)
 static void animate_candy(void) {
     float transition = 0.5f + 0.5f * sinf(animation_frame * 0.03f);
-    uint8_t white_amt = (uint8_t)(transition * 100);
-    Color color = {255, white_amt, (uint8_t)(200 + white_amt * 0.27f)};
+    uint8_t white_amt = (uint8_t)(transition * 100);  // 0-100
+    // Pink color transitioning to light pink by adding white
+    // R stays at 255, G varies 0-100, B varies 200-227 (keeping it pink-ish)
+    uint8_t blue_val = 200 + (white_amt * 27) / 100;  // 200-227, safe from overflow
+    Color color = {255, white_amt, blue_val};
     set_color(color);
 }
 
