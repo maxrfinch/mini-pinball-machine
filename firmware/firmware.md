@@ -130,7 +130,7 @@ Priority rules:
 
 ---
 
-# 3. Wiring & Setup
+# 4. Wiring & Setup
 
 ### NeoPixels
 - Data: **GPIO6 → 330Ω resistor → first LED board**
@@ -165,7 +165,7 @@ Buttons connect to Seesaw:
 
 ---
 
-# 4. Build & Flash Instructions
+# 5. Build & Flash Instructions
 
 ### Requirements
 - Raspberry Pi Pico SDK  

@@ -116,8 +116,10 @@ void controller_set_menu_index(uint8_t index) {
         printf("[CONTROLLER] Menu index: %d\n", index);
         
         // Update button effect if in menu mode
+        // Map menu index to button for visual feedback (0=LEFT, 1=CENTER, 2=RIGHT, wrap if >2)
         if (g_state.mode == MODE_MENU) {
-            buttons_set_menu_selection(index);
+            Button button = (Button)(index % 3);
+            buttons_set_menu_selection(button);
         }
     }
 }
@@ -144,7 +146,9 @@ void controller_apply_base_profile(void) {
             }
             if (g_state.btn_prio == PRIORITY_BASE) {
                 buttons_start_effect(BTN_EFFECT_MENU_NAVIGATION);
-                buttons_set_menu_selection(g_state.menu_index);
+                // Map menu index to button for visual feedback
+                Button button = (Button)(g_state.menu_index % 3);
+                buttons_set_menu_selection(button);
             }
             break;
 
@@ -213,7 +217,9 @@ bool controller_handle_button_press(Button button) {
                     } else if (g_state.menu_count > 0) {
                         g_state.menu_index = g_state.menu_count - 1;
                     }
-                    buttons_set_menu_selection(g_state.menu_index);
+                    // Update visual feedback
+                    Button visual_button = (Button)(g_state.menu_index % 3);
+                    buttons_set_menu_selection(visual_button);
                     send_menu_event("MOVE", g_state.menu_index);
                     return true;
                     
@@ -222,7 +228,9 @@ bool controller_handle_button_press(Button button) {
                     if (g_state.menu_count > 0) {
                         g_state.menu_index = (g_state.menu_index + 1) % g_state.menu_count;
                     }
-                    buttons_set_menu_selection(g_state.menu_index);
+                    // Update visual feedback
+                    Button visual_button = (Button)(g_state.menu_index % 3);
+                    buttons_set_menu_selection(visual_button);
                     send_menu_event("MOVE", g_state.menu_index);
                     return true;
                     
