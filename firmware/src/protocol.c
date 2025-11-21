@@ -114,24 +114,34 @@ static void parse_command(const char* cmd) {
         
     } else if (strncmp(cmd, "CMD TEXT ", 9) == 0) {
         // CMD TEXT <x> <y> <text>
-        // Parse x and y coordinates
+        // Parse x and y coordinates and find text start
         const char* args = cmd + 9;
-        int x = 0, y = 0;
-        if (sscanf(args, "%d %d", &x, &y) == 2) {
-            // Find start of text (skip x and y numbers)
-            const char* text_start = args;
-            // Skip first number
-            while (*text_start && *text_start != ' ') text_start++;
-            if (*text_start == ' ') text_start++;
-            // Skip second number
-            while (*text_start && *text_start != ' ') text_start++;
-            if (*text_start == ' ') text_start++;
-            
-            // Draw the text
-            if (*text_start) {
-                display_clear();
-                display_set_text(text_start, (uint8_t)x, (uint8_t)y);
-            }
+        char* endptr = NULL;
+        
+        // Parse x coordinate
+        long x = strtol(args, &endptr, 10);
+        if (endptr == args || x < 0 || x >= 32) {
+            return; // Invalid x coordinate
+        }
+        args = endptr;
+        
+        // Skip whitespace
+        while (*args == ' ') args++;
+        
+        // Parse y coordinate
+        long y = strtol(args, &endptr, 10);
+        if (endptr == args || y < 0 || y >= 8) {
+            return; // Invalid y coordinate
+        }
+        args = endptr;
+        
+        // Skip whitespace to find text
+        while (*args == ' ') args++;
+        
+        // Draw the text if any remains
+        if (*args) {
+            display_clear();
+            display_set_text(args, (uint8_t)x, (uint8_t)y);
         }
         
     } else if (strncmp(cmd, "CMD DISPLAY_ANIM ", 17) == 0) {

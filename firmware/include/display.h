@@ -35,6 +35,11 @@ typedef enum {
     DISPLAY_ANIM_MAIN_MENU
 } DisplayAnimation;
 
+// Animation timing constants
+#define BALL_SAVED_CYCLE_MS 333
+#define MULTIBALL_SCROLL_START 32
+#define MULTIBALL_SCROLL_DISTANCE 77
+
 // Start a display animation
 void display_start_animation(DisplayAnimation anim);
 

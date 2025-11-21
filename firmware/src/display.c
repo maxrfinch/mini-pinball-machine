@@ -39,6 +39,9 @@ static DisplayAnimation current_animation = DISPLAY_ANIM_NONE;
 static uint32_t animation_start_time = 0;
 static uint32_t animation_frame = 0;
 
+// Animation constants
+#define TWO_PI 6.28318530718f
+
 // 3x5 digit font (0–9), 3 columns wide, 5 rows tall
 // Each byte uses lowest 5 bits as vertical pixels (bit0 = top)
 static const uint8_t digit_font[10][3] = {
@@ -421,6 +424,14 @@ void display_update_animation(void) {
         return;
     }
     
+    // Note on framebuffer row mapping:
+    // Physical row N maps to framebuffer row (N+7)%8
+    // Physical row 0 (top) = framebuffer[x][7]
+    // Physical row 1 = framebuffer[x][0]
+    // Physical row 2 = framebuffer[x][1]
+    // ...
+    // Physical row 7 (bottom) = framebuffer[x][6]
+    
     uint32_t elapsed_ms = to_ms_since_boot(get_absolute_time()) - animation_start_time;
     animation_frame++;
     
@@ -435,8 +446,8 @@ void display_update_animation(void) {
                 break;
             }
             
-            uint32_t cycle = elapsed_ms % 333;
-            bool show_text = (cycle < 166);
+            uint32_t cycle = elapsed_ms % BALL_SAVED_CYCLE_MS;
+            bool show_text = (cycle < (BALL_SAVED_CYCLE_MS / 2));
             
             display_clear();
             if (show_text) {
@@ -467,9 +478,9 @@ void display_update_animation(void) {
             
             // Calculate scroll position (right to left)
             // Text is approximately 45 pixels wide (9 chars * 5 pixels each)
-            // Start off-screen right (x=32), end off-screen left (x=-45)
-            // Total travel: 77 pixels over 4 seconds
-            int scroll_offset = 32 - (int)((elapsed_ms * 77) / total_duration);
+            // Start off-screen right (MULTIBALL_SCROLL_START), end off-screen left (x=-45)
+            // Total travel: MULTIBALL_SCROLL_DISTANCE pixels over 4 seconds
+            int scroll_offset = MULTIBALL_SCROLL_START - (int)((elapsed_ms * MULTIBALL_SCROLL_DISTANCE) / total_duration);
             
             display_set_text("MULTIBALL", scroll_offset, 2);
             
@@ -492,7 +503,7 @@ void display_update_animation(void) {
             
             // Calculate pulse intensity (breathe over 2 second cycle)
             uint32_t cycle_ms = elapsed_ms % 2000;
-            float pulse = (sinf((float)cycle_ms / 2000.0f * 6.28318530718f) + 1.0f) / 2.0f;  // 0.0 to 1.0
+            float pulse = (sinf((float)cycle_ms / 2000.0f * TWO_PI) + 1.0f) / 2.0f;  // 0.0 to 1.0
             
             // Draw border with gaps based on pulse
             // When pulse is high, show more border pixels
@@ -500,8 +511,8 @@ void display_update_animation(void) {
             
             for (int x = 0; x < DISPLAY_WIDTH; x++) {
                 if (x % show_every == (animation_frame / 4) % show_every) {
-                    framebuffer[x][7] = 1;  // Top row
-                    framebuffer[x][4] = 1;  // Bottom row
+                    framebuffer[x][7] = 1;  // Physical row 0 (top)
+                    framebuffer[x][4] = 1;  // Physical row 5 (near bottom)
                 }
             }
             
