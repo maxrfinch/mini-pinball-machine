@@ -1,8 +1,8 @@
-# Pico Firmware Implementation Summary
+# KB2040 Firmware Implementation Summary
 
 ## Overview
 
-This document summarizes the complete Phase 1 implementation of the Raspberry Pi Pico firmware for the mini pinball machine, as specified in the problem statement.
+This document summarizes the complete implementation of the Adafruit KB2040 firmware for the mini pinball machine.
 
 ## Requirements Checklist
 
@@ -10,7 +10,7 @@ This document summarizes the complete Phase 1 implementation of the Raspberry Pi
 
 #### 1. Hardware Interface Implementation
 - ✅ **USB CDC/UART Serial** (`hw_serial.c/.h`)
-  - USB CDC communication using Pico stdlib
+  - USB CDC communication using Pico SDK (KB2040 uses RP2040)
   - Line-buffered command reading
   - Single-byte button state transmission
   - Non-blocking I/O
@@ -55,7 +55,7 @@ This document summarizes the complete Phase 1 implementation of the Raspberry Pi
 
 #### 4. Build System
 - ✅ **CMake Configuration** (`CMakeLists.txt`)
-  - Pico SDK integration
+  - Raspberry Pi Pico SDK integration (KB2040 uses RP2040)
   - Hardware library dependencies (i2c, stdlib)
   - USB CDC enabled, UART disabled
   - Generates .uf2 file for easy flashing
@@ -82,7 +82,7 @@ This document summarizes the complete Phase 1 implementation of the Raspberry Pi
   - Phase 2/3 roadmap
 
 - ✅ **Migration Guide** (`PICO_MIGRATION_GUIDE.md`)
-  - Arduino → Pico migration steps
+  - Arduino → KB2040 migration steps
   - Wiring changes
   - Protocol comparison
   - Troubleshooting guide
@@ -103,13 +103,7 @@ This document summarizes the complete Phase 1 implementation of the Raspberry Pi
   - `BTN_LED` command placeholder
   - Update loop hook
 
-### ✅ Phase 3 Preparation (Stubs Complete)
 
-- ✅ **Haptic Stubs** (`hw_haptics.c/.h`)
-  - Left/right motor support structure
-  - `HAPT` command placeholder
-  - Pattern/strength/duration parameters
-  - Update loop hook
 
 ### ✅ Pi-Side Integration
 
@@ -123,7 +117,7 @@ This document summarizes the complete Phase 1 implementation of the Raspberry Pi
 
 ```
 mini-pinball-machine/
-├── firmware/                      # NEW: Pico firmware
+├── firmware/                      # NEW: KB2040 firmware
 │   ├── src/
 │   │   ├── main.c                # Main loop
 │   │   ├── protocol.c/.h         # Command parser
@@ -132,8 +126,8 @@ mini-pinball-machine/
 │   │   ├── hw_display.c/.h       # Matrix displays
 │   │   ├── hw_neopixel.c/.h      # Phase 2 stub
 │   │   ├── hw_button_leds.c/.h   # Phase 2 stub
-│   │   └── hw_haptics.c/.h       # Phase 3 stub
-│   ├── CMakeLists.txt            # Pico SDK build
+
+│   ├── CMakeLists.txt            # Raspberry Pi Pico SDK build
 │   ├── build.sh                  # Build script
 │   └── README.md                 # Firmware docs
 ├── src/
@@ -148,8 +142,8 @@ mini-pinball-machine/
 
 - **Total firmware code**: ~750 lines (C source + headers)
 - **Files created**: 21
-- **Languages**: C (for Pico SDK)
-- **Dependencies**: Pico SDK (stdlib, hardware_i2c)
+- **Languages**: C (for Raspberry Pi Pico SDK)
+- **Dependencies**: Raspberry Pi Pico SDK (stdlib, hardware_i2c)
 
 ## Technical Highlights
 
@@ -195,7 +189,7 @@ Requires physical hardware:
 - Raspberry Pi 4/5
 
 ### Test Plan (When Hardware Available)
-1. Flash firmware to Pico
+1. Flash firmware to KB2040
 2. Connect I2C devices
 3. Verify I2C addresses (i2cdetect)
 4. Test button input
@@ -215,19 +209,19 @@ Requires physical hardware:
 - [x] Foundation for Phase 2/3
 
 ### Section 2: Physical Hardware ✅
-- [x] Pico firmware architecture
+- [x] KB2040 firmware architecture
 - [x] QT board support (0x30)
 - [x] Matrix displays (0x70-0x73)
 - [x] Stub hardware for future phases
 
-### Section 3: Serial Protocol (Pi → Pico) ✅
+### Section 3: Serial Protocol (Pi → KB2040) ✅
 - [x] ASCII newline-terminated
 - [x] SCORE command
 - [x] BALLS command
 - [x] STATE command
 - [x] Unknown command handling
 
-### Section 4: Serial Protocol (Pico → Pi) ✅
+### Section 4: Serial Protocol (KB2040 → Pi) ✅
 - [x] Single byte button state
 - [x] Bit layout preserved
 - [x] Change detection
@@ -295,7 +289,7 @@ The Phase 1 implementation is **complete and ready for hardware testing**. All r
 - ✅ Future-ready architecture
 - ✅ Pi-side integration
 
-The codebase provides a solid foundation for Phase 2 (NeoPixels, button LEDs) and Phase 3 (haptics) features.
+The codebase provides a solid foundation for future NeoPixel and button LED enhancements.
 
 **Next Steps:**
 1. Acquire hardware
