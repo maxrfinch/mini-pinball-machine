@@ -7,6 +7,13 @@
 4. Wiring & Setup
 5. Build & Flash Instructions
 6. Host Communication Protocol
+   - 6.1. State Commands
+   - 6.2. Event Commands
+   - 6.3. Override Commands
+   - 6.4. Events (KB2040 → Pi)
+   - 6.5. Menu Behavior
+   - 6.6. Game Flow Signals
+   - 6.7. Complete Game Flow Examples (NEW)
 7. Button Input & LED Effects (Full Reference)
 8. Matrix Display System
 9. NeoPixel Lighting System
@@ -30,6 +37,9 @@ It provides:
 - **Full diagnostics**, debug mode, and hardware abstraction
 
 The microcontroller manages *all cabinet hardware* so the host game only sends simple commands.
+
+## Recent Updates
+- **PR #37**: Fixed button LED animation timing and synchronization issues. Button effects now properly respect priority system and transition smoothly between states.
 
 ---
 
@@ -250,9 +260,14 @@ CMD MENU_INDEX <i>
 ```
 CMD SCORE <number>
 CMD BALLS <number>
+CMD TEXT <x> <y> <text>
+CMD DISPLAY_ANIM <animation_name>
 ```
 
-Updates the LED matrix display with current score and ball count.
+- `SCORE`: Updates the LED matrix display with current score
+- `BALLS`: Updates the ball count display
+- `TEXT`: Displays custom text at position (x, y) on the 32×8 matrix. Note: Clears display before drawing.
+- `DISPLAY_ANIM`: Starts a display animation (NONE, BALL_SAVED, MULTIBALL, MAIN_MENU)
 
 ### Brightness
 ```
@@ -466,6 +481,353 @@ When `CMD MENU_MODE DUMB`:
 7. Host receives `EVT BUTTON CENTER DOWN` and knows ball_ready was true, so transitions game logic to ball-in-play
 
 This approach allows the controller to provide immediate tactile feedback while the host manages game state transitions based on raw button events.
+
+---
+
+## 6.7. Complete Game Flow Examples
+
+This section provides complete command sequences for common game flow scenarios, showing the exact order of CMD functions to send for typical pinball game states.
+
+### Example 1: Startup Sequence
+```
+# Controller boots and sends:
+EVT READY
+
+# Host initializes to attract mode:
+CMD MODE ATTRACT
+CMD BRIGHTNESS 200
+CMD SCORE 0
+CMD BALLS 3
+```
+
+**Result:** Controller enters attract mode with rainbow chase on NeoPixels and ready/steady glow on buttons.
+
+---
+
+### Example 2: Menu Navigation (SMART Mode)
+```
+# Enter menu from attract mode:
+CMD MODE MENU
+CMD MENU_MODE SMART
+CMD MENU_SIZE 4
+CMD MENU_INDEX 0
+
+# Controller now shows MENU_NAVIGATION button effect
+# Player presses RIGHT button:
+EVT BUTTON RIGHT DOWN      # Raw button event
+EVT BUTTON RIGHT UP
+EVT MENU_MOVE 1           # Menu navigation event (index now 1)
+
+# Player presses RIGHT again:
+EVT BUTTON RIGHT DOWN
+EVT BUTTON RIGHT UP
+EVT MENU_MOVE 2           # Index now 2
+
+# Player presses CENTER to select:
+EVT BUTTON CENTER DOWN
+EVT BUTTON CENTER UP
+EVT MENU_SELECT 2         # Player selected item 2
+
+# Host processes selection and starts game:
+CMD MODE GAME
+CMD SCORE 0
+CMD BALLS 3
+```
+
+---
+
+### Example 3: Ball Launch Sequence (Full Game Start)
+```
+# Start new game:
+CMD MODE GAME
+CMD SCORE 0
+CMD BALLS 3
+
+# Ball is loaded and ready:
+CMD STATE BALL_READY 1
+
+# Controller automatically:
+# - Activates BALL_LAUNCH NeoPixel effect
+# - Activates CENTER_HIT_PULSE button effect
+# - Player sees pulsing center button
+
+# Player presses center to launch:
+EVT BUTTON CENTER DOWN    # Raw button event
+
+# Controller automatically clears ball_ready flag
+# Host processes the launch and ball is now in play
+
+# During gameplay, flippers are used:
+EVT BUTTON LEFT DOWN      # Left flipper activated
+EVT BUTTON LEFT UP        # Left flipper released
+EVT BUTTON RIGHT DOWN     # Right flipper activated
+EVT BUTTON RIGHT UP       # Right flipper released
+```
+
+---
+
+### Example 4: Skill Shot Sequence
+```
+# Ball is ready, activate skill shot window:
+CMD STATE BALL_READY 1
+CMD STATE SKILL_SHOT 1
+
+# Controller shows skill shot visuals
+# Player launches ball:
+EVT BUTTON CENTER DOWN
+
+# Ball in play, skill shot window active for 3 seconds
+# If player makes skill shot within window:
+CMD STATE SKILL_SHOT 0    # Clear skill shot flag
+CMD EVENT JACKPOT         # Celebrate with jackpot effect
+
+# Update score:
+CMD SCORE 50000
+```
+
+---
+
+### Example 5: Ball Save Event
+```
+# Ball is in play and drains, but ball save is active:
+CMD EVENT BALL_SAVED
+
+# Controller plays:
+# - RED_STROBE_5X on NeoPixels (1.5s)
+# - BALL_SAVED animation on buttons (1.5s)
+
+# Ball is returned to play:
+CMD STATE BALL_READY 1
+
+# Player launches again:
+EVT BUTTON CENTER DOWN
+```
+
+---
+
+### Example 6: Multiball Activation
+```
+# Player qualifies for multiball:
+CMD EVENT MULTIBALL_START
+
+# Controller automatically:
+# - Sets multiball_active flag
+# - Plays PINK_PULSE NeoPixel effect (2.0s)
+# - Plays POWERUP_ALERT button effect (2.0s)
+
+# Multiple balls in play...
+CMD SCORE 75000
+CMD SCORE 85000
+CMD SCORE 100000
+
+# Multiball ends (back to single ball):
+CMD EVENT MULTIBALL_END
+
+# Controller reverts to normal gameplay visuals
+```
+
+---
+
+### Example 7: Extra Ball Award
+```
+# Player earns extra ball:
+CMD EVENT EXTRA_BALL
+
+# Controller plays:
+# - PINK_PULSE on NeoPixels (2.0s)
+# - EXTRA_BALL_AWARD on buttons (three pulses + fade, 2.0s)
+
+# Update ball count:
+CMD BALLS 4
+```
+
+---
+
+### Example 8: Ball Drain Sequence
+```
+# Ball drains (no ball save):
+CMD MODE BALL_LOST
+
+# Controller shows:
+# - RED_STROBE_5X on NeoPixels
+# - READY_STEADY_GLOW on buttons
+
+# Update ball count:
+CMD BALLS 2
+
+# Wait for animation to complete (~1.5s)
+# Then load next ball:
+CMD MODE GAME
+CMD STATE BALL_READY 1
+
+# Player launches next ball:
+EVT BUTTON CENTER DOWN
+```
+
+---
+
+### Example 9: Game Over Sequence
+```
+# Final ball drains:
+CMD MODE BALL_LOST
+CMD BALLS 0
+
+# Brief delay for drama (~2s)
+# Then transition to high score mode:
+CMD MODE HIGH_SCORE
+CMD TEXT 8 2 GAME OVER
+CMD DISPLAY_ANIM MAIN_MENU
+
+# Controller shows:
+# - PINK_PULSE on NeoPixels
+# - READY_STEADY_GLOW on buttons
+
+# Check if high score was achieved...
+# If yes, handle high score entry (implementation specific)
+# If no, return to attract after delay:
+CMD MODE ATTRACT
+CMD SCORE 0
+CMD BALLS 3
+```
+
+---
+
+### Example 10: Jackpot Event
+```
+# During gameplay, player hits jackpot target:
+CMD EVENT JACKPOT
+
+# Controller plays:
+# - RAINBOW_WAVE on NeoPixels (2.5s)
+# - POWERUP_ALERT on buttons (chaotic strobe, 2.5s)
+
+# Update score with jackpot value:
+CMD SCORE 150000
+```
+
+---
+
+### Example 11: Menu Navigation (DUMB Mode)
+```
+# Enter menu with host-controlled navigation:
+CMD MODE MENU
+CMD MENU_MODE DUMB
+CMD MENU_SIZE 5
+CMD MENU_INDEX 0
+
+# Host updates visual indicator based on its own navigation:
+CMD MENU_INDEX 1    # Highlight item 1
+CMD MENU_INDEX 2    # Highlight item 2
+
+# Player presses buttons, host receives raw events only:
+EVT BUTTON RIGHT DOWN
+EVT BUTTON RIGHT UP
+
+# Host manages its own menu logic and updates index:
+CMD MENU_INDEX 3
+
+# Player selects:
+EVT BUTTON CENTER DOWN
+EVT BUTTON CENTER UP
+
+# Host processes selection (no EVT MENU_SELECT in DUMB mode)
+CMD MODE GAME
+```
+
+---
+
+### Example 12: Testing/Debug Override Sequence
+```
+# Enter debug mode:
+CMD DEBUG
+
+# Controller sends:
+EVT DEBUG ACTIVE
+
+# Override effects for testing:
+CMD EFFECT_OVERRIDE WATER
+CMD BUTTON_EFFECT_OVERRIDE SKILL_SHOT_BUILDUP
+
+# Effects are now locked to these patterns
+# Mode changes won't affect them
+
+# Test for a while...
+
+# Clear overrides:
+CMD EFFECT_CLEAR
+CMD BUTTON_EFFECT_CLEAR
+
+# Exit debug mode by sending any other command:
+CMD MODE ATTRACT
+```
+
+---
+
+### Example 13: Complete 3-Ball Game Flow
+```
+# 1. Attract Mode
+CMD MODE ATTRACT
+CMD SCORE 0
+CMD BALLS 3
+
+# Player presses button to start...
+EVT BUTTON CENTER DOWN
+
+# 2. Start Game - Ball 1
+CMD MODE GAME
+CMD SCORE 0
+CMD BALLS 3
+CMD STATE BALL_READY 1
+
+EVT BUTTON CENTER DOWN    # Launch ball 1
+# ... gameplay ...
+CMD SCORE 25000
+CMD SCORE 42000
+
+# Ball 1 drains
+CMD MODE BALL_LOST
+CMD BALLS 2
+# ... delay ~1.5s ...
+
+# 3. Ball 2
+CMD MODE GAME
+CMD STATE BALL_READY 1
+
+EVT BUTTON CENTER DOWN    # Launch ball 2
+# ... gameplay ...
+CMD EVENT JACKPOT         # Big score!
+CMD SCORE 85000
+
+# Ball 2 drains
+CMD MODE BALL_LOST
+CMD BALLS 1
+# ... delay ~1.5s ...
+
+# 4. Ball 3 (final ball)
+CMD MODE GAME
+CMD STATE BALL_READY 1
+
+EVT BUTTON CENTER DOWN    # Launch ball 3
+# ... gameplay ...
+CMD EVENT MULTIBALL_START # Multiball on final ball!
+CMD SCORE 120000
+CMD EVENT MULTIBALL_END
+
+# Final ball drains
+CMD MODE BALL_LOST
+CMD BALLS 0
+# ... delay ~2s ...
+
+# 5. Game Over
+CMD MODE HIGH_SCORE
+CMD TEXT 6 2 FINAL: 120000
+# ... check high score, handle entry if needed ...
+
+# 6. Return to Attract
+CMD MODE ATTRACT
+CMD SCORE 0
+CMD BALLS 3
+```
 
 ---
 
