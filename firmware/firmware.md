@@ -266,7 +266,10 @@ CMD DISPLAY_ANIM <animation_name>
 
 - `SCORE`: Updates the LED matrix display with current score
 - `BALLS`: Updates the ball count display
-- `TEXT`: Displays custom text at position (x, y) on the 32×8 matrix. Note: Clears display before drawing.
+- `TEXT`: Displays custom text at position (x, y) on the 32×8 matrix
+  - x: horizontal position (0-31, origin at left)
+  - y: vertical position (0-7, origin at top)
+  - Note: Clears display before drawing text
 - `DISPLAY_ANIM`: Starts a display animation (NONE, BALL_SAVED, MULTIBALL, MAIN_MENU)
 
 ### Brightness
