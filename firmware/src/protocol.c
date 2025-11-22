@@ -208,6 +208,7 @@ static void parse_command(const char* cmd) {
         if (strcmp(event, "BALL_SAVED") == 0) {
             controller_neopixel_play_one_shot(EFFECT_RED_STROBE_5X, PRIORITY_EVENT, 1500);
             controller_button_play_one_shot(BTN_EFFECT_BALL_SAVED, PRIORITY_EVENT, 1500);
+            display_start_animation(DISPLAY_ANIM_BALL_SAVED);
         } else if (strcmp(event, "EXTRA_BALL") == 0) {
             controller_neopixel_play_one_shot(EFFECT_PINK_PULSE, PRIORITY_EVENT, 2000);
             controller_button_play_one_shot(BTN_EFFECT_EXTRA_BALL_AWARD, PRIORITY_EVENT, 2000);
@@ -217,6 +218,7 @@ static void parse_command(const char* cmd) {
         } else if (strcmp(event, "MULTIBALL_START") == 0) {
             controller_neopixel_play_one_shot(EFFECT_PINK_PULSE, PRIORITY_EVENT, 2000);
             controller_button_play_one_shot(BTN_EFFECT_POWERUP_ALERT, PRIORITY_EVENT, 2000);
+            display_start_animation(DISPLAY_ANIM_MULTIBALL);
         }
         
     // ===== SYSTEM COMMANDS =====
