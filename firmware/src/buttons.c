@@ -50,6 +50,11 @@ static uint32_t effect_frame = 0;
 static uint8_t led_brightness[3] = {0, 0, 0};
 static Button menu_selection = BUTTON_LEFT;
 
+// Per-button press feedback state
+static uint32_t button_press_feedback_start[3] = {0, 0, 0};
+static bool button_press_feedback_active[3] = {false, false, false};
+#define BUTTON_PRESS_FEEDBACK_DURATION_MS 150
+
 // Effect timing constants
 #define TWO_PI 6.28318530718f
 #define BALL_SAVED_CYCLES 8
@@ -186,6 +191,10 @@ void buttons_poll(void) {
             // Always send raw button event to host (requirement #8)
             protocol_send_button_event(i, BUTTON_STATE_DOWN);
             button_hold_time[i] = to_ms_since_boot(get_absolute_time());
+            
+            // Trigger local button press feedback animation
+            button_press_feedback_start[i] = to_ms_since_boot(get_absolute_time());
+            button_press_feedback_active[i] = true;
             
         } else if (!button_states[i] && last_button_states[i]) {
             // Button released
@@ -449,8 +458,33 @@ void buttons_update_leds(void) {
         }
     }
     
+    // Apply per-button press feedback overlay
+    uint32_t now_ms = to_ms_since_boot(get_absolute_time());
+    uint8_t final_brightness[3];
+    for (int i = 0; i < 3; i++) {
+        final_brightness[i] = led_brightness[i];
+        
+        if (button_press_feedback_active[i]) {
+            uint32_t feedback_elapsed = now_ms - button_press_feedback_start[i];
+            
+            if (feedback_elapsed < BUTTON_PRESS_FEEDBACK_DURATION_MS) {
+                // Apply a bright pulse overlay that fades out
+                // Start at 255, fade to 0 over the duration
+                uint8_t feedback_intensity = 255 - ((feedback_elapsed * 255) / BUTTON_PRESS_FEEDBACK_DURATION_MS);
+                
+                // Add the feedback to the base brightness, capping at 255
+                uint16_t combined = (uint16_t)led_brightness[i] + (uint16_t)feedback_intensity;
+                if (combined > 255) combined = 255;
+                final_brightness[i] = (uint8_t)combined;
+            } else {
+                // Feedback animation complete
+                button_press_feedback_active[i] = false;
+            }
+        }
+    }
+    
     // Apply brightness to physical LEDs
-    buttons_set_led(BUTTON_LEFT, led_brightness[BUTTON_LEFT]);
-    buttons_set_led(BUTTON_CENTER, led_brightness[BUTTON_CENTER]);
-    buttons_set_led(BUTTON_RIGHT, led_brightness[BUTTON_RIGHT]);
+    buttons_set_led(BUTTON_LEFT, final_brightness[BUTTON_LEFT]);
+    buttons_set_led(BUTTON_CENTER, final_brightness[BUTTON_CENTER]);
+    buttons_set_led(BUTTON_RIGHT, final_brightness[BUTTON_RIGHT]);
 }

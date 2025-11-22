@@ -51,4 +51,8 @@ void inputSendGameStart(InputManager *input);
 void inputSendBallReady(InputManager *input);
 void inputSendBallLaunched(InputManager *input);
 
+// Display animation functions
+void inputSendBallSavedAnimation(InputManager *input);
+void inputSendMultiballAnimation(InputManager *input);
+
 #endif

@@ -249,9 +249,6 @@ void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, i
         case LED_MODE_STEADY:
             effect_name = "READY_STEADY_GLOW";
             break;
-        case LED_MODE_SOLID:
-            effect_name = "READY_STEADY_GLOW";
-            break;
         case LED_MODE_STROBE:
             effect_name = "POWERUP_ALERT";
             break;
@@ -299,6 +296,20 @@ void inputSendBallLaunched(InputManager *input){
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
     sprintf(tempString,"CMD BUTTON EFFECT ALL READY_STEADY_GLOW\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+}
+
+void inputSendBallSavedAnimation(InputManager *input){
+    // Trigger ball saved display animation
+    sprintf(tempString,"CMD DISPLAY BALL_SAVED\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+}
+
+void inputSendMultiballAnimation(InputManager *input){
+    // Trigger multiball display animation
+    sprintf(tempString,"CMD DISPLAY MULTIBALL\n");
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
