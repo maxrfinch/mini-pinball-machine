@@ -58,3 +58,34 @@ void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, i
     (void)b;
     (void)count;
 }
+
+void inputSendEvent(InputManager *input, const char *event_name){
+    // Stub for Mac - no hardware controller
+    (void)input;
+    (void)event_name;
+}
+
+void inputSendGameStart(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendBallReady(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendBallLaunched(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendBallSavedAnimation(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendMultiballAnimation(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
