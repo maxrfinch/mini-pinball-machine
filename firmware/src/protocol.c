@@ -112,6 +112,55 @@ static void parse_command(const char* cmd) {
         uint8_t balls = atoi(cmd + 10);
         display_set_balls(balls);
         
+    } else if (strncmp(cmd, "CMD TEXT ", 9) == 0) {
+        // CMD TEXT <x> <y> <text>
+        // Parse x and y coordinates and find text start
+        const char* args = cmd + 9;
+        char* endptr = NULL;
+        
+        // Parse x coordinate
+        long x = strtol(args, &endptr, 10);
+        if (endptr == args || x < 0 || x >= 32) {
+            return; // Invalid x coordinate
+        }
+        args = endptr;
+        
+        // Skip whitespace
+        while (*args == ' ') args++;
+        
+        // Parse y coordinate
+        long y = strtol(args, &endptr, 10);
+        if (endptr == args || y < 0 || y >= 8) {
+            return; // Invalid y coordinate
+        }
+        args = endptr;
+        
+        // Skip whitespace to find text
+        while (*args == ' ') args++;
+        
+        // Draw the text if any remains
+        if (*args) {
+            // Note: Display is cleared before drawing text
+            // This ensures clean rendering and matches typical use case
+            // For multi-line or multi-element displays, use animations or custom sequences
+            display_clear();
+            display_set_text(args, (uint8_t)x, (uint8_t)y);
+        }
+        
+    } else if (strncmp(cmd, "CMD DISPLAY_ANIM ", 17) == 0) {
+        // CMD DISPLAY_ANIM <animation_name>
+        const char* anim = cmd + 17;
+        
+        if (strcmp(anim, "NONE") == 0) {
+            display_start_animation(DISPLAY_ANIM_NONE);
+        } else if (strcmp(anim, "BALL_SAVED") == 0) {
+            display_start_animation(DISPLAY_ANIM_BALL_SAVED);
+        } else if (strcmp(anim, "MULTIBALL") == 0) {
+            display_start_animation(DISPLAY_ANIM_MULTIBALL);
+        } else if (strcmp(anim, "MAIN_MENU") == 0) {
+            display_start_animation(DISPLAY_ANIM_MAIN_MENU);
+        }
+        
     } else if (strncmp(cmd, "CMD EFFECT ", 11) == 0) {
         // CMD EFFECT <pattern_name>
         const char* effect = cmd + 11;
@@ -136,28 +185,29 @@ static void parse_command(const char* cmd) {
         
     } else if (strncmp(cmd, "CMD BUTTON_EFFECT ", 18) == 0) {
         // CMD BUTTON_EFFECT <effect_name>
+        // Note: These are BASE priority effects, use CMD BUTTON_EFFECT_OVERRIDE for critical priority
         const char* effect = cmd + 18;
         
         if (strcmp(effect, "OFF") == 0) {
-            buttons_start_effect(BTN_EFFECT_OFF);
+            controller_button_set_effect(BTN_EFFECT_OFF, PRIORITY_BASE);
         } else if (strcmp(effect, "READY_STEADY_GLOW") == 0) {
-            buttons_start_effect(BTN_EFFECT_READY_STEADY_GLOW);
+            controller_button_set_effect(BTN_EFFECT_READY_STEADY_GLOW, PRIORITY_BASE);
         } else if (strcmp(effect, "FLIPPER_FEEDBACK") == 0) {
-            buttons_start_effect(BTN_EFFECT_FLIPPER_FEEDBACK);
+            controller_button_set_effect(BTN_EFFECT_FLIPPER_FEEDBACK, PRIORITY_BASE);
         } else if (strcmp(effect, "CENTER_HIT_PULSE") == 0) {
-            buttons_start_effect(BTN_EFFECT_CENTER_HIT_PULSE);
+            controller_button_set_effect(BTN_EFFECT_CENTER_HIT_PULSE, PRIORITY_BASE);
         } else if (strcmp(effect, "SKILL_SHOT_BUILDUP") == 0) {
-            buttons_start_effect(BTN_EFFECT_SKILL_SHOT_BUILDUP);
+            controller_button_set_effect(BTN_EFFECT_SKILL_SHOT_BUILDUP, PRIORITY_BASE);
         } else if (strcmp(effect, "BALL_SAVED") == 0) {
-            buttons_start_effect(BTN_EFFECT_BALL_SAVED);
+            controller_button_set_effect(BTN_EFFECT_BALL_SAVED, PRIORITY_BASE);
         } else if (strcmp(effect, "POWERUP_ALERT") == 0) {
-            buttons_start_effect(BTN_EFFECT_POWERUP_ALERT);
+            controller_button_set_effect(BTN_EFFECT_POWERUP_ALERT, PRIORITY_BASE);
         } else if (strcmp(effect, "EXTRA_BALL_AWARD") == 0) {
-            buttons_start_effect(BTN_EFFECT_EXTRA_BALL_AWARD);
+            controller_button_set_effect(BTN_EFFECT_EXTRA_BALL_AWARD, PRIORITY_BASE);
         } else if (strcmp(effect, "GAME_OVER_FADE") == 0) {
-            buttons_start_effect(BTN_EFFECT_GAME_OVER_FADE);
+            controller_button_set_effect(BTN_EFFECT_GAME_OVER_FADE, PRIORITY_BASE);
         } else if (strcmp(effect, "MENU_NAVIGATION") == 0) {
-            buttons_start_effect(BTN_EFFECT_MENU_NAVIGATION);
+            controller_button_set_effect(BTN_EFFECT_MENU_NAVIGATION, PRIORITY_BASE);
         }
         
     } else if (strncmp(cmd, "CMD BRIGHTNESS ", 15) == 0) {
