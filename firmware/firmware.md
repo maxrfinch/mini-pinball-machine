@@ -2,18 +2,16 @@
 
 ## Table of Contents
 1. System Overview
-2. Controller State Machine
+2. Controller Operation Model
 3. Hardware Architecture
 4. Wiring & Setup
 5. Build & Flash Instructions
 6. Host Communication Protocol
-   - 6.1. State Commands
-   - 6.2. Event Commands
-   - 6.3. Override Commands
+   - 6.1. Display Commands
+   - 6.2. Effect Commands
+   - 6.3. Temporary Event Effects
    - 6.4. Events (KB2040 → Pi)
-   - 6.5. Menu Behavior
-   - 6.6. Game Flow Signals
-   - 6.7. Complete Game Flow Examples (NEW)
+   - 6.5. Complete Game Flow Examples
 7. Button Input & LED Effects (Full Reference)
 8. Matrix Display System
 9. NeoPixel Lighting System
@@ -170,7 +168,10 @@ build/pinball_firmware.uf2
 
 # 6. Host Communication Protocol
 
-ASCII messages over USB CDC, newline‑terminated. The protocol is organized into three categories: state commands (long-lived configuration), event commands (short-lived events), and override commands (manual control).
+ASCII messages over USB CDC, newline‑terminated. The protocol consists of:
+- **Display Commands** - Control the LED matrix display content
+- **Effect Commands** - Trigger visual effects on buttons and NeoPixels
+- **Temporary Event Effects** - Optional convenience commands for short-lived events
 
 ## 6.1. Display Commands (Pi → KB2040)
 
