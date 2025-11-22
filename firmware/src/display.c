@@ -544,6 +544,312 @@ void display_update_animation(void) {
             break;
         }
         
+        case DISPLAY_ANIM_ICED_UP: {
+            // Timed animation (~6 seconds)
+            // A small 3x4 character sprite centered, shivers left/right
+            // Snow falls from above
+            uint32_t total_duration = 6000;
+            if (elapsed_ms > total_duration) {
+                current_animation = DISPLAY_ANIM_NONE;
+                display_clear();
+                break;
+            }
+            
+            display_clear();
+            
+            // Character position (centered on 32x8 display)
+            int char_base_x = 14;  // Center x for 3-wide character
+            int char_y = 2;         // Starting y position (physical rows)
+            
+            // Shiver offset (alternates -1, 0, +1)
+            int shiver_offset = 0;
+            if ((animation_frame / 8) % 3 == 0) {
+                shiver_offset = -1;
+            } else if ((animation_frame / 8) % 3 == 1) {
+                shiver_offset = 1;
+            }
+            
+            int char_x = char_base_x + shiver_offset;
+            
+            // Character body frame (alternates between two frames)
+            bool arms_out = (animation_frame / 12) % 2 == 0;
+            
+            // Draw character (3x4 sprite)
+            // Simple stick figure
+            // Frame 1 (arms in):  Frame 2 (arms out):
+            //   O                    \O/
+            //   |                     |
+            //   |                     |
+            
+            // Head (top row)
+            int head_y = (char_y + 7) % 8;
+            framebuffer[char_x + 1][head_y] = 1;
+            
+            // Body (middle two rows)
+            int body_y1 = (char_y + 1 + 7) % 8;
+            int body_y2 = (char_y + 2 + 7) % 8;
+            framebuffer[char_x + 1][body_y1] = 1;
+            framebuffer[char_x + 1][body_y2] = 1;
+            
+            // Arms (if arms_out)
+            if (arms_out) {
+                framebuffer[char_x][body_y1] = 1;
+                framebuffer[char_x + 2][body_y1] = 1;
+            }
+            
+            // Snowfall density: ramps up, stays steady, tapers off
+            float density;
+            if (elapsed_ms < 1000) {
+                density = (float)elapsed_ms / 1000.0f;
+            } else if (elapsed_ms < 5000) {
+                density = 1.0f;
+            } else {
+                density = (6000.0f - (float)elapsed_ms) / 1000.0f;
+            }
+            
+            // Spawn snow pixels above and around character
+            int num_snow = (int)(density * 8.0f);
+            for (int i = 0; i < num_snow; i++) {
+                // Random column around character area
+                int snow_x = char_base_x - 3 + ((animation_frame * 7 + i * 13) % 9);
+                // Snow drifts down based on frame
+                int snow_fall = (animation_frame + i * 3) % 8;
+                int snow_y_phys = snow_fall;
+                int snow_y_fb = (snow_y_phys + 7) % 8;
+                
+                if (snow_x >= 0 && snow_x < DISPLAY_WIDTH && snow_y_phys < char_y) {
+                    framebuffer[snow_x][snow_y_fb] = 1;
+                }
+            }
+            break;
+        }
+        
+        case DISPLAY_ANIM_MULTIBALL_DAZZLE: {
+            // Continuous overlay (does not clear score)
+            // Border chase + interior sparkles
+            
+            // Border chase - clockwise around 32x8 matrix
+            int border_len = (DISPLAY_WIDTH * 2) + (DISPLAY_HEIGHT * 2) - 4;
+            int chase_pos = animation_frame % border_len;
+            
+            // Calculate position along border
+            int bx, by_fb;
+            if (chase_pos < DISPLAY_WIDTH) {
+                // Top edge (left to right)
+                bx = chase_pos;
+                by_fb = 7;  // Physical row 0
+            } else if (chase_pos < DISPLAY_WIDTH + DISPLAY_HEIGHT - 1) {
+                // Right edge (top to bottom)
+                bx = DISPLAY_WIDTH - 1;
+                int phys_y = chase_pos - DISPLAY_WIDTH + 1;
+                by_fb = (phys_y + 7) % 8;
+            } else if (chase_pos < DISPLAY_WIDTH * 2 + DISPLAY_HEIGHT - 1) {
+                // Bottom edge (right to left)
+                bx = DISPLAY_WIDTH - 1 - (chase_pos - DISPLAY_WIDTH - DISPLAY_HEIGHT + 1);
+                by_fb = 6;  // Physical row 7
+            } else {
+                // Left edge (bottom to top)
+                int phys_y = 7 - (chase_pos - DISPLAY_WIDTH * 2 - DISPLAY_HEIGHT + 1);
+                bx = 0;
+                by_fb = (phys_y + 7) % 8;
+            }
+            
+            framebuffer[bx][by_fb] = 1;
+            
+            // Interior sparkles (3-4 random positions per frame)
+            // Avoid score area (top 5 rows)
+            for (int i = 0; i < 4; i++) {
+                int sx = ((animation_frame * 17 + i * 23) % 28) + 2;  // Interior columns
+                int sy_phys = 5 + ((animation_frame * 11 + i * 19) % 3);  // Rows 5-7
+                int sy_fb = (sy_phys + 7) % 8;
+                
+                if (sx >= 1 && sx < DISPLAY_WIDTH - 1) {
+                    framebuffer[sx][sy_fb] = 1;
+                }
+            }
+            break;
+        }
+        
+        case DISPLAY_ANIM_CENTER_WATERFALL: {
+            // Continuous waterfall effect in center columns (13-18)
+            // Alternates even/odd pixels for shimmering
+            
+            bool even_frame = (animation_frame % 2) == 0;
+            
+            for (int x = 13; x < 19 && x < DISPLAY_WIDTH; x++) {
+                for (int phys_y = 0; phys_y < 8; phys_y++) {
+                    // Alternate even/odd based on frame and position
+                    bool show_pixel = even_frame ? ((phys_y % 2) == 0) : ((phys_y % 2) == 1);
+                    
+                    if (show_pixel) {
+                        int fb_y = (phys_y + 7) % 8;
+                        framebuffer[x][fb_y] = 1;
+                    }
+                }
+            }
+            break;
+        }
+        
+        case DISPLAY_ANIM_WATER_RIPPLE: {
+            // Companion to CENTER_WATERFALL
+            // Topmost row of water region with shifting checkerboard
+            
+            // Water surface is typically at bottom rows (6-7)
+            int water_surface_phys = 6;
+            int fb_y = (water_surface_phys + 7) % 8;
+            
+            bool phase = (animation_frame / 2) % 2 == 0;
+            
+            for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                bool show = phase ? ((x % 2) == 0) : ((x % 2) == 1);
+                if (show) {
+                    framebuffer[x][fb_y] = 1;
+                }
+            }
+            break;
+        }
+        
+        case DISPLAY_ANIM_GAME_OVER_CURTAIN: {
+            // One-shot animation (~1-2 seconds)
+            // Two curtains close from edges to center
+            
+            uint32_t total_duration = 1500;
+            uint32_t hold_duration = 200;
+            
+            if (elapsed_ms > total_duration + hold_duration) {
+                current_animation = DISPLAY_ANIM_NONE;
+                display_clear();
+                break;
+            }
+            
+            display_clear();
+            
+            if (elapsed_ms <= total_duration) {
+                // Closing phase
+                int columns_filled = (int)((elapsed_ms * DISPLAY_WIDTH / 2) / total_duration);
+                
+                // Fill from left
+                for (int x = 0; x < columns_filled && x < DISPLAY_WIDTH / 2; x++) {
+                    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+                        framebuffer[x][y] = 1;
+                    }
+                }
+                
+                // Fill from right
+                for (int x = DISPLAY_WIDTH - 1; x > DISPLAY_WIDTH - 1 - columns_filled && x >= DISPLAY_WIDTH / 2; x--) {
+                    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+                        framebuffer[x][y] = 1;
+                    }
+                }
+            } else {
+                // Hold phase - full screen lit
+                for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                    for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+                        framebuffer[x][y] = 1;
+                    }
+                }
+            }
+            break;
+        }
+        
+        case DISPLAY_ANIM_HIGH_SCORE: {
+            // Repeating celebratory animation
+            // Score digits pop one at a time with strobing
+            
+            // Use a 4-second loop
+            uint32_t loop_duration = 4000;
+            uint32_t loop_time = elapsed_ms % loop_duration;
+            
+            // Placeholder: simulate score "12345"
+            const char* score_text = "12345";
+            int num_digits = 5;
+            
+            // Each digit gets 500ms to appear and strobe
+            int digit_time = 500;
+            int current_digit = loop_time / digit_time;
+            
+            display_clear();
+            
+            if (current_digit < num_digits) {
+                // Pop digits sequentially with strobe
+                for (int i = 0; i <= current_digit && i < num_digits; i++) {
+                    int digit = score_text[i] - '0';
+                    int x = i * 4;
+                    
+                    // Strobe the current digit being added
+                    if (i == current_digit) {
+                        bool show = (animation_frame % 4) < 2;
+                        if (show) {
+                            draw_digit(x, 1, digit);
+                        }
+                    } else {
+                        draw_digit(x, 1, digit);
+                    }
+                }
+            } else {
+                // All digits visible, gentle pulse on border
+                for (int i = 0; i < num_digits; i++) {
+                    int digit = score_text[i] - '0';
+                    draw_digit(i * 4, 1, digit);
+                }
+                
+                // Pulse border
+                bool show_border = (animation_frame % 20) < 10;
+                if (show_border) {
+                    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                        framebuffer[x][7] = 1;  // Top
+                        framebuffer[x][6] = 1;  // Bottom
+                    }
+                }
+            }
+            break;
+        }
+        
+        case DISPLAY_ANIM_ATTRACT_PINBALL: {
+            // Attract-mode loop
+            // Scroll "PINBALL" from right to left
+            
+            const char* text = "PINBALL";
+            
+            // Calculate text width
+            const int CHAR_WIDTH = 4;
+            const int CHAR_SPACING = 1;
+            int len = (int)strlen(text);
+            int text_width = len * (CHAR_WIDTH + CHAR_SPACING) - CHAR_SPACING;
+            
+            // Loop duration for one complete scroll
+            uint32_t loop_duration = 5000;
+            uint32_t loop_time = elapsed_ms % loop_duration;
+            
+            // Brief blink between cycles
+            if (loop_time < 200) {
+                // Blink phase
+                bool show = (animation_frame % 6) < 3;
+                if (show) {
+                    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                        for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+                            framebuffer[x][y] = 1;
+                        }
+                    }
+                }
+            } else {
+                // Scroll phase
+                uint32_t scroll_time = loop_time - 200;
+                uint32_t scroll_duration = loop_duration - 200;
+                
+                int scroll_start = DISPLAY_WIDTH;
+                int scroll_end = -text_width;
+                int scroll_range = scroll_start - scroll_end;
+                
+                int scroll_offset = scroll_start - 
+                    (int)((scroll_range * scroll_time) / scroll_duration);
+                
+                display_clear();
+                display_set_text(text, scroll_offset, 2);
+            }
+            break;
+        }
+        
         case DISPLAY_ANIM_NONE:
         default:
             break;
