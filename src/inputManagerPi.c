@@ -302,3 +302,17 @@ void inputSendBallLaunched(InputManager *input){
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
+
+void inputSendBallSavedAnimation(InputManager *input){
+    // Trigger ball saved display animation
+    sprintf(tempString,"CMD DISPLAY BALL_SAVED\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+}
+
+void inputSendMultiballAnimation(InputManager *input){
+    // Trigger multiball display animation
+    sprintf(tempString,"CMD DISPLAY MULTIBALL\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+}

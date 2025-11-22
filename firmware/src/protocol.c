@@ -90,6 +90,18 @@ static void parse_command(const char* cmd) {
         // CMD DISPLAY CLEAR
         display_clear();
         
+    } else if (strncmp(cmd, "CMD DISPLAY ", 12) == 0) {
+        // CMD DISPLAY <ANIMATION_NAME>
+        const char* anim_name = cmd + 12;
+        
+        if (strcmp(anim_name, "BALL_SAVED") == 0) {
+            display_start_animation(DISPLAY_ANIM_BALL_SAVED);
+        } else if (strcmp(anim_name, "MULTIBALL") == 0) {
+            display_start_animation(DISPLAY_ANIM_MULTIBALL);
+        } else if (strcmp(anim_name, "MAIN_MENU") == 0) {
+            display_start_animation(DISPLAY_ANIM_MAIN_MENU);
+        }
+        
     // ===== NEOPIXEL EFFECT COMMANDS =====
     } else if (strncmp(cmd, "CMD NEO EFFECT ", 15) == 0) {
         const char* effect = cmd + 15;
