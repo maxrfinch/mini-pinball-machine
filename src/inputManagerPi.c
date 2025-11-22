@@ -249,9 +249,6 @@ void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, i
         case LED_MODE_STEADY:
             effect_name = "READY_STEADY_GLOW";
             break;
-        case LED_MODE_SOLID:
-            effect_name = "READY_STEADY_GLOW";
-            break;
         case LED_MODE_STROBE:
             effect_name = "POWERUP_ALERT";
             break;
