@@ -102,6 +102,30 @@ static void parse_command(const char* cmd) {
             display_start_animation(DISPLAY_ANIM_MAIN_MENU);
         }
         
+    // ===== MATRIX DISPLAY EFFECT COMMANDS =====
+    } else if (strncmp(cmd, "CMD DISP_EFFECT ", 16) == 0) {
+        // CMD DISP_EFFECT <EFFECT_NAME>
+        const char* effect_name = cmd + 16;
+        
+        if (strcmp(effect_name, "ICED_UP") == 0) {
+            display_start_animation(DISPLAY_ANIM_ICED_UP);
+        } else if (strcmp(effect_name, "MULTIBALL_DAZZLE") == 0) {
+            display_start_animation(DISPLAY_ANIM_MULTIBALL_DAZZLE);
+        } else if (strcmp(effect_name, "CENTER_WATERFALL") == 0) {
+            display_start_animation(DISPLAY_ANIM_CENTER_WATERFALL);
+        } else if (strcmp(effect_name, "WATER_RIPPLE") == 0) {
+            display_start_animation(DISPLAY_ANIM_WATER_RIPPLE);
+        } else if (strcmp(effect_name, "GAME_OVER_CURTAIN") == 0) {
+            display_start_animation(DISPLAY_ANIM_GAME_OVER_CURTAIN);
+        } else if (strcmp(effect_name, "HIGH_SCORE") == 0) {
+            display_start_animation(DISPLAY_ANIM_HIGH_SCORE);
+        } else if (strcmp(effect_name, "ATTRACT_PINBALL") == 0) {
+            display_start_animation(DISPLAY_ANIM_ATTRACT_PINBALL);
+        } else if (strcmp(effect_name, "NONE") == 0) {
+            display_start_animation(DISPLAY_ANIM_NONE);
+            display_clear();
+        }
+        
     // ===== NEOPIXEL EFFECT COMMANDS =====
     } else if (strncmp(cmd, "CMD NEO EFFECT ", 15) == 0) {
         const char* effect = cmd + 15;
