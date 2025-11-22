@@ -562,12 +562,7 @@ void display_update_animation(void) {
             int char_y = 2;         // Starting y position (physical rows)
             
             // Shiver offset (alternates -1, 0, +1)
-            int shiver_offset = 0;
-            if ((animation_frame / 8) % 3 == 0) {
-                shiver_offset = -1;
-            } else if ((animation_frame / 8) % 3 == 1) {
-                shiver_offset = 1;
-            }
+            int shiver_offset = ((animation_frame / 8) % 3) - 1;
             
             int char_x = char_base_x + shiver_offset;
             
@@ -694,7 +689,8 @@ void display_update_animation(void) {
             // Companion to CENTER_WATERFALL
             // Topmost row of water region with shifting checkerboard
             
-            // Water surface is typically at bottom rows (6-7)
+            // Water surface at physical row 6
+            // Physical row N maps to framebuffer row (N+7)%8
             int water_surface_phys = 6;
             int fb_y = (water_surface_phys + 7) % 8;
             
@@ -726,7 +722,7 @@ void display_update_animation(void) {
             
             if (elapsed_ms <= total_duration) {
                 // Closing phase
-                int columns_filled = (int)((elapsed_ms * DISPLAY_WIDTH / 2) / total_duration);
+                int columns_filled = (int)((elapsed_ms * (DISPLAY_WIDTH / 2)) / total_duration);
                 
                 // Fill from left
                 for (int x = 0; x < columns_filled && x < DISPLAY_WIDTH / 2; x++) {
