@@ -19,77 +19,8 @@
 #include "onboard_neopixel.h"
 #include "controller_state.h"
 
-// Application-level mode and effect enums matching the command protocol
-
-typedef enum {
-    APP_MODE_ATTRACT = 0,
-    APP_MODE_MENU,
-    APP_MODE_GAME,
-    APP_MODE_BALL_LOST,
-    APP_MODE_HIGH_SCORE
-} AppMode;
-
-typedef enum {
-    APP_EFFECT_NONE = 0,
-    APP_EFFECT_RAINBOW_BREATHE,
-    APP_EFFECT_RAINBOW_WAVE,
-    APP_EFFECT_CAMERA_FLASH,
-    APP_EFFECT_RED_STROBE_5X,
-    APP_EFFECT_WATER,
-    APP_EFFECT_ATTRACT,
-    APP_EFFECT_PINK_PULSE,
-    APP_EFFECT_BALL_LAUNCH
-} AppEffect;
-
-// Core application state driven by CMD MODE / CMD EFFECT / CMD SCORE / CMD BALLS / CMD BRIGHTNESS
-static AppMode   g_app_mode        = APP_MODE_ATTRACT;
-static AppEffect g_app_effect      = APP_EFFECT_ATTRACT;
-static uint32_t  g_app_score       = 0;
-static uint8_t   g_app_balls       = 3;
-static uint8_t   g_app_brightness  = 255;
-
-// Forward declarations for core handlers
-void app_set_mode(AppMode mode);
-void app_set_effect(AppEffect effect);
-void app_set_score(uint32_t score);
-void app_set_balls(uint8_t balls);
-void app_set_brightness(uint8_t brightness);
-
-void app_set_mode(AppMode mode) {
-    g_app_mode = mode;
-
-    // Simple mode LED behavior: ON in GAME, OFF otherwise
-    switch (mode) {
-        case APP_MODE_GAME:
-            gpio_put(MODE_LED_PIN, 1);
-            break;
-        default:
-            gpio_put(MODE_LED_PIN, 0);
-            break;
-    }
-
-    printf("[APP] MODE set to %d\n", (int)mode);
-}
-
-void app_set_effect(AppEffect effect) {
-    g_app_effect = effect;
-    printf("[APP] EFFECT set to %d\n", (int)effect);
-}
-
-void app_set_score(uint32_t score) {
-    g_app_score = score;
-    printf("[APP] SCORE = %lu\n", (unsigned long)score);
-}
-
-void app_set_balls(uint8_t balls) {
-    g_app_balls = balls;
-    printf("[APP] BALLS = %u\n", (unsigned)balls);
-}
-
-void app_set_brightness(uint8_t brightness) {
-    g_app_brightness = brightness;
-    printf("[APP] BRIGHTNESS = %u\n", (unsigned)brightness);
-}
+// Pi-centric architecture: Controller has no application state
+// All state is managed by the Pi and communicated via commands
 
 // Status LED blink for heartbeat
 static absolute_time_t last_heartbeat = 0;
@@ -161,13 +92,9 @@ int main() {
     debug_mode_init();
     printf("Debug mode initialized\n\n");
     
-    // Initialize controller state machine
+    // Initialize controller
     controller_state_init();
-    printf("Controller state machine initialized\n\n");
-    
-    // Start with attract mode (will apply base profile)
-    controller_set_mode(MODE_ATTRACT);
-    printf("Attract mode activated\n\n");
+    printf("Controller initialized (Pi-centric mode)\n\n");
     
     printf("╔═══════════════════════════════════════════════════════════╗\n");
     printf("║                  SYSTEM READY                             ║\n");

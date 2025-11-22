@@ -180,71 +180,125 @@ int inputCenterPressed(InputManager* input){
     return 0;
 }
 
-// Send game state (text-based protocol preferred, numeric for compatibility)
+// Send game state - Pi-centric architecture: Pi manages state, sends explicit effect commands
 void inputSetGameState(InputManager* input, InputGameState state){
     switch (state){
         case STATE_MENU: {
-            sprintf(tempString,"STATE MENU\n");
+            // Menu state: show menu navigation visuals
+            sprintf(tempString,"CMD NEO EFFECT ATTRACT\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
-            // Pico handles LED baselines for menu state
+            sprintf(tempString,"CMD BUTTON EFFECT ALL MENU_NAVIGATION\n");
+            serialPuts(input->fd,tempString);
+            serialFlush(input->fd);
             break;
         }
         case STATE_GAME: {
-            sprintf(tempString,"STATE GAME\n");
+            // Game state: set to ball-ready visuals
+            // Ball launch effect with center button pulse
+            sprintf(tempString,"CMD NEO EFFECT BALL_LAUNCH\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
-            // Pico handles LED baselines for game state
+            sprintf(tempString,"CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
+            serialPuts(input->fd,tempString);
+            serialFlush(input->fd);
             break;
         }
         case STATE_GAME_OVER: {
-            sprintf(tempString,"STATE GAME_OVER\n");
+            // Game over state: pink pulse and fade
+            sprintf(tempString,"CMD NEO EFFECT PINK_PULSE\n");
             serialPuts(input->fd,tempString);
             serialFlush(input->fd);
-            // Pico handles LED baselines for game over state
+            sprintf(tempString,"CMD BUTTON EFFECT ALL GAME_OVER_FADE\n");
+            serialPuts(input->fd,tempString);
+            serialFlush(input->fd);
             break;
         }
     }
 }
+
 void inputSetScore(InputManager *input, long score){
-    sprintf(tempString,"SCORE %ld\n",score);
+    sprintf(tempString,"CMD DISPLAY SCORE %ld\n",score);
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
+
 void inputSetNumBalls(InputManager *input, int numBalls){
-    sprintf(tempString,"BALLS %d\n",numBalls);
+    sprintf(tempString,"CMD DISPLAY BALLS %d\n",numBalls);
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
 
-// Send button LED command: BTN_LED <idx> <mode> <r> <g> <b> [count]
-// NOTE: This is now only for advanced/debug use. Normal game should use events.
+// Send button LED command - now uses CMD BUTTON EFFECT syntax
+// Pi-centric: Pi sends explicit effect commands
 void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, int r, int g, int b, int count){
-    if (count > 0) {
-        sprintf(tempString,"BTN_LED %d %d %d %d %d %d\n", button_idx, mode, r, g, b, count);
-    } else {
-        sprintf(tempString,"BTN_LED %d %d %d %d %d\n", button_idx, mode, r, g, b);
+    // Map old LED mode to new button effects
+    // This provides backwards compatibility for existing game code
+    const char* button_name;
+    const char* effect_name;
+    
+    switch (button_idx) {
+        case 0: button_name = "LEFT"; break;
+        case 1: button_name = "CENTER"; break;
+        case 2: button_name = "RIGHT"; break;
+        default: button_name = "ALL"; break;
     }
+    
+    // Map mode to effect (simplified mapping)
+    switch (mode) {
+        case LED_MODE_STEADY:
+            effect_name = "READY_STEADY_GLOW";
+            break;
+        case LED_MODE_SOLID:
+            effect_name = "READY_STEADY_GLOW";
+            break;
+        case LED_MODE_STROBE:
+            effect_name = "POWERUP_ALERT";
+            break;
+        default:
+            effect_name = "READY_STEADY_GLOW";
+            break;
+    }
+    
+    sprintf(tempString,"CMD BUTTON EFFECT %s %s\n", button_name, effect_name);
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
 
-// Send game event: EVENT <event_name>
+// Send game event using CMD EVENT syntax
 void inputSendEvent(InputManager *input, const char *event_name){
-    sprintf(tempString,"EVENT %s\n", event_name);
+    sprintf(tempString,"CMD EVENT %s\n", event_name);
     serialPuts(input->fd,tempString);
     serialFlush(input->fd);
 }
 
 // Convenience functions for common events
 void inputSendGameStart(InputManager *input){
-    inputSendEvent(input, "GAME_START");
+    // Game start: transition to ball-ready visuals
+    sprintf(tempString,"CMD NEO EFFECT BALL_LAUNCH\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+    sprintf(tempString,"CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
 }
 
 void inputSendBallReady(InputManager *input){
-    inputSendEvent(input, "BALL_READY");
+    // Ball ready: center button pulse
+    sprintf(tempString,"CMD NEO EFFECT BALL_LAUNCH\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+    sprintf(tempString,"CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
 }
 
 void inputSendBallLaunched(InputManager *input){
-    inputSendEvent(input, "BALL_LAUNCHED");
+    // Ball launched: transition to in-play visuals
+    sprintf(tempString,"CMD NEO EFFECT NONE\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
+    sprintf(tempString,"CMD BUTTON EFFECT ALL READY_STEADY_GLOW\n");
+    serialPuts(input->fd,tempString);
+    serialFlush(input->fd);
 }
