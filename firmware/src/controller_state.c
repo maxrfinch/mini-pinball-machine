@@ -68,6 +68,9 @@ void controller_button_set_effect_all(ButtonLEDEffect effect, effect_priority_t 
 }
 
 // Set effect on a single button
+// NOTE: Current implementation limitation - applies to all buttons
+// The button parameter is accepted for API consistency but not yet used
+// TODO: Enhance buttons.c to support true per-button effect control
 void controller_button_set_effect_single(Button button, ButtonLEDEffect effect, effect_priority_t priority) {
     if (priority < g_state.btn_prio) {
         printf("[CONTROLLER] Button effect ignored (priority %d < %d)\n", 
@@ -76,11 +79,9 @@ void controller_button_set_effect_single(Button button, ButtonLEDEffect effect, 
     }
 
     g_state.btn_prio = priority;
-    // Note: Current button system applies effects to all buttons
-    // This is a limitation of the current implementation
-    // For true per-button control, buttons.c would need enhancement
+    // Current limitation: applies effect to all buttons
     buttons_start_effect(effect);
-    printf("[CONTROLLER] Button %d effect %d set at priority %d\n", button, effect, priority);
+    printf("[CONTROLLER] Button %d effect %d set at priority %d (applies to all)\n", button, effect, priority);
 }
 
 // One-shot event effects with timeout

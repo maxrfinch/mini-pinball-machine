@@ -246,6 +246,9 @@ void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, i
     
     // Map mode to effect (simplified mapping)
     switch (mode) {
+        case LED_MODE_STEADY:
+            effect_name = "READY_STEADY_GLOW";
+            break;
         case LED_MODE_SOLID:
             effect_name = "READY_STEADY_GLOW";
             break;
