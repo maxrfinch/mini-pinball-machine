@@ -36,84 +36,52 @@ It provides:
 - **A clean ASCII control protocol** for communication with a Raspberry Pi running the pinball game
 - **Full diagnostics**, debug mode, and hardware abstraction
 
-The microcontroller manages *all cabinet hardware* so the host game only sends simple commands.
+## Architecture: Pi = Brain, Controller = Renderer + IO
+
+The **Raspberry Pi** is the sole owner of all game state (modes, scoring, ball tracking, multiball, skill shots, menu navigation, etc.). The **KB2040 controller** acts as a cabinet renderer and I/O device:
+
+- **Renders** text, scores, and ball counts on the matrix display
+- **Executes** button LED effects requested by the Pi
+- **Executes** NeoPixel lighting effects requested by the Pi
+- **Reports** raw button events (DOWN/UP/HELD) back to the Pi
+
+The controller does **not** manage gameplay modes, game-state flags, or infer higher-level game meaning from button presses. All behavior is driven by explicit commands from the Pi, executed using a local effects library.
 
 ## Recent Updates
 - **PR #37**: Fixed button LED animation timing and synchronization issues. Button effects now properly respect priority system and transition smoothly between states.
 
 ---
 
-# 2. Controller State Machine
+# 2. Controller Operation Model
 
-The firmware implements a central state machine that manages the controller's mode, visual behavior, and button interactions. This allows the KB2040 to own more of the visual/feel logic while the Pi sends high-level game state and events.
+The controller operates in a single **RUN** mode at all times. All visual behavior is driven by **commands from the Pi** combined with a **local effects library**.
 
-## 2.1. Controller Modes
+## 2.1. Effects Library
 
-The controller operates in one of six top-level modes:
+The controller maintains a library of reusable visual effects that the Pi can trigger on demand:
 
-| Mode | Description | Default Visual Behavior |
-|------|-------------|------------------------|
-| **ATTRACT** | Idle/demo mode | NeoPixels: ATTRACT effect<br>Buttons: READY_STEADY_GLOW |
-| **MENU** | Menu navigation | NeoPixels: ATTRACT effect<br>Buttons: MENU_NAVIGATION |
-| **GAME** | Active gameplay | Depends on ball state (see substates) |
-| **BALL_LOST** | Ball drain sequence | NeoPixels: RED_STROBE_5X<br>Buttons: READY_STEADY_GLOW |
-| **HIGH_SCORE** | High score entry/display | NeoPixels: PINK_PULSE<br>Buttons: READY_STEADY_GLOW |
-| **DEBUG** | Diagnostic mode | Special debug patterns |
+### Button LED Effects
+- `OFF`, `READY_STEADY_GLOW`, `FLIPPER_FEEDBACK`, `CENTER_HIT_PULSE`
+- `SKILL_SHOT_BUILDUP`, `BALL_SAVED`, `POWERUP_ALERT`, `EXTRA_BALL_AWARD`
+- `GAME_OVER_FADE`, `MENU_NAVIGATION`
 
-## 2.2. Controller Substates
+### NeoPixel Effects
+- `RAINBOW_BREATHE`, `RAINBOW_WAVE`, `CAMERA_FLASH`, `RED_STROBE_5X`
+- `WATER`, `ATTRACT`, `PINK_PULSE`, `BALL_LAUNCH`, `NONE`
 
-Within modes, the controller tracks finer-grained states:
+The **Pi chooses** which effect to run and when to change or stop it. Effects run locally on the controller once requested.
 
-| Substate | Used In Mode | Meaning |
-|----------|--------------|---------|
-| **SUB_NONE** | Multiple | Default/unspecified |
-| **SUB_MENU_IDLE** | MENU | Menu displayed, no active navigation |
-| **SUB_MENU_NAV** | MENU | User actively navigating menu |
-| **SUB_BALL_READY** | GAME | Ball loaded, ready to launch |
-| **SUB_BALL_IN_PLAY** | GAME | Ball actively in play |
-| **SUB_SKILL_SHOT** | GAME | Skill shot opportunity active |
-| **SUB_MULTIBALL** | GAME | Multiball mode active |
+## 2.2. Effect Priority (Implementation Detail)
 
-## 2.3. Game State Flags
+For resolving conflicting effect requests, the controller uses a simple priority system:
 
-The controller tracks several boolean flags that affect behavior:
+| Priority | Description | Use Cases |
+|----------|-------------|-----------|
+| **BASE** | Normal effects | Standard gameplay visuals |
+| **EVENT** | Temporary effects | Short-duration events (1-3s), auto-revert to BASE |
+| **CRITICAL** | Override effects | Manual/debug commands, persist until cleared |
 
-- **ball_ready**: When true in GAME mode, indicates ball is ready to launch
-  - Activates BALL_LAUNCH effect on NeoPixels
-  - Activates CENTER_HIT_PULSE on center button
-  - Center button press triggers ball launch (host detects from raw button event)
-
-- **skill_shot_active**: Indicates skill shot window is active
-  - Can be used to modify visual effects during launch
-
-- **multiball_active**: Indicates multiball mode is active
-  - May affect base visual profiles in future enhancements
-
-## 2.4. Menu State
-
-For menu navigation, the controller maintains:
-
-- **menu_index**: Current selected menu item (0-based)
-- **menu_count**: Total number of menu items
-- **menu_smart**: Navigation mode
-  - `true` (SMART): Controller manages index, emits MENU_MOVE/MENU_SELECT events
-  - `false` (DUMB): Host manages index, controller only handles visuals
-
-## 2.5. Effect Priority System
-
-Visual effects operate on a three-level priority system:
-
-| Priority | Value | Description | Use Cases |
-|----------|-------|-------------|-----------|
-| **BASE** | 0 | Long-lived defaults | Mode-driven base visuals |
-| **EVENT** | 1 | Short-lived events | Jackpot, ball save, extra ball (1-3s) |
-| **CRITICAL** | 2 | Manual overrides | Debug commands, error conditions |
-
-Priority rules:
-- Lower priority effects cannot override higher priority effects
-- EVENT priority effects automatically revert to BASE after their duration expires
-- CRITICAL priority persists until explicitly cleared
-- Both NeoPixels and button LEDs have independent priority tracking
+**Important:** This priority system is purely an implementation detail for handling simultaneous requests. It does **not** imply hidden game states or autonomous transitions. The Pi still decides what effects to send and when.
 
 ---
 
@@ -204,80 +172,42 @@ build/pinball_firmware.uf2
 
 ASCII messages over USB CDC, newline‑terminated. The protocol is organized into three categories: state commands (long-lived configuration), event commands (short-lived events), and override commands (manual control).
 
-## 6.1. State Commands (Pi → KB2040)
+## 6.1. Display Commands (Pi → KB2040)
 
-Long-lived configuration and game state. These commands set the controller's persistent state and trigger base profile updates.
-
-### Mode Control
-```
-CMD MODE <ATTRACT|MENU|GAME|BALL_LOST|HIGH_SCORE|DEBUG>
-```
-Sets the top-level controller mode. Automatically applies the appropriate base visual profile for the new mode.
-
-**Examples:**
-```
-CMD MODE ATTRACT        # Enter attract/demo mode
-CMD MODE GAME           # Start active gameplay
-CMD MODE MENU           # Enter menu navigation
-CMD MODE BALL_LOST      # Ball drain sequence
-CMD MODE HIGH_SCORE     # High score entry
-```
-
-### Game State Flags
-```
-CMD STATE BALL_READY <0|1>
-CMD STATE SKILL_SHOT <0|1>
-CMD STATE MULTIBALL <0|1>
-```
-
-- `BALL_READY 1`: Ball is loaded and ready to launch (activates launch-ready visuals)
-- `BALL_READY 0`: Ball is in play or not available
-- `SKILL_SHOT 1`: Skill shot opportunity window is active
-- `MULTIBALL 1`: Multiple balls in play
-
-**Example sequence:**
-```
-CMD STATE BALL_READY 1    # Ball loaded, show launch prompt
-# (Player presses center button)
-# Controller emits: EVT BUTTON CENTER DOWN
-# Controller automatically clears ball_ready flag
-# Host detects launch from button event while in ball_ready state
-```
-
-### Menu Configuration
-```
-CMD MENU_MODE <SMART|DUMB>
-CMD MENU_SIZE <n>
-CMD MENU_INDEX <i>
-```
-
-- `MENU_MODE SMART`: Controller manages menu_index internally, emits navigation events
-- `MENU_MODE DUMB`: Host manages menu_index, controller only handles visuals
-- `MENU_SIZE`: Total number of menu items (for wrap-around)
-- `MENU_INDEX`: Set current selection (DUMB mode) or initial selection (SMART mode)
+Commands for controlling the LED matrix display content.
 
 ### Score & Display
 ```
-CMD SCORE <number>
-CMD BALLS <number>
-CMD TEXT <x> <y> <text>
-CMD DISPLAY_ANIM <animation_name>
+CMD DISPLAY SCORE <number>
+CMD DISPLAY BALLS <number>
+CMD DISPLAY TEXT <string>
+CMD DISPLAY CLEAR
 ```
 
-- `SCORE`: Updates the LED matrix display with current score
-- `BALLS`: Updates the ball count display
-- `TEXT`: Displays custom text at position (x, y) on the 32×8 matrix
-  - x: horizontal position (0-31, origin at left)
-  - y: vertical position (0-7, origin at top)
-  - Note: Clears display before drawing text
-- `DISPLAY_ANIM`: Starts a display animation (NONE, BALL_SAVED, MULTIBALL, MAIN_MENU)
+- `DISPLAY SCORE <number>`: Updates the LED matrix with the current score
+- `DISPLAY BALLS <number>`: Updates the ball count display
+- `DISPLAY TEXT <string>`: Displays custom text on the 32×8 matrix
+- `DISPLAY CLEAR`: Clears the entire display
+
+**Examples:**
+```
+CMD DISPLAY SCORE 42500
+CMD DISPLAY BALLS 2
+CMD DISPLAY TEXT GAME OVER
+CMD DISPLAY CLEAR
+```
 
 ### Brightness
 ```
-CMD BRIGHTNESS <0-255>
+CMD NEO BRIGHTNESS <0-255>
 ```
 
-Sets global NeoPixel brightness. Does not affect button LEDs.
+Sets global NeoPixel brightness (0-255). Does not affect button LEDs.
+
+**Example:**
+```
+CMD NEO BRIGHTNESS 200
+```
 
 ### System Commands
 ```
@@ -286,75 +216,83 @@ CMD DEBUG
 ```
 
 - `PING`: Controller responds with `EVT PONG`
-- `DEBUG`: Enter debug/diagnostic mode
+- `DEBUG`: Enter debug/diagnostic mode (see Section 10)
 
 ---
 
-## 6.2. Event Commands (Pi → KB2040)
+## 6.2. Effect Commands (Pi → KB2040)
 
-Short-lived game events that trigger temporary visual effects at EVENT priority. Effects automatically revert to base profile after their duration expires.
+Commands for triggering visual effects on buttons and NeoPixels. The Pi explicitly requests effects based on game state transitions.
+
+### Button Effects
+```
+CMD BUTTON EFFECT <LEFT|CENTER|RIGHT|ALL> <EFFECT_NAME>
+CMD BUTTON EFFECT CLEAR
+```
+
+Available button effects:
+- `OFF`, `READY_STEADY_GLOW`, `FLIPPER_FEEDBACK`, `CENTER_HIT_PULSE`
+- `SKILL_SHOT_BUILDUP`, `BALL_SAVED`, `POWERUP_ALERT`, `EXTRA_BALL_AWARD`
+- `GAME_OVER_FADE`, `MENU_NAVIGATION`
+
+**Examples:**
+```
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE    # Center button pulses for ball launch
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW      # All buttons to idle glow
+CMD BUTTON EFFECT CLEAR                       # Stop all button effects
+```
+
+### NeoPixel Effects
+```
+CMD NEO EFFECT <EFFECT_NAME>
+CMD NEO EFFECT CLEAR
+```
+
+Available NeoPixel effects:
+- `RAINBOW_BREATHE`, `RAINBOW_WAVE`, `CAMERA_FLASH`, `RED_STROBE_5X`
+- `WATER`, `ATTRACT`, `PINK_PULSE`, `BALL_LAUNCH`, `NONE`
+
+**Examples:**
+```
+CMD NEO EFFECT ATTRACT           # Idle rainbow chase
+CMD NEO EFFECT BALL_LAUNCH       # Yellow ripple for ball launch
+CMD NEO EFFECT PINK_PULSE        # Pink pulse for celebration
+CMD NEO EFFECT CLEAR             # Stop current effect
+```
+
+---
+
+## 6.3. Temporary Event Effects (Pi → KB2040)
+
+For short-lived game events (jackpot, ball save, extra ball, etc.), the Pi can use these convenience commands that automatically revert after a preset duration. These are simply shortcuts that combine an effect command with an automatic timer.
 
 ```
-CMD EVENT BALL_SAVED
-CMD EVENT EXTRA_BALL
+CMD EVENT BALL_SAVED        # RED_STROBE_5X (1.5s) + BALL_SAVED buttons
+CMD EVENT EXTRA_BALL        # PINK_PULSE (2.0s) + EXTRA_BALL_AWARD buttons
+CMD EVENT JACKPOT           # RAINBOW_WAVE (2.5s) + POWERUP_ALERT buttons
+CMD EVENT MULTIBALL_START   # PINK_PULSE (2.0s) + POWERUP_ALERT buttons
+```
+
+These event commands are **optional conveniences**. The Pi can achieve the same result by sending explicit effect commands and managing timing itself.
+
+**Example equivalents:**
+```
+# Using event command:
 CMD EVENT JACKPOT
-CMD EVENT MULTIBALL_START
-CMD EVENT MULTIBALL_END
+
+# Equivalent using explicit commands:
+CMD NEO EFFECT RAINBOW_WAVE
+CMD BUTTON EFFECT ALL POWERUP_ALERT
+# (Pi waits 2.5s, then sends new effects)
 ```
-
-| Event | NeoPixel Effect | Button Effect | Duration |
-|-------|----------------|---------------|----------|
-| BALL_SAVED | RED_STROBE_5X | BALL_SAVED | 1.5s |
-| EXTRA_BALL | PINK_PULSE | EXTRA_BALL_AWARD | 2.0s |
-| JACKPOT | RAINBOW_WAVE | POWERUP_ALERT | 2.5s |
-| MULTIBALL_START | PINK_PULSE | POWERUP_ALERT | 2.0s |
-| MULTIBALL_END | *(reverts to base)* | *(reverts to base)* | immediate |
-
-**When to send:**
-- `BALL_SAVED`: Ball save feature activates, preventing drain
-- `EXTRA_BALL`: Player awarded an extra ball
-- `JACKPOT`: Major scoring event achieved
-- `MULTIBALL_START`: Multiball mode begins (also sets multiball_active flag)
-- `MULTIBALL_END`: Multiball mode ends (clears multiball_active flag)
-
----
-
-## 6.3. Override Commands (Pi → KB2040)
-
-Manual control at CRITICAL priority. Overrides persist until explicitly cleared, blocking all base and event updates.
-
-**Intended use:** Debug sequences, special modes, testing.
-
-### NeoPixel Override
-```
-CMD EFFECT_OVERRIDE <EFFECT_NAME>
-CMD EFFECT_CLEAR
-```
-
-Effect names: RAINBOW_BREATHE, RAINBOW_WAVE, CAMERA_FLASH, RED_STROBE_5X, WATER, ATTRACT, PINK_PULSE, BALL_LAUNCH, NONE
-
-**Example:**
-```
-CMD EFFECT_OVERRIDE WATER     # Force water effect
-# (mode changes, events, etc. will not change NeoPixels)
-CMD EFFECT_CLEAR              # Release override, return to base profile
-```
-
-### Button LED Override
-```
-CMD BUTTON_EFFECT_OVERRIDE <EFFECT_NAME>
-CMD BUTTON_EFFECT_CLEAR
-```
-
-Effect names: OFF, READY_STEADY_GLOW, FLIPPER_FEEDBACK, CENTER_HIT_PULSE, SKILL_SHOT_BUILDUP, BALL_SAVED, POWERUP_ALERT, EXTRA_BALL_AWARD, GAME_OVER_FADE, MENU_NAVIGATION
 
 ---
 
 ## 6.4. Events (KB2040 → Pi)
 
-**Important:** The controller only sends button-originated events back to the Pi. No autonomous telemetry or game-state-derived events are sent.
+The controller sends **only raw button events** back to the Pi. The Pi interprets these events based on its own game state.
 
-### Button Events (Always Sent)
+### Button Events
 ```
 EVT BUTTON <LEFT|CENTER|RIGHT> <DOWN|UP|HELD>
 ```
@@ -364,62 +302,15 @@ Raw button state changes:
 - `UP`: Button released
 - `HELD`: Button held for >500ms
 
-**Example:**
+**Examples:**
 ```
 EVT BUTTON LEFT DOWN
 EVT BUTTON LEFT UP
 EVT BUTTON CENTER HELD
+EVT BUTTON RIGHT DOWN
 ```
 
-### Menu Events (SMART Mode Only)
-```
-EVT MENU_MOVE <index>
-EVT MENU_SELECT <index>
-```
-
-Sent when `MENU_MODE SMART` is active and player navigates menu:
-- `MENU_MOVE`: Player pressed LEFT/RIGHT, index updated (with wrap-around)
-- `MENU_SELECT`: Player pressed CENTER, selecting current item
-
-**Example flow:**
-```
-# Host:
-CMD MODE MENU
-CMD MENU_MODE SMART
-CMD MENU_SIZE 5
-CMD MENU_INDEX 0
-
-# Player presses RIGHT:
-EVT BUTTON RIGHT DOWN        # Raw button event
-EVT MENU_MOVE 1              # Menu semantic event
-
-# Player presses CENTER:
-EVT BUTTON CENTER DOWN       # Raw button event
-EVT MENU_SELECT 1            # Menu semantic event
-```
-
-### Game Flow - Ball Launch Detection
-
-The controller handles ball launch internally but does not emit a separate launch event. The host detects ball launch by monitoring raw button events.
-
-**Example flow:**
-```
-# Host:
-CMD MODE GAME
-CMD STATE BALL_READY 1
-
-# Controller shows ball-ready visuals (BALL_LAUNCH effect, CENTER_HIT_PULSE)
-
-# Player presses CENTER:
-EVT BUTTON CENTER DOWN       # Raw button event (only event sent)
-
-# Controller automatically (internal to controller):
-# - Sets ball_ready = false
-# - Changes substate to SUB_BALL_IN_PLAY
-# - Reverts to in-play base profile
-
-# Host detects launch by receiving CENTER DOWN while ball_ready was true
-```
+The controller does **not** interpret these as "menu move," "menu select," "ball launch," etc. The Pi decides what each button press means based on the current game state.
 
 ### System Events
 ```
@@ -434,131 +325,81 @@ EVT DEBUG ACTIVE
 
 ---
 
-## 6.5. Menu Behavior
+## 6.5. Complete Game Flow Examples
 
-### SMART Mode (Controller-Managed)
+This section provides complete command sequences for common game flow scenarios. The Pi sends explicit effect and display commands based on its own game state; the controller simply executes them.
 
-When `CMD MENU_MODE SMART`:
-
-**Left Button:**
-- Visual: Slow breathing LED in idle
-- On press: Decrements menu_index (with wrap to last item), emits `EVT MENU_MOVE <index>`
-
-**Right Button:**
-- Visual: Slow breathing LED in idle
-- On press: Increments menu_index (with wrap to 0), emits `EVT MENU_MOVE <index>`
-
-**Center Button:**
-- Visual: Breathing "hit me" pattern
-- On press: Emits `EVT MENU_SELECT <index>`
-
-The host receives events and can update UI or change modes accordingly. The controller handles all menu index logic.
-
-### DUMB Mode (Host-Managed)
-
-When `CMD MENU_MODE DUMB`:
-
-- Host sets `CMD MENU_INDEX <i>` to control which item is highlighted
-- Button presses still generate raw `EVT BUTTON` events
-- No `EVT MENU_MOVE` or `EVT MENU_SELECT` events are generated
-- Controller only updates visual indicators based on host-provided index
-
----
-
-## 6.6. Game Flow Signals
-
-### Ball Ready Sequence
-
-1. Host sets `CMD MODE GAME`
-2. Host updates `CMD SCORE` / `CMD BALLS` as needed
-3. **Host sets `CMD STATE BALL_READY 1` when ball is loaded**
-4. Controller automatically:
-   - Sets substate to SUB_BALL_READY
-   - Activates BALL_LAUNCH NeoPixel effect
-   - Activates CENTER_HIT_PULSE on center button
-5. Player presses center button
-6. Controller:
-   - Emits `EVT BUTTON CENTER DOWN` (raw button event)
-   - Sets ball_ready = false, substate = SUB_BALL_IN_PLAY
-   - Reverts to in-play base profile
-7. Host receives `EVT BUTTON CENTER DOWN` and knows ball_ready was true, so transitions game logic to ball-in-play
-
-This approach allows the controller to provide immediate tactile feedback while the host manages game state transitions based on raw button events.
-
----
-
-## 6.7. Complete Game Flow Examples
-
-This section provides complete command sequences for common game flow scenarios, showing the exact order of CMD functions to send for typical pinball game states.
-
-### Example 1: Startup Sequence
+### Example 1: Startup Sequence (Attract Mode)
 ```
 # Controller boots and sends:
 EVT READY
 
-# Host initializes to attract mode:
-CMD MODE ATTRACT
-CMD BRIGHTNESS 200
-CMD SCORE 0
-CMD BALLS 3
+# Pi initializes to attract mode:
+CMD NEO EFFECT ATTRACT
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+CMD NEO BRIGHTNESS 200
+CMD DISPLAY SCORE 0
+CMD DISPLAY BALLS 3
 ```
 
-**Result:** Controller enters attract mode with rainbow chase on NeoPixels and ready/steady glow on buttons.
+**Result:** Controller displays attract visuals—rainbow chase on NeoPixels and idle glow on buttons.
 
 ---
 
-### Example 2: Menu Navigation (SMART Mode)
+### Example 2: Menu Navigation
 ```
-# Enter menu from attract mode:
-CMD MODE MENU
-CMD MENU_MODE SMART
-CMD MENU_SIZE 4
-CMD MENU_INDEX 0
+# Pi enters menu mode (Pi manages menu state):
+CMD NEO EFFECT ATTRACT
+CMD BUTTON EFFECT ALL MENU_NAVIGATION
+CMD DISPLAY TEXT MAIN MENU
 
-# Controller now shows MENU_NAVIGATION button effect
+# Pi tracks menu_index internally (e.g., starts at 0)
 # Player presses RIGHT button:
-EVT BUTTON RIGHT DOWN      # Raw button event
+EVT BUTTON RIGHT DOWN
 EVT BUTTON RIGHT UP
-EVT MENU_MOVE 1           # Menu navigation event (index now 1)
+
+# Pi increments menu_index to 1, updates display:
+CMD DISPLAY TEXT START GAME
 
 # Player presses RIGHT again:
 EVT BUTTON RIGHT DOWN
 EVT BUTTON RIGHT UP
-EVT MENU_MOVE 2           # Index now 2
+
+# Pi increments menu_index to 2, updates display:
+CMD DISPLAY TEXT OPTIONS
 
 # Player presses CENTER to select:
 EVT BUTTON CENTER DOWN
 EVT BUTTON CENTER UP
-EVT MENU_SELECT 2         # Player selected item 2
 
-# Host processes selection and starts game:
-CMD MODE GAME
-CMD SCORE 0
-CMD BALLS 3
+# Pi processes selection based on menu_index and starts game:
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+CMD DISPLAY SCORE 0
+CMD DISPLAY BALLS 3
 ```
 
 ---
 
 ### Example 3: Ball Launch Sequence (Full Game Start)
 ```
-# Start new game:
-CMD MODE GAME
-CMD SCORE 0
-CMD BALLS 3
+# Pi starts new game and sets up ball-ready visuals:
+CMD DISPLAY SCORE 0
+CMD DISPLAY BALLS 3
+CMD NEO EFFECT BALL_LAUNCH
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
+CMD BUTTON EFFECT LEFT READY_STEADY_GLOW
+CMD BUTTON EFFECT RIGHT READY_STEADY_GLOW
 
-# Ball is loaded and ready:
-CMD STATE BALL_READY 1
-
-# Controller automatically:
-# - Activates BALL_LAUNCH NeoPixel effect
-# - Activates CENTER_HIT_PULSE button effect
-# - Player sees pulsing center button
+# Pi is now in "ball_ready" state (tracked on Pi side)
+# Player sees pulsing center button indicating ready to launch
 
 # Player presses center to launch:
-EVT BUTTON CENTER DOWN    # Raw button event
+EVT BUTTON CENTER DOWN
 
-# Controller automatically clears ball_ready flag
-# Host processes the launch and ball is now in play
+# Pi receives button event, knows it was in ball_ready state, transitions to ball-in-play:
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
 
 # During gameplay, flippers are used:
 EVT BUTTON LEFT DOWN      # Left flipper activated
@@ -571,36 +412,42 @@ EVT BUTTON RIGHT UP       # Right flipper released
 
 ### Example 4: Skill Shot Sequence
 ```
-# Ball is ready, activate skill shot window:
-CMD STATE BALL_READY 1
-CMD STATE SKILL_SHOT 1
+# Pi activates skill shot window with special visuals:
+CMD NEO EFFECT WATER
+CMD BUTTON EFFECT ALL SKILL_SHOT_BUILDUP
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
 
-# Controller shows skill shot visuals
 # Player launches ball:
 EVT BUTTON CENTER DOWN
 
-# Ball in play, skill shot window active for 3 seconds
+# Pi transitions to ball-in-play with skill shot window active (tracked on Pi):
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+
+# Pi waits 3 seconds for skill shot target...
 # If player makes skill shot within window:
-CMD STATE SKILL_SHOT 0    # Clear skill shot flag
 CMD EVENT JACKPOT         # Celebrate with jackpot effect
 
 # Update score:
-CMD SCORE 50000
+CMD DISPLAY SCORE 50000
 ```
 
 ---
 
 ### Example 5: Ball Save Event
 ```
-# Ball is in play and drains, but ball save is active:
+# Ball drains, but Pi's ball save is active:
 CMD EVENT BALL_SAVED
 
-# Controller plays:
+# Controller plays automatic effect:
 # - RED_STROBE_5X on NeoPixels (1.5s)
 # - BALL_SAVED animation on buttons (1.5s)
 
-# Ball is returned to play:
-CMD STATE BALL_READY 1
+# After effect completes, Pi sets up ball ready again:
+CMD NEO EFFECT BALL_LAUNCH
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
+CMD BUTTON EFFECT LEFT READY_STEADY_GLOW
+CMD BUTTON EFFECT RIGHT READY_STEADY_GLOW
 
 # Player launches again:
 EVT BUTTON CENTER DOWN
@@ -610,158 +457,136 @@ EVT BUTTON CENTER DOWN
 
 ### Example 6: Multiball Activation
 ```
-# Player qualifies for multiball:
+# Pi detects multiball qualification and triggers celebration:
 CMD EVENT MULTIBALL_START
 
-# Controller automatically:
-# - Sets multiball_active flag
-# - Plays PINK_PULSE NeoPixel effect (2.0s)
-# - Plays POWERUP_ALERT button effect (2.0s)
+# Controller plays automatic effect:
+# - PINK_PULSE NeoPixel effect (2.0s)
+# - POWERUP_ALERT button effect (2.0s)
 
-# Multiple balls in play...
-CMD SCORE 75000
-CMD SCORE 85000
-CMD SCORE 100000
+# Multiple balls in play (Pi tracks multiball state)...
+CMD DISPLAY SCORE 75000
+CMD DISPLAY SCORE 85000
+CMD DISPLAY SCORE 100000
 
-# Multiball ends (back to single ball):
-CMD EVENT MULTIBALL_END
-
-# Controller reverts to normal gameplay visuals
+# Multiball ends (Pi detects back to single ball):
+# Pi returns to normal gameplay visuals:
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
 ```
 
 ---
 
 ### Example 7: Extra Ball Award
 ```
-# Player earns extra ball:
+# Pi detects extra ball earned:
 CMD EVENT EXTRA_BALL
 
-# Controller plays:
+# Controller plays automatic effect:
 # - PINK_PULSE on NeoPixels (2.0s)
 # - EXTRA_BALL_AWARD on buttons (three pulses + fade, 2.0s)
 
 # Update ball count:
-CMD BALLS 4
+CMD DISPLAY BALLS 4
 ```
 
 ---
 
 ### Example 8: Ball Drain Sequence
 ```
-# Ball drains (no ball save):
-CMD MODE BALL_LOST
-
-# Controller shows:
-# - RED_STROBE_5X on NeoPixels
-# - READY_STEADY_GLOW on buttons
+# Ball drains (Pi detects, no ball save):
+CMD NEO EFFECT RED_STROBE_5X
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
 
 # Update ball count:
-CMD BALLS 2
+CMD DISPLAY BALLS 2
 
-# Wait for animation to complete (~1.5s)
-# Then load next ball:
-CMD MODE GAME
-CMD STATE BALL_READY 1
+# Wait for effect to complete (~1.5s)
+# Then Pi loads next ball with ball-ready visuals:
+CMD NEO EFFECT BALL_LAUNCH
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
 
 # Player launches next ball:
 EVT BUTTON CENTER DOWN
+
+# Pi transitions to ball-in-play:
+CMD NEO EFFECT NONE
 ```
 
 ---
 
 ### Example 9: Game Over Sequence
 ```
-# Final ball drains:
-CMD MODE BALL_LOST
-CMD BALLS 0
+# Final ball drains (Pi detects):
+CMD NEO EFFECT RED_STROBE_5X
+CMD DISPLAY BALLS 0
 
 # Brief delay for drama (~2s)
-# Then transition to high score mode:
-CMD MODE HIGH_SCORE
-CMD TEXT 8 2 GAME OVER
-CMD DISPLAY_ANIM MAIN_MENU
+# Then Pi transitions to game over display:
+CMD NEO EFFECT PINK_PULSE
+CMD BUTTON EFFECT ALL GAME_OVER_FADE
+CMD DISPLAY TEXT GAME OVER
 
-# Controller shows:
-# - PINK_PULSE on NeoPixels
-# - READY_STEADY_GLOW on buttons
-
-# Check if high score was achieved...
+# Pi checks if high score was achieved...
 # If yes, handle high score entry (implementation specific)
 # If no, return to attract after delay:
-CMD MODE ATTRACT
-CMD SCORE 0
-CMD BALLS 3
+CMD NEO EFFECT ATTRACT
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+CMD DISPLAY SCORE 0
+CMD DISPLAY BALLS 3
 ```
 
 ---
 
 ### Example 10: Jackpot Event
 ```
-# During gameplay, player hits jackpot target:
+# During gameplay, Pi detects jackpot target hit:
 CMD EVENT JACKPOT
 
-# Controller plays:
+# Controller plays automatic effect:
 # - RAINBOW_WAVE on NeoPixels (2.5s)
 # - POWERUP_ALERT on buttons (chaotic strobe, 2.5s)
 
 # Update score with jackpot value:
-CMD SCORE 150000
+CMD DISPLAY SCORE 150000
 ```
 
 ---
 
-### Example 11: Menu Navigation (DUMB Mode)
+### Example 11: Explicit Effect Testing
 ```
-# Enter menu with host-controlled navigation:
-CMD MODE MENU
-CMD MENU_MODE DUMB
-CMD MENU_SIZE 5
-CMD MENU_INDEX 0
+# Pi wants to test specific effect combinations:
+CMD NEO EFFECT WATER
+CMD BUTTON EFFECT LEFT SKILL_SHOT_BUILDUP
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
+CMD BUTTON EFFECT RIGHT READY_STEADY_GLOW
 
-# Host updates visual indicator based on its own navigation:
-CMD MENU_INDEX 1    # Highlight item 1
-CMD MENU_INDEX 2    # Highlight item 2
+# Effects run as requested
+# Pi can change them at any time:
+CMD NEO EFFECT RAINBOW_WAVE
+CMD BUTTON EFFECT ALL POWERUP_ALERT
 
-# Player presses buttons, host receives raw events only:
-EVT BUTTON RIGHT DOWN
-EVT BUTTON RIGHT UP
-
-# Host manages its own menu logic and updates index:
-CMD MENU_INDEX 3
-
-# Player selects:
-EVT BUTTON CENTER DOWN
-EVT BUTTON CENTER UP
-
-# Host processes selection (no EVT MENU_SELECT in DUMB mode)
-CMD MODE GAME
+# Clear everything:
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT CLEAR
 ```
 
 ---
 
-### Example 12: Testing/Debug Override Sequence
+### Example 12: Debug Mode
 ```
-# Enter debug mode:
+# Enter debug mode for hardware diagnostics:
 CMD DEBUG
 
 # Controller sends:
 EVT DEBUG ACTIVE
 
-# Override effects for testing:
-CMD EFFECT_OVERRIDE WATER
-CMD BUTTON_EFFECT_OVERRIDE SKILL_SHOT_BUILDUP
+# Controller runs hardware self-test patterns
+# (See Section 10 for debug mode details)
 
-# Effects are now locked to these patterns
-# Mode changes won't affect them
-
-# Test for a while...
-
-# Clear overrides:
-CMD EFFECT_CLEAR
-CMD BUTTON_EFFECT_CLEAR
-
-# Exit debug mode by sending any other command:
-CMD MODE ATTRACT
+# Exit debug mode and return to normal operation:
+CMD NEO EFFECT ATTRACT
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
 ```
 
 ---
@@ -769,67 +594,83 @@ CMD MODE ATTRACT
 ### Example 13: Complete 3-Ball Game Flow
 ```
 # 1. Attract Mode
-CMD MODE ATTRACT
-CMD SCORE 0
-CMD BALLS 3
+CMD NEO EFFECT ATTRACT
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+CMD DISPLAY SCORE 0
+CMD DISPLAY BALLS 3
 
 # Player presses button to start...
 EVT BUTTON CENTER DOWN
 
-# 2. Start Game - Ball 1
-CMD MODE GAME
-CMD SCORE 0
-CMD BALLS 3
-CMD STATE BALL_READY 1
+# 2. Start Game - Ball 1 Ready
+CMD NEO EFFECT BALL_LAUNCH
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
+CMD DISPLAY SCORE 0
+CMD DISPLAY BALLS 3
 
 EVT BUTTON CENTER DOWN    # Launch ball 1
+
+# Pi transitions to ball-in-play:
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+
 # ... gameplay ...
-CMD SCORE 25000
-CMD SCORE 42000
+CMD DISPLAY SCORE 25000
+CMD DISPLAY SCORE 42000
 
 # Ball 1 drains
-CMD MODE BALL_LOST
-CMD BALLS 2
+CMD NEO EFFECT RED_STROBE_5X
+CMD DISPLAY BALLS 2
 # ... delay ~1.5s ...
 
-# 3. Ball 2
-CMD MODE GAME
-CMD STATE BALL_READY 1
+# 3. Ball 2 Ready
+CMD NEO EFFECT BALL_LAUNCH
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
 
 EVT BUTTON CENTER DOWN    # Launch ball 2
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+
 # ... gameplay ...
 CMD EVENT JACKPOT         # Big score!
-CMD SCORE 85000
+CMD DISPLAY SCORE 85000
 
 # Ball 2 drains
-CMD MODE BALL_LOST
-CMD BALLS 1
+CMD NEO EFFECT RED_STROBE_5X
+CMD DISPLAY BALLS 1
 # ... delay ~1.5s ...
 
-# 4. Ball 3 (final ball)
-CMD MODE GAME
-CMD STATE BALL_READY 1
+# 4. Ball 3 (final ball) Ready
+CMD NEO EFFECT BALL_LAUNCH
+CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE
 
 EVT BUTTON CENTER DOWN    # Launch ball 3
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+
 # ... gameplay ...
 CMD EVENT MULTIBALL_START # Multiball on final ball!
-CMD SCORE 120000
-CMD EVENT MULTIBALL_END
+CMD DISPLAY SCORE 120000
+# ... multiball ends ...
+CMD NEO EFFECT NONE
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
 
 # Final ball drains
-CMD MODE BALL_LOST
-CMD BALLS 0
+CMD NEO EFFECT RED_STROBE_5X
+CMD DISPLAY BALLS 0
 # ... delay ~2s ...
 
 # 5. Game Over
-CMD MODE HIGH_SCORE
-CMD TEXT 6 2 FINAL: 120000
+CMD NEO EFFECT PINK_PULSE
+CMD BUTTON EFFECT ALL GAME_OVER_FADE
+CMD DISPLAY TEXT FINAL: 120000
 # ... check high score, handle entry if needed ...
 
 # 6. Return to Attract
-CMD MODE ATTRACT
-CMD SCORE 0
-CMD BALLS 3
+CMD NEO EFFECT ATTRACT
+CMD BUTTON EFFECT ALL READY_STEADY_GLOW
+CMD DISPLAY SCORE 0
+CMD DISPLAY BALLS 3
 ```
 
 ---
@@ -1039,17 +880,23 @@ firmware/
 
 # 15. Appendix: Recommended Game‑State Mapping
 
-| Game State | NeoPixel Effect | Button Effect | Notes |
-|-----------|-----------------|---------------|-------|
-| Attract   | ATTRACT | READY_STEADY_GLOW | Idle |
-| Menu      | ATTRACT | MENU_NAVIGATION | Selection mode |
-| Ball Ready| BALL_LAUNCH | CENTER_HIT_PULSE | Launch indicator |
-| Skill Shot| WATER | SKILL_SHOT_BUILDUP | Pre‑launch tension |
-| Gameplay  | None | READY_STEADY_GLOW | Stable |
-| Ball Save | RED_STROBE_5X | BALL_SAVED | Urgency |
-| Multiball | PINK_PULSE | POWERUP_ALERT | Chaotic |
-| Extra Ball| PINK_PULSE | EXTRA_BALL_AWARD | Celebration |
-| Game Over | None | GAME_OVER_FADE | Cooldown |
+This table shows how the **Pi** can map its game states to controller effects. The controller does not know what "Attract," "Ball Ready," "Multiball," etc. mean—it only knows which effect commands it receives and executes.
+
+| Pi Game State | Recommended Commands | Notes |
+|---------------|---------------------|-------|
+| **Attract** | `CMD NEO EFFECT ATTRACT`<br>`CMD BUTTON EFFECT ALL READY_STEADY_GLOW` | Idle/demo mode |
+| **Menu** | `CMD NEO EFFECT ATTRACT`<br>`CMD BUTTON EFFECT ALL MENU_NAVIGATION` | Menu navigation visuals |
+| **Ball Ready** | `CMD NEO EFFECT BALL_LAUNCH`<br>`CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE`<br>`CMD BUTTON EFFECT LEFT READY_STEADY_GLOW`<br>`CMD BUTTON EFFECT RIGHT READY_STEADY_GLOW` | Launch indicator |
+| **Skill Shot** | `CMD NEO EFFECT WATER`<br>`CMD BUTTON EFFECT ALL SKILL_SHOT_BUILDUP` | Pre‑launch tension |
+| **Ball In Play** | `CMD NEO EFFECT NONE`<br>`CMD BUTTON EFFECT ALL READY_STEADY_GLOW` | Normal gameplay |
+| **Ball Save** | `CMD EVENT BALL_SAVED` | Urgency (auto-effect) |
+| **Multiball** | `CMD EVENT MULTIBALL_START` | Celebration (auto-effect) |
+| **Extra Ball** | `CMD EVENT EXTRA_BALL` | Award celebration (auto-effect) |
+| **Jackpot** | `CMD EVENT JACKPOT` | Big score celebration (auto-effect) |
+| **Ball Drain** | `CMD NEO EFFECT RED_STROBE_5X`<br>`CMD BUTTON EFFECT ALL READY_STEADY_GLOW` | Drain sequence |
+| **Game Over** | `CMD NEO EFFECT PINK_PULSE`<br>`CMD BUTTON EFFECT ALL GAME_OVER_FADE` | End of game |
+
+**Key Point:** These mappings are **implemented on the Pi** by sending the corresponding effect commands. The controller does not autonomously transition between states or infer game flow from button presses.
 
 ---
 
