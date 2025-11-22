@@ -181,9 +181,7 @@ void buttons_poll(void) {
             const char* button_name = (i == BUTTON_LEFT) ? "LEFT" : 
                                      (i == BUTTON_CENTER) ? "CENTER" : "RIGHT";
             printf("BUTTON %s: PRESSED\n", button_name);
-            
-            // Let controller state machine handle button press first
-            bool handled = controller_handle_button_press(i);
+
             
             // Always send raw button event to host (requirement #8)
             protocol_send_button_event(i, BUTTON_STATE_DOWN);
