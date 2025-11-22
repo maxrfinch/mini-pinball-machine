@@ -19,7 +19,7 @@ void display_set_score(uint32_t score);
 void display_set_balls(uint8_t balls);
 
 // Set text at position (x, y) - characters are 4x5 pixels
-void display_set_text(const char* text, uint8_t x, uint8_t y);
+void display_set_text(const char* text, int x, uint8_t y);
 
 // Clear entire display
 void display_clear(void);

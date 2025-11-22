@@ -198,7 +198,7 @@ static void draw_digit(uint8_t x, uint8_t y_phys, uint8_t digit) {
 }
 
 // Draw a single character at position (x, y_phys) using 4x5 font
-static int draw_char(uint8_t x, uint8_t y_phys, char c) {
+static int draw_char(int x, uint8_t y_phys, char c) {
     // Convert character to font index
     int index = -1;
     if (c >= 'A' && c <= 'Z') {
@@ -219,26 +219,27 @@ static int draw_char(uint8_t x, uint8_t y_phys, char c) {
     // Calculate character width (I is narrower)
     int char_width = (c == 'I' || c == 'i' || c == '1') ? 3 : 4;
     
-    // Check bounds
-    if (x + char_width > DISPLAY_WIDTH || y_phys + 5 > DISPLAY_HEIGHT) {
+    // Check vertical bounds (horizontal is clipped per pixel)
+    if (y_phys + 5 > DISPLAY_HEIGHT) {
         return 0;
     }
-    
-    // Draw character
+
+    // Draw character with per-pixel horizontal clipping
     for (int col = 0; col < char_width; col++) {
         uint8_t column_data = char_font[index][col];
         for (int row = 0; row < 5; row++) {
             if (column_data & (1 << row)) {
                 uint8_t phys_row = y_phys + row;
-                uint8_t fb_row = (phys_row + 7) % 8;
-                
-                if (x + col < DISPLAY_WIDTH) {
-                    framebuffer[x + col][fb_row] = 1;
+                uint8_t fb_row   = (phys_row + 7) % 8;
+
+                int px = x + col;
+                if (px >= 0 && px < DISPLAY_WIDTH) {
+                    framebuffer[px][fb_row] = 1;
                 }
             }
         }
     }
-    
+
     return char_width;
 }
 
@@ -368,7 +369,7 @@ void display_update(void) {
     }
 }
 
-void display_set_text(const char* text, uint8_t x, uint8_t y) {
+void display_set_text(const char* text, int x, uint8_t y) {
     // Draw text starting at position (x, y)
     // y is the top physical row for the text (0-7)
     // Text will be drawn left-to-right with 1px spacing between characters
@@ -376,11 +377,16 @@ void display_set_text(const char* text, uint8_t x, uint8_t y) {
     if (!text || y + 5 > DISPLAY_HEIGHT) {
         return;
     }
-    
-    uint8_t cursor_x = x;
-    for (int i = 0; text[i] != '\0' && cursor_x < DISPLAY_WIDTH; i++) {
+
+    int cursor_x = x;
+    for (int i = 0; text[i] != '\0'; i++) {
+        // If we've scrolled completely off the right, stop
+        if (cursor_x >= DISPLAY_WIDTH) {
+            break;
+        }
+
         int char_width = draw_char(cursor_x, y, text[i]);
-        cursor_x += char_width + 1;  // Add 1px spacing between characters
+        cursor_x += char_width + 1;  // 1px spacing between characters
     }
 }
 
@@ -468,32 +474,38 @@ void display_update_animation(void) {
         }
         
         case DISPLAY_ANIM_MULTIBALL: {
-            // Scrolling "MULTIBALL" text with trailing effect
-            // Total duration: 4 seconds
+            const char *text = "MULTIBALL";
+
             uint32_t total_duration = 4000;
             if (elapsed_ms > total_duration) {
                 current_animation = DISPLAY_ANIM_NONE;
                 display_clear();
                 break;
             }
-            
+
             display_clear();
-            
-            // Calculate scroll position (right to left)
-            // Text is approximately 45 pixels wide (9 chars * 5 pixels each)
-            // Start off-screen right (MULTIBALL_SCROLL_START), end off-screen left (x=-45)
-            // Total travel: MULTIBALL_SCROLL_DISTANCE pixels over 4 seconds
-            int scroll_offset = MULTIBALL_SCROLL_START - (int)((elapsed_ms * MULTIBALL_SCROLL_DISTANCE) / total_duration);
-            
-            display_set_text("MULTIBALL", scroll_offset, 2);
-            
-            // Add decorative dots on top and bottom rows
+
+            // These must match how display_set_text() lays characters out
+            const int CHAR_WIDTH   = 4;  // columns in font
+            const int CHAR_SPACING = 1;  // space between characters
+
+            int len = (int)strlen(text);
+            int text_width = len * (CHAR_WIDTH + CHAR_SPACING) - CHAR_SPACING;
+
+            int scroll_start = DISPLAY_WIDTH;            // just off right edge
+            int scroll_end   = -text_width;             // just off left edge
+            int scroll_range = scroll_start - scroll_end; // positive distance
+
+            int scroll_offset = scroll_start -
+                (int)((scroll_range * (int32_t)elapsed_ms) / (int32_t)total_duration);
+
+            display_set_text(text, scroll_offset, 2);
+
+            // Decorative dots
             for (int x = 0; x < DISPLAY_WIDTH; x += 4) {
                 int offset_x = (x + (animation_frame / 2)) % DISPLAY_WIDTH;
-                if (offset_x < DISPLAY_WIDTH) {
-                    framebuffer[offset_x][7] = 1;  // Physical row 0 (top)
-                    framebuffer[offset_x][6] = 1;  // Physical row 7 (bottom)
-                }
+                framebuffer[offset_x][7] = 1;  // top
+                framebuffer[offset_x][6] = 1;  // bottom
             }
             break;
         }
