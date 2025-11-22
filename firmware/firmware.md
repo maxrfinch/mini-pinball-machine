@@ -793,27 +793,27 @@ The controller supports several visual effects that can be displayed on the 32×
 
 ### 2. MULTIBALL_DAZZLE
 **Type:** Continuous overlay (does not hide score).  
-**Description:** A border-light chase runs clockwise around the outer edge of the 32×8 matrix. Each frame, the next border pixel lights while the previous one clears, creating a looping marquee. Simultaneously, 3–4 interior sparkle pixels appear in locations not occupied by score digits. Sparkles last one frame each and reposition continuously. The combination provides energetic motion without obscuring score visibility. Sparkles last one frame and reposition every frame so the score remains readable.
+**Description:** A border-light chase runs clockwise around the outer edge of the 32×8 matrix. Each frame, the next border pixel lights while the previous one clears, creating a looping marquee. Simultaneously, 3–4 interior sparkle pixels appear in locations not occupied by score digits. Sparkles last one frame and reposition every frame, providing energetic motion without obscuring score visibility.
 
 ### 3. CENTER_WATERFALL
 **Type:** Continuous water-powerup effect.  
-**Description:** A vertical "waterfall" effect spanning columns ~13–18. Uses alternating even/odd pixel patterns to create downward shimmering motion. The waterfall restarts at the top every frame and falls through to the water surface line. Optional enhancement: vary density every few frames to simulate pressure changes. A vertical "waterfall" in the central columns (e.g., 13–18) alternates even/odd pixels frame-to-frame, creating a shimmering falling-water appearance. Runs until cleared or replaced by another effect.
+**Description:** A vertical "waterfall" in the central columns (~13–18) that alternates even/odd pixels frame-to-frame, creating a shimmering falling-water appearance. The waterfall restarts at the top every frame and falls through to the water surface line. Optional enhancement: vary density every few frames to simulate pressure changes. Runs until cleared or replaced by another effect.
 
 ### 4. WATER_RIPPLE
 **Type:** Companion animation to CENTER_WATERFALL.  
-**Description:** The topmost row of the water region uses a shifting checkerboard pattern (1010… → 0101…) to emulate ripples across the surface. Optionally, modulate wave speed by frame count or combine with slight vertical flicker to simulate changing wave energy. This runs synchronously beneath CENTER_WATERFALL to reinforce a coherent water theme. The topmost row of the filled water area uses a shifting checkerboard pattern (1010… → 0101…) to simulate a water surface ripple. Restricted to the water rows so it does not interfere with score digits.
+**Description:** The topmost row of the water region uses a shifting checkerboard pattern (1010… → 0101…) to simulate ripples across the surface. Optionally, modulate wave speed by frame count or combine with slight vertical flicker to simulate changing wave energy. This runs synchronously beneath CENTER_WATERFALL to reinforce a coherent water theme. Restricted to the water rows so it does not interfere with score digits.
 
 ### 5. GAME_OVER_CURTAIN
 **Type:** One-shot animation (~1–2 seconds).  
-**Description:** Two "curtains" close from the left and right edges, lighting one new inward-moving column per frame until meeting at the center. After closure, hold for a short beat (100–200 ms) to emphasize finality. Optionally, add a single-frame full blackout at the end to signal the effect's completion. Two "curtains" fill inward from the left and right edges of the matrix column-by-column until they meet in the center. After the screen fully closes, there is a brief hold before the effect completes.
+**Description:** Two "curtains" fill inward from the left and right edges of the matrix, lighting one new column per frame until meeting at the center. After the screen fully closes, there is a brief hold (100–200 ms) to emphasize finality before the effect completes. Optionally, add a single-frame full blackout at the end to signal completion.
 
 ### 6. HIGH_SCORE
 **Type:** Repeating celebratory animation.  
-**Description:** Displays score digits sequentially with a popping effect. For each digit: show it alone, strobe it for 2–3 frames, then add the next digit. After the whole score appears, run a gentle pulse by toggling a thin border or briefly inverting non-digit pixels. Loop by clearing back to the first digit and repeating. Score digits "pop" one at a time: first digit appears and strobes, then the second is added and strobes, and so on until all digits are visible. Then the full score runs a slow pulse before repeating.
+**Description:** Score digits "pop" one at a time with a strobing effect: first digit appears and strobes for 2–3 frames, then the second is added and strobes, and so on until all digits are visible. After the whole score appears, run a gentle pulse by toggling a thin border or briefly inverting non-digit pixels. The effect then loops by clearing back to the first digit and repeating.
 
 ### 7. ATTRACT_PINBALL
 **Type:** Attract-mode loop.  
-**Description:** Scrolls the word "PINBALL" across the display right→left in a smooth continuous loop. Between scroll cycles, optionally perform a short 2-frame screen blink or border sparkle. The scroll speed should be readable at a distance, with brief pauses between repetitions to make the text stand out. The word "PINBALL" scrolls continuously from right to left across the display. Between loops, the effect may briefly blink the whole display or run a short border sparkle to emphasize the attract mode.
+**Description:** The word "PINBALL" scrolls continuously from right to left across the display in a smooth loop. The scroll speed should be readable at a distance, with brief pauses between repetitions to make the text stand out. Between scroll cycles, the effect may briefly blink the whole display or run a short border sparkle to emphasize the attract mode.
 
 ---
 
