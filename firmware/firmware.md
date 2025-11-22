@@ -14,6 +14,7 @@
    - 6.5. Complete Game Flow Examples
 7. Button Input & LED Effects (Full Reference)
 8. Matrix Display System
+   - 8.1. Display / Matrix Effects
 9. NeoPixel Lighting System
 10. Debug Mode & Diagnostics (Consolidated)
 11. Troubleshooting Guide
@@ -196,6 +197,55 @@ CMD DISPLAY SCORE 42500
 CMD DISPLAY BALLS 2
 CMD DISPLAY TEXT GAME OVER
 CMD DISPLAY CLEAR
+```
+
+### Matrix Effects
+```
+CMD DISP_EFFECT <EFFECT_NAME>
+CMD DISP_EFFECT NONE
+```
+
+Triggers visual effects on the 32×8 LED matrix display. See Section 8.1 for complete effect descriptions.
+
+Available matrix effects:
+- `ICED_UP`, `MULTIBALL_DAZZLE`, `CENTER_WATERFALL`, `WATER_RIPPLE`
+- `GAME_OVER_CURTAIN`, `HIGH_SCORE`, `ATTRACT_PINBALL`
+
+**Examples:**
+```
+CMD DISP_EFFECT ICED_UP              # Trigger slow-mo shivering character animation
+CMD DISP_EFFECT MULTIBALL_DAZZLE     # Start multiball border chase + sparkles
+CMD DISP_EFFECT CENTER_WATERFALL     # Activate waterfall effect in center columns
+CMD DISP_EFFECT WATER_RIPPLE         # Add water surface ripple animation
+CMD DISP_EFFECT GAME_OVER_CURTAIN    # Play curtain-close animation
+CMD DISP_EFFECT HIGH_SCORE           # Celebrate high score with digit popping
+CMD DISP_EFFECT ATTRACT_PINBALL      # Scroll "PINBALL" text in attract mode
+CMD DISP_EFFECT NONE                 # Clear current matrix effect
+```
+
+**Usage Examples:**
+```
+# Slow-mo powerup activated
+CMD DISP_EFFECT ICED_UP
+
+# Multiball starts
+CMD DISP_EFFECT MULTIBALL_DAZZLE
+
+# Water powerup active (combine waterfall + ripple)
+CMD DISP_EFFECT CENTER_WATERFALL
+CMD DISP_EFFECT WATER_RIPPLE
+
+# Game ends
+CMD DISP_EFFECT GAME_OVER_CURTAIN
+
+# New high score achieved
+CMD DISP_EFFECT HIGH_SCORE
+
+# Attract/idle mode
+CMD DISP_EFFECT ATTRACT_PINBALL
+
+# Clear any active effect
+CMD DISP_EFFECT NONE
 ```
 
 ### Brightness
@@ -732,6 +782,38 @@ Controlled via `buttons_set_menu_selection()`.
 - Balls displayed as 2×2 blocks on rows 6–7
 - Non‑blocking rendering
 - Addresses: 0x70–0x73
+
+## 8.1. Display / Matrix Effects
+
+The controller supports several visual effects that can be displayed on the 32×8 LED matrix. These effects are triggered by explicit commands from the Pi based on game state changes.
+
+### 1. ICED_UP
+**Type:** Timed animation (~6 seconds).  
+**Description:** A small 3×4 "character" sprite sits centered on the matrix and shivers left↔right by ±1 pixel while snow falls from above. Snow pixels spawn along the top of the character's area and drift downward until disappearing. The character alternates between two body frames (arms in/out) and shifts horizontally every few frames to mimic shivering. Snowfall density ramps up in the first second, stays steady, then tapers off before the effect ends. After ~6 seconds, the effect ends automatically.
+
+### 2. MULTIBALL_DAZZLE
+**Type:** Continuous overlay (does not hide score).  
+**Description:** A border-light chase runs clockwise around the outer edge of the 32×8 matrix. Each frame, the next border pixel lights while the previous one clears, creating a looping marquee. Simultaneously, 3–4 interior sparkle pixels appear in locations not occupied by score digits. Sparkles last one frame each and reposition continuously. The combination provides energetic motion without obscuring score visibility. Sparkles last one frame and reposition every frame so the score remains readable.
+
+### 3. CENTER_WATERFALL
+**Type:** Continuous water-powerup effect.  
+**Description:** A vertical "waterfall" effect spanning columns ~13–18. Uses alternating even/odd pixel patterns to create downward shimmering motion. The waterfall restarts at the top every frame and falls through to the water surface line. Optional enhancement: vary density every few frames to simulate pressure changes. A vertical "waterfall" in the central columns (e.g., 13–18) alternates even/odd pixels frame-to-frame, creating a shimmering falling-water appearance. Runs until cleared or replaced by another effect.
+
+### 4. WATER_RIPPLE
+**Type:** Companion animation to CENTER_WATERFALL.  
+**Description:** The topmost row of the water region uses a shifting checkerboard pattern (1010… → 0101…) to emulate ripples across the surface. Optionally, modulate wave speed by frame count or combine with slight vertical flicker to simulate changing wave energy. This runs synchronously beneath CENTER_WATERFALL to reinforce a coherent water theme. The topmost row of the filled water area uses a shifting checkerboard pattern (1010… → 0101…) to simulate a water surface ripple. Restricted to the water rows so it does not interfere with score digits.
+
+### 5. GAME_OVER_CURTAIN
+**Type:** One-shot animation (~1–2 seconds).  
+**Description:** Two "curtains" close from the left and right edges, lighting one new inward-moving column per frame until meeting at the center. After closure, hold for a short beat (100–200 ms) to emphasize finality. Optionally, add a single-frame full blackout at the end to signal the effect's completion. Two "curtains" fill inward from the left and right edges of the matrix column-by-column until they meet in the center. After the screen fully closes, there is a brief hold before the effect completes.
+
+### 6. HIGH_SCORE
+**Type:** Repeating celebratory animation.  
+**Description:** Displays score digits sequentially with a popping effect. For each digit: show it alone, strobe it for 2–3 frames, then add the next digit. After the whole score appears, run a gentle pulse by toggling a thin border or briefly inverting non-digit pixels. Loop by clearing back to the first digit and repeating. Score digits "pop" one at a time: first digit appears and strobes, then the second is added and strobes, and so on until all digits are visible. Then the full score runs a slow pulse before repeating.
+
+### 7. ATTRACT_PINBALL
+**Type:** Attract-mode loop.  
+**Description:** Scrolls the word "PINBALL" across the display right→left in a smooth continuous loop. Between scroll cycles, optionally perform a short 2-frame screen blink or border sparkle. The scroll speed should be readable at a distance, with brief pauses between repetitions to make the text stand out. The word "PINBALL" scrolls continuously from right to left across the display. Between loops, the effect may briefly blink the whole display or run a short border sparkle to emphasize the attract mode.
 
 ---
 
