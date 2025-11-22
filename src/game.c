@@ -20,6 +20,7 @@ void Game_StartGame(GameStruct *game, Bumper *bumpers) {
     game->currentScene = SCENE_GAME;
     game->numLives = 3;
     game->gameScore = 0;
+    game->oldGameScore = 0;
     game->powerupScore = 0;
     game->powerupScoreDisplay = 0;
     game->bumperPowerupState = 0;
