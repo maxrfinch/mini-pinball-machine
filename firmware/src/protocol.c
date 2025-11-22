@@ -1,7 +1,8 @@
 /**
  * protocol.c
  * 
- * Command protocol parser and event system
+ * Command protocol parser (Pi-centric architecture)
+ * Pi sends direct effect/display commands, controller executes them
  */
 
 #include <stdio.h>
@@ -38,6 +39,27 @@ bool protocol_is_debug_timeout(void) {
     return diff_ms > DEBUG_TIMEOUT_MS;
 }
 
+// Helper to parse button target (LEFT, CENTER, RIGHT, ALL)
+static bool parse_button_target(const char* str, Button* button, bool* all) {
+    if (strcmp(str, "ALL") == 0) {
+        *all = true;
+        return true;
+    } else if (strcmp(str, "LEFT") == 0) {
+        *button = BUTTON_LEFT;
+        *all = false;
+        return true;
+    } else if (strcmp(str, "CENTER") == 0) {
+        *button = BUTTON_CENTER;
+        *all = false;
+        return true;
+    } else if (strcmp(str, "RIGHT") == 0) {
+        *button = BUTTON_RIGHT;
+        *all = false;
+        return true;
+    }
+    return false;
+}
+
 static void parse_command(const char* cmd) {
     // Update activity timestamp
     protocol_update_activity();
@@ -47,175 +69,127 @@ static void parse_command(const char* cmd) {
         debug_mode_exit();
     }
     
-    // Parse command
-    // ===== STATE COMMANDS (long-lived configuration) =====
-    if (strncmp(cmd, "CMD MODE ", 9) == 0) {
-        // CMD MODE <ATTRACT|MENU|GAME|BALL_LOST|HIGH_SCORE|DEBUG>
-        const char* mode = cmd + 9;
-        
-        if (strcmp(mode, "ATTRACT") == 0) {
-            controller_set_mode(MODE_ATTRACT);
-        } else if (strcmp(mode, "MENU") == 0) {
-            controller_set_mode(MODE_MENU);
-        } else if (strcmp(mode, "GAME") == 0) {
-            controller_set_mode(MODE_GAME);
-        } else if (strcmp(mode, "BALL_LOST") == 0) {
-            controller_set_mode(MODE_BALL_LOST);
-        } else if (strcmp(mode, "HIGH_SCORE") == 0) {
-            controller_set_mode(MODE_HIGH_SCORE);
-        } else if (strcmp(mode, "DEBUG") == 0) {
-            controller_set_mode(MODE_DEBUG);
-        }
-        
-    } else if (strncmp(cmd, "CMD STATE ", 10) == 0) {
-        // CMD STATE <flag> <value>
-        const char* rest = cmd + 10;
-        
-        if (strncmp(rest, "BALL_READY ", 11) == 0) {
-            uint8_t value = atoi(rest + 11);
-            controller_set_ball_ready(value != 0);
-        } else if (strncmp(rest, "SKILL_SHOT ", 11) == 0) {
-            uint8_t value = atoi(rest + 11);
-            controller_set_skill_shot(value != 0);
-        } else if (strncmp(rest, "MULTIBALL ", 10) == 0) {
-            uint8_t value = atoi(rest + 10);
-            controller_set_multiball(value != 0);
-        }
-        
-    } else if (strncmp(cmd, "CMD MENU_MODE ", 14) == 0) {
-        // CMD MENU_MODE <SMART|DUMB>
-        const char* mode = cmd + 14;
-        
-        if (strcmp(mode, "SMART") == 0) {
-            controller_set_menu_mode(true);
-        } else if (strcmp(mode, "DUMB") == 0) {
-            controller_set_menu_mode(false);
-        }
-        
-    } else if (strncmp(cmd, "CMD MENU_SIZE ", 14) == 0) {
-        // CMD MENU_SIZE <n>
-        uint8_t size = atoi(cmd + 14);
-        controller_set_menu_size(size);
-        
-    } else if (strncmp(cmd, "CMD MENU_INDEX ", 15) == 0) {
-        // CMD MENU_INDEX <i>
-        uint8_t index = atoi(cmd + 15);
-        controller_set_menu_index(index);
-        
-    } else if (strncmp(cmd, "CMD SCORE ", 10) == 0) {
-        // CMD SCORE <number>
-        uint32_t score = atoi(cmd + 10);
+    // ===== DISPLAY COMMANDS =====
+    if (strncmp(cmd, "CMD DISPLAY SCORE ", 18) == 0) {
+        // CMD DISPLAY SCORE <number>
+        uint32_t score = atoi(cmd + 18);
         display_set_score(score);
         
-    } else if (strncmp(cmd, "CMD BALLS ", 10) == 0) {
-        // CMD BALLS <number>
-        uint8_t balls = atoi(cmd + 10);
+    } else if (strncmp(cmd, "CMD DISPLAY BALLS ", 18) == 0) {
+        // CMD DISPLAY BALLS <number>
+        uint8_t balls = atoi(cmd + 18);
         display_set_balls(balls);
         
-    } else if (strncmp(cmd, "CMD TEXT ", 9) == 0) {
-        // CMD TEXT <x> <y> <text>
-        // Parse x and y coordinates and find text start
-        const char* args = cmd + 9;
-        char* endptr = NULL;
+    } else if (strncmp(cmd, "CMD DISPLAY TEXT ", 17) == 0) {
+        // CMD DISPLAY TEXT <string>
+        const char* text = cmd + 17;
+        display_clear();
+        display_set_text(text, 0, 0);
         
-        // Parse x coordinate
-        long x = strtol(args, &endptr, 10);
-        if (endptr == args || x < 0 || x >= 32) {
-            return; // Invalid x coordinate
-        }
-        args = endptr;
+    } else if (strcmp(cmd, "CMD DISPLAY CLEAR") == 0) {
+        // CMD DISPLAY CLEAR
+        display_clear();
         
-        // Skip whitespace
-        while (*args == ' ') args++;
-        
-        // Parse y coordinate
-        long y = strtol(args, &endptr, 10);
-        if (endptr == args || y < 0 || y >= 8) {
-            return; // Invalid y coordinate
-        }
-        args = endptr;
-        
-        // Skip whitespace to find text
-        while (*args == ' ') args++;
-        
-        // Draw the text if any remains
-        if (*args) {
-            // Note: Display is cleared before drawing text
-            // This ensures clean rendering and matches typical use case
-            // For multi-line or multi-element displays, use animations or custom sequences
-            display_clear();
-            display_set_text(args, (uint8_t)x, (uint8_t)y);
-        }
-        
-    } else if (strncmp(cmd, "CMD DISPLAY_ANIM ", 17) == 0) {
-        // CMD DISPLAY_ANIM <animation_name>
-        const char* anim = cmd + 17;
-        
-        if (strcmp(anim, "NONE") == 0) {
-            display_start_animation(DISPLAY_ANIM_NONE);
-        } else if (strcmp(anim, "BALL_SAVED") == 0) {
-            display_start_animation(DISPLAY_ANIM_BALL_SAVED);
-        } else if (strcmp(anim, "MULTIBALL") == 0) {
-            display_start_animation(DISPLAY_ANIM_MULTIBALL);
-        } else if (strcmp(anim, "MAIN_MENU") == 0) {
-            display_start_animation(DISPLAY_ANIM_MAIN_MENU);
-        }
-        
-    } else if (strncmp(cmd, "CMD EFFECT ", 11) == 0) {
-        // CMD EFFECT <pattern_name>
-        const char* effect = cmd + 11;
+    // ===== NEOPIXEL EFFECT COMMANDS =====
+    } else if (strncmp(cmd, "CMD NEO EFFECT ", 15) == 0) {
+        const char* effect = cmd + 15;
         
         if (strcmp(effect, "RAINBOW_BREATHE") == 0) {
-            neopixel_start_effect(EFFECT_RAINBOW_BREATHE);
+            controller_neopixel_set_effect(EFFECT_RAINBOW_BREATHE, PRIORITY_BASE);
         } else if (strcmp(effect, "RAINBOW_WAVE") == 0) {
-            neopixel_start_effect(EFFECT_RAINBOW_WAVE);
+            controller_neopixel_set_effect(EFFECT_RAINBOW_WAVE, PRIORITY_BASE);
         } else if (strcmp(effect, "CAMERA_FLASH") == 0) {
-            neopixel_start_effect(EFFECT_CAMERA_FLASH);
+            controller_neopixel_set_effect(EFFECT_CAMERA_FLASH, PRIORITY_BASE);
         } else if (strcmp(effect, "RED_STROBE_5X") == 0) {
-            neopixel_start_effect(EFFECT_RED_STROBE_5X);
+            controller_neopixel_set_effect(EFFECT_RED_STROBE_5X, PRIORITY_BASE);
         } else if (strcmp(effect, "WATER") == 0) {
-            neopixel_start_effect(EFFECT_WATER);
+            controller_neopixel_set_effect(EFFECT_WATER, PRIORITY_BASE);
         } else if (strcmp(effect, "ATTRACT") == 0) {
-            neopixel_start_effect(EFFECT_ATTRACT);
+            controller_neopixel_set_effect(EFFECT_ATTRACT, PRIORITY_BASE);
         } else if (strcmp(effect, "PINK_PULSE") == 0) {
-            neopixel_start_effect(EFFECT_PINK_PULSE);
+            controller_neopixel_set_effect(EFFECT_PINK_PULSE, PRIORITY_BASE);
         } else if (strcmp(effect, "BALL_LAUNCH") == 0) {
-            neopixel_start_effect(EFFECT_BALL_LAUNCH);
+            controller_neopixel_set_effect(EFFECT_BALL_LAUNCH, PRIORITY_BASE);
+        } else if (strcmp(effect, "NONE") == 0) {
+            controller_neopixel_set_effect(EFFECT_NONE, PRIORITY_BASE);
         }
         
-    } else if (strncmp(cmd, "CMD BUTTON_EFFECT ", 18) == 0) {
-        // CMD BUTTON_EFFECT <effect_name>
-        // Note: These are BASE priority effects, use CMD BUTTON_EFFECT_OVERRIDE for critical priority
-        const char* effect = cmd + 18;
+    } else if (strcmp(cmd, "CMD NEO EFFECT CLEAR") == 0) {
+        // CMD NEO EFFECT CLEAR
+        controller_neopixel_set_effect(EFFECT_NONE, PRIORITY_BASE);
         
-        if (strcmp(effect, "OFF") == 0) {
-            controller_button_set_effect(BTN_EFFECT_OFF, PRIORITY_BASE);
-        } else if (strcmp(effect, "READY_STEADY_GLOW") == 0) {
-            controller_button_set_effect(BTN_EFFECT_READY_STEADY_GLOW, PRIORITY_BASE);
-        } else if (strcmp(effect, "FLIPPER_FEEDBACK") == 0) {
-            controller_button_set_effect(BTN_EFFECT_FLIPPER_FEEDBACK, PRIORITY_BASE);
-        } else if (strcmp(effect, "CENTER_HIT_PULSE") == 0) {
-            controller_button_set_effect(BTN_EFFECT_CENTER_HIT_PULSE, PRIORITY_BASE);
-        } else if (strcmp(effect, "SKILL_SHOT_BUILDUP") == 0) {
-            controller_button_set_effect(BTN_EFFECT_SKILL_SHOT_BUILDUP, PRIORITY_BASE);
-        } else if (strcmp(effect, "BALL_SAVED") == 0) {
-            controller_button_set_effect(BTN_EFFECT_BALL_SAVED, PRIORITY_BASE);
-        } else if (strcmp(effect, "POWERUP_ALERT") == 0) {
-            controller_button_set_effect(BTN_EFFECT_POWERUP_ALERT, PRIORITY_BASE);
-        } else if (strcmp(effect, "EXTRA_BALL_AWARD") == 0) {
-            controller_button_set_effect(BTN_EFFECT_EXTRA_BALL_AWARD, PRIORITY_BASE);
-        } else if (strcmp(effect, "GAME_OVER_FADE") == 0) {
-            controller_button_set_effect(BTN_EFFECT_GAME_OVER_FADE, PRIORITY_BASE);
-        } else if (strcmp(effect, "MENU_NAVIGATION") == 0) {
-            controller_button_set_effect(BTN_EFFECT_MENU_NAVIGATION, PRIORITY_BASE);
-        }
-        
-    } else if (strncmp(cmd, "CMD BRIGHTNESS ", 15) == 0) {
-        // CMD BRIGHTNESS <0-255>
-        uint8_t brightness = atoi(cmd + 15);
+    } else if (strncmp(cmd, "CMD NEO BRIGHTNESS ", 19) == 0) {
+        // CMD NEO BRIGHTNESS <0-255>
+        uint8_t brightness = atoi(cmd + 19);
         neopixel_set_brightness(brightness);
         
-    // ===== EVENT COMMANDS (short-lived game events) =====
+    // ===== BUTTON EFFECT COMMANDS =====
+    } else if (strncmp(cmd, "CMD BUTTON EFFECT ", 18) == 0) {
+        // CMD BUTTON EFFECT <LEFT|CENTER|RIGHT|ALL> <EFFECT_NAME>
+        const char* args = cmd + 18;
+        char target[16] = {0};
+        const char* effect = NULL;
+        
+        // Parse target button
+        int i = 0;
+        while (args[i] && args[i] != ' ' && i < 15) {
+            target[i] = args[i];
+            i++;
+        }
+        target[i] = '\0';
+        
+        // Skip space to find effect name
+        if (args[i] == ' ') {
+            effect = args + i + 1;
+        }
+        
+        if (effect && *effect) {
+            Button button;
+            bool all = false;
+            
+            if (parse_button_target(target, &button, &all)) {
+                ButtonLEDEffect btn_effect = BTN_EFFECT_OFF;
+                bool valid_effect = true;
+                
+                if (strcmp(effect, "OFF") == 0) {
+                    btn_effect = BTN_EFFECT_OFF;
+                } else if (strcmp(effect, "READY_STEADY_GLOW") == 0) {
+                    btn_effect = BTN_EFFECT_READY_STEADY_GLOW;
+                } else if (strcmp(effect, "FLIPPER_FEEDBACK") == 0) {
+                    btn_effect = BTN_EFFECT_FLIPPER_FEEDBACK;
+                } else if (strcmp(effect, "CENTER_HIT_PULSE") == 0) {
+                    btn_effect = BTN_EFFECT_CENTER_HIT_PULSE;
+                } else if (strcmp(effect, "SKILL_SHOT_BUILDUP") == 0) {
+                    btn_effect = BTN_EFFECT_SKILL_SHOT_BUILDUP;
+                } else if (strcmp(effect, "BALL_SAVED") == 0) {
+                    btn_effect = BTN_EFFECT_BALL_SAVED;
+                } else if (strcmp(effect, "POWERUP_ALERT") == 0) {
+                    btn_effect = BTN_EFFECT_POWERUP_ALERT;
+                } else if (strcmp(effect, "EXTRA_BALL_AWARD") == 0) {
+                    btn_effect = BTN_EFFECT_EXTRA_BALL_AWARD;
+                } else if (strcmp(effect, "GAME_OVER_FADE") == 0) {
+                    btn_effect = BTN_EFFECT_GAME_OVER_FADE;
+                } else if (strcmp(effect, "MENU_NAVIGATION") == 0) {
+                    btn_effect = BTN_EFFECT_MENU_NAVIGATION;
+                } else {
+                    valid_effect = false;
+                }
+                
+                if (valid_effect) {
+                    if (all) {
+                        controller_button_set_effect_all(btn_effect, PRIORITY_BASE);
+                    } else {
+                        controller_button_set_effect_single(button, btn_effect, PRIORITY_BASE);
+                    }
+                }
+            }
+        }
+        
+    } else if (strcmp(cmd, "CMD BUTTON EFFECT CLEAR") == 0) {
+        // CMD BUTTON EFFECT CLEAR
+        controller_button_set_effect_all(BTN_EFFECT_OFF, PRIORITY_BASE);
+        
+    // ===== TEMPORARY EVENT EFFECTS (convenience commands) =====
     } else if (strncmp(cmd, "CMD EVENT ", 10) == 0) {
         const char* event = cmd + 10;
         
@@ -229,72 +203,11 @@ static void parse_command(const char* cmd) {
             controller_neopixel_play_one_shot(EFFECT_RAINBOW_WAVE, PRIORITY_EVENT, 2500);
             controller_button_play_one_shot(BTN_EFFECT_POWERUP_ALERT, PRIORITY_EVENT, 2500);
         } else if (strcmp(event, "MULTIBALL_START") == 0) {
-            controller_set_multiball(true);
             controller_neopixel_play_one_shot(EFFECT_PINK_PULSE, PRIORITY_EVENT, 2000);
             controller_button_play_one_shot(BTN_EFFECT_POWERUP_ALERT, PRIORITY_EVENT, 2000);
-        } else if (strcmp(event, "MULTIBALL_END") == 0) {
-            controller_set_multiball(false);
         }
         
-    // ===== OVERRIDE COMMANDS (manual control) =====
-    } else if (strncmp(cmd, "CMD EFFECT_OVERRIDE ", 20) == 0) {
-        // CMD EFFECT_OVERRIDE <NEO_EFFECT_NAME>
-        const char* effect = cmd + 20;
-        
-        if (strcmp(effect, "RAINBOW_BREATHE") == 0) {
-            controller_neopixel_override(EFFECT_RAINBOW_BREATHE);
-        } else if (strcmp(effect, "RAINBOW_WAVE") == 0) {
-            controller_neopixel_override(EFFECT_RAINBOW_WAVE);
-        } else if (strcmp(effect, "CAMERA_FLASH") == 0) {
-            controller_neopixel_override(EFFECT_CAMERA_FLASH);
-        } else if (strcmp(effect, "RED_STROBE_5X") == 0) {
-            controller_neopixel_override(EFFECT_RED_STROBE_5X);
-        } else if (strcmp(effect, "WATER") == 0) {
-            controller_neopixel_override(EFFECT_WATER);
-        } else if (strcmp(effect, "ATTRACT") == 0) {
-            controller_neopixel_override(EFFECT_ATTRACT);
-        } else if (strcmp(effect, "PINK_PULSE") == 0) {
-            controller_neopixel_override(EFFECT_PINK_PULSE);
-        } else if (strcmp(effect, "BALL_LAUNCH") == 0) {
-            controller_neopixel_override(EFFECT_BALL_LAUNCH);
-        } else if (strcmp(effect, "NONE") == 0) {
-            controller_neopixel_override(EFFECT_NONE);
-        }
-        
-    } else if (strncmp(cmd, "CMD BUTTON_EFFECT_OVERRIDE ", 27) == 0) {
-        // CMD BUTTON_EFFECT_OVERRIDE <BTN_EFFECT_NAME>
-        const char* effect = cmd + 27;
-        
-        if (strcmp(effect, "OFF") == 0) {
-            controller_button_override(BTN_EFFECT_OFF);
-        } else if (strcmp(effect, "READY_STEADY_GLOW") == 0) {
-            controller_button_override(BTN_EFFECT_READY_STEADY_GLOW);
-        } else if (strcmp(effect, "FLIPPER_FEEDBACK") == 0) {
-            controller_button_override(BTN_EFFECT_FLIPPER_FEEDBACK);
-        } else if (strcmp(effect, "CENTER_HIT_PULSE") == 0) {
-            controller_button_override(BTN_EFFECT_CENTER_HIT_PULSE);
-        } else if (strcmp(effect, "SKILL_SHOT_BUILDUP") == 0) {
-            controller_button_override(BTN_EFFECT_SKILL_SHOT_BUILDUP);
-        } else if (strcmp(effect, "BALL_SAVED") == 0) {
-            controller_button_override(BTN_EFFECT_BALL_SAVED);
-        } else if (strcmp(effect, "POWERUP_ALERT") == 0) {
-            controller_button_override(BTN_EFFECT_POWERUP_ALERT);
-        } else if (strcmp(effect, "EXTRA_BALL_AWARD") == 0) {
-            controller_button_override(BTN_EFFECT_EXTRA_BALL_AWARD);
-        } else if (strcmp(effect, "GAME_OVER_FADE") == 0) {
-            controller_button_override(BTN_EFFECT_GAME_OVER_FADE);
-        } else if (strcmp(effect, "MENU_NAVIGATION") == 0) {
-            controller_button_override(BTN_EFFECT_MENU_NAVIGATION);
-        }
-        
-    } else if (strcmp(cmd, "CMD EFFECT_CLEAR") == 0) {
-        // CMD EFFECT_CLEAR
-        controller_neopixel_clear_override();
-        
-    } else if (strcmp(cmd, "CMD BUTTON_EFFECT_CLEAR") == 0) {
-        // CMD BUTTON_EFFECT_CLEAR
-        controller_button_clear_override();
-        
+    // ===== SYSTEM COMMANDS =====
     } else if (strcmp(cmd, "CMD PING") == 0) {
         // CMD PING
         protocol_send_pong();

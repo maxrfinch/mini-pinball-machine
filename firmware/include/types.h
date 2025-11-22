@@ -41,16 +41,6 @@ typedef enum {
     EFFECT_NONE
 } LedEffect;
 
-// Game Modes
-typedef enum {
-    MODE_ATTRACT = 0,
-    MODE_MENU,
-    MODE_GAME,
-    MODE_BALL_LOST,
-    MODE_HIGH_SCORE,
-    MODE_DEBUG
-} GameMode;
-
 // Button States
 typedef enum {
     BUTTON_LEFT = 0,
