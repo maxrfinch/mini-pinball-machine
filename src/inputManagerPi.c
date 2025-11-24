@@ -96,6 +96,15 @@ static void serialPuts(int fd, const char *s)
     (void)written;
 }
 
+// Force write buffer to be transmitted to device
+static void serialDrain(int fd)
+{
+    if (fd >= 0) {
+        tcdrain(fd);  // Wait until all output written to fd has been transmitted
+    }
+}
+
+// Flush/discard input/output buffers (use sparingly)
 static void serialFlush(int fd)
 {
     if (fd >= 0) {
@@ -103,9 +112,35 @@ static void serialFlush(int fd)
     }
 }
 
-static char tempString[64];
+static char tempString[128];  // Increased buffer size for longer commands
 static char receiveBuffer[256];
 static int receiveBufferPos = 0;
+
+// Helper function to send a command with proper flushing
+static void sendCommand(int fd, const char *cmd)
+{
+    if (fd < 0 || cmd == NULL) return;
+    serialPuts(fd, cmd);
+    serialDrain(fd);  // Ensure command is transmitted before returning
+}
+
+// Helper function to send multiple commands with proper sequencing
+static void sendCommandBatch(int fd, const char **commands, int count)
+{
+    if (fd < 0 || commands == NULL || count <= 0) return;
+    
+    for (int i = 0; i < count; i++) {
+        if (commands[i] != NULL) {
+            serialPuts(fd, commands[i]);
+        }
+    }
+    
+    // Drain once after all commands written to buffer
+    serialDrain(fd);
+    
+    // Small delay to allow KB2040 to process before next batch
+    usleep(5000);  // 5ms delay between command batches
+}
 
 InputManager* inputInit(){
     InputManager *input = malloc(sizeof(InputManager));
@@ -249,36 +284,37 @@ int inputCenterPressed(InputManager* input){
 
 // Send game state - Pi-centric architecture: Pi manages state, sends explicit effect commands
 void inputSetGameState(InputManager* input, InputGameState state){
+    char cmd1[128];
+    char cmd2[128];
+    const char *commands[2];
+    
     switch (state){
         case STATE_MENU: {
             // Menu state: show menu navigation visuals
-            sprintf(tempString,"CMD NEO EFFECT ATTRACT\n");
-            serialPuts(input->fd,tempString);
-            serialFlush(input->fd);
-            sprintf(tempString,"CMD BUTTON EFFECT ALL MENU_NAVIGATION\n");
-            serialPuts(input->fd,tempString);
-            serialFlush(input->fd);
+            sprintf(cmd1, "CMD NEO EFFECT ATTRACT\n");
+            sprintf(cmd2, "CMD BUTTON EFFECT ALL MENU_NAVIGATION\n");
+            commands[0] = cmd1;
+            commands[1] = cmd2;
+            sendCommandBatch(input->fd, commands, 2);
             break;
         }
         case STATE_GAME: {
             // Game state: set to ball-ready visuals
             // Ball launch effect with center button pulse
-            sprintf(tempString,"CMD NEO EFFECT BALL_LAUNCH\n");
-            serialPuts(input->fd,tempString);
-            serialFlush(input->fd);
-            sprintf(tempString,"CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
-            serialPuts(input->fd,tempString);
-            serialFlush(input->fd);
+            sprintf(cmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
+            sprintf(cmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
+            commands[0] = cmd1;
+            commands[1] = cmd2;
+            sendCommandBatch(input->fd, commands, 2);
             break;
         }
         case STATE_GAME_OVER: {
             // Game over state: pink pulse and fade
-            sprintf(tempString,"CMD NEO EFFECT PINK_PULSE\n");
-            serialPuts(input->fd,tempString);
-            serialFlush(input->fd);
-            sprintf(tempString,"CMD BUTTON EFFECT ALL GAME_OVER_FADE\n");
-            serialPuts(input->fd,tempString);
-            serialFlush(input->fd);
+            sprintf(cmd1, "CMD NEO EFFECT PINK_PULSE\n");
+            sprintf(cmd2, "CMD BUTTON EFFECT ALL GAME_OVER_FADE\n");
+            commands[0] = cmd1;
+            commands[1] = cmd2;
+            sendCommandBatch(input->fd, commands, 2);
             break;
         }
     }
@@ -286,14 +322,12 @@ void inputSetGameState(InputManager* input, InputGameState state){
 
 void inputSetScore(InputManager *input, long score){
     sprintf(tempString,"CMD DISPLAY SCORE %ld\n",score);
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    sendCommand(input->fd, tempString);
 }
 
 void inputSetNumBalls(InputManager *input, int numBalls){
     sprintf(tempString,"CMD DISPLAY BALLS %d\n",numBalls);
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    sendCommand(input->fd, tempString);
 }
 
 // Send button LED command - now uses CMD BUTTON EFFECT syntax
@@ -325,58 +359,63 @@ void inputSetButtonLED(InputManager *input, int button_idx, InputLEDMode mode, i
     }
     
     sprintf(tempString,"CMD BUTTON EFFECT %s %s\n", button_name, effect_name);
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    sendCommand(input->fd, tempString);
 }
 
 // Send game event using CMD EVENT syntax
 void inputSendEvent(InputManager *input, const char *event_name){
     sprintf(tempString,"CMD EVENT %s\n", event_name);
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    sendCommand(input->fd, tempString);
 }
 
 // Convenience functions for common events
 void inputSendGameStart(InputManager *input){
     // Game start: transition to ball-ready visuals
-    sprintf(tempString,"CMD NEO EFFECT BALL_LAUNCH\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
-    sprintf(tempString,"CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    char cmd1[128];
+    char cmd2[128];
+    const char *commands[2];
+    
+    sprintf(cmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
+    sprintf(cmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
+    commands[0] = cmd1;
+    commands[1] = cmd2;
+    sendCommandBatch(input->fd, commands, 2);
 }
 
 void inputSendBallReady(InputManager *input){
     // Ball ready: center button pulse
-    sprintf(tempString,"CMD NEO EFFECT BALL_LAUNCH\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
-    sprintf(tempString,"CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    char cmd1[128];
+    char cmd2[128];
+    const char *commands[2];
+    
+    sprintf(cmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
+    sprintf(cmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
+    commands[0] = cmd1;
+    commands[1] = cmd2;
+    sendCommandBatch(input->fd, commands, 2);
 }
 
 void inputSendBallLaunched(InputManager *input){
     // Ball launched: transition to in-play visuals
-    sprintf(tempString,"CMD NEO EFFECT NONE\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
-    sprintf(tempString,"CMD BUTTON EFFECT ALL READY_STEADY_GLOW\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    char cmd1[128];
+    char cmd2[128];
+    const char *commands[2];
+    
+    sprintf(cmd1, "CMD NEO EFFECT NONE\n");
+    sprintf(cmd2, "CMD BUTTON EFFECT ALL READY_STEADY_GLOW\n");
+    commands[0] = cmd1;
+    commands[1] = cmd2;
+    sendCommandBatch(input->fd, commands, 2);
 }
 
 void inputSendBallSavedAnimation(InputManager *input){
     // Trigger ball saved display animation
     sprintf(tempString,"CMD DISPLAY BALL_SAVED\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    sendCommand(input->fd, tempString);
 }
 
 void inputSendMultiballAnimation(InputManager *input){
     // Trigger multiball display animation
     sprintf(tempString,"CMD DISPLAY MULTIBALL\n");
-    serialPuts(input->fd,tempString);
-    serialFlush(input->fd);
+    sendCommand(input->fd, tempString);
 }

@@ -259,7 +259,12 @@ static void parse_command(const char* cmd) {
 void protocol_process(void) {
     // Read available characters from USB CDC
     int c;
-    while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT) {
+    int char_count = 0;
+    const int MAX_CHARS_PER_CALL = 256;  // Prevent excessive processing in one call
+    
+    while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT && char_count < MAX_CHARS_PER_CALL) {
+        char_count++;
+        
         if (c == '\n' || c == '\r') {
             // End of command
             if (cmd_buffer_pos > 0) {
@@ -269,6 +274,10 @@ void protocol_process(void) {
             }
         } else if (cmd_buffer_pos < CMD_BUFFER_SIZE - 1) {
             cmd_buffer[cmd_buffer_pos++] = (char)c;
+        } else {
+            // Buffer overflow - discard and reset
+            printf("WARN: Command buffer overflow, discarding\n");
+            cmd_buffer_pos = 0;
         }
     }
 }
