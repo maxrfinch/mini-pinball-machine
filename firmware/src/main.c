@@ -112,10 +112,15 @@ int main() {
     
     // Main event loop
     uint32_t loop_count = 0;
+    
+    // Serial processing optimization: call protocol_process multiple times per loop
+    // to minimize command latency and increase effective polling rate
+    #define PROTOCOL_CALLS_PER_LOOP 3
+    
     while (1) {
         // Process incoming commands - HIGHEST PRIORITY
         // Do this multiple times per loop to minimize latency
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < PROTOCOL_CALLS_PER_LOOP; i++) {
             protocol_process();
         }
         

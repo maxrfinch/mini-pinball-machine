@@ -18,6 +18,7 @@
 #include "controller_state.h"
 
 #define CMD_BUFFER_SIZE 128
+#define MAX_CHARS_PER_CALL 256  // Prevent excessive processing in one call
 
 static char cmd_buffer[CMD_BUFFER_SIZE];
 static uint8_t cmd_buffer_pos = 0;
@@ -260,7 +261,6 @@ void protocol_process(void) {
     // Read available characters from USB CDC
     int c;
     int char_count = 0;
-    const int MAX_CHARS_PER_CALL = 256;  // Prevent excessive processing in one call
     
     while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT && char_count < MAX_CHARS_PER_CALL) {
         char_count++;
@@ -275,8 +275,13 @@ void protocol_process(void) {
         } else if (cmd_buffer_pos < CMD_BUFFER_SIZE - 1) {
             cmd_buffer[cmd_buffer_pos++] = (char)c;
         } else {
-            // Buffer overflow - discard and reset
-            printf("WARN: Command buffer overflow, discarding\n");
+            // Buffer overflow - consume characters until newline to resync
+            printf("WARN: Command buffer overflow, discarding until newline\n");
+            while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT) {
+                if (c == '\n' || c == '\r') {
+                    break;  // Found newline, resync complete
+                }
+            }
             cmd_buffer_pos = 0;
         }
     }

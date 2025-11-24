@@ -139,7 +139,9 @@ static void sendCommandBatch(int fd, const char **commands, int count)
     serialDrain(fd);
     
     // Small delay to allow KB2040 to process before next batch
-    usleep(5000);  // 5ms delay between command batches
+    #define INTER_BATCH_DELAY_US 5000  // 5ms delay between command batches
+    usleep(INTER_BATCH_DELAY_US);
+    #undef INTER_BATCH_DELAY_US
 }
 
 InputManager* inputInit(){
