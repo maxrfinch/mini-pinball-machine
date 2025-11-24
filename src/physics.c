@@ -1025,7 +1025,6 @@ void physics_flippers_update(GameStruct *game,
     } else {
         if (game->leftFlipperState == 1) {
             playFlipper(sound);
-            sound_play_haptic_flipper_empty(sound);
         }
         game->leftFlipperState = 0;
         targetAngleLeft = flipperRestAngleLeft;
@@ -1050,7 +1049,6 @@ void physics_flippers_update(GameStruct *game,
     } else {
         if (game->rightFlipperState == 1) {
             playFlipper(sound);
-            sound_play_haptic_flipper_empty(sound);
         }
         game->rightFlipperState = 0;
         targetAngleRight = flipperRestAngleRight;
