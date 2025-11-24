@@ -545,163 +545,177 @@ void display_update_animation(void) {
         }
         
         case DISPLAY_ANIM_ICED_UP: {
-            // Timed animation (~6 seconds)
-            // A small 3x4 character sprite centered, shivers left/right
-            // Snow falls from above
+            // ICED_UP: full-screen falling snow for ~6 seconds, then clears.
             uint32_t total_duration = 6000;
             if (elapsed_ms > total_duration) {
                 current_animation = DISPLAY_ANIM_NONE;
                 display_clear();
                 break;
             }
-            
+
+            // Stateful snowflakes across the entire 32x8 display
+            typedef struct {
+                int x;
+                int y_phys;
+            } snowflake_t;
+
+            #define NUM_SNOWFLAKES 40
+            static snowflake_t snow[NUM_SNOWFLAKES];
+            static bool snow_initialized = false;
+
+            if (!snow_initialized || animation_frame == 1) {
+                // Initialize flakes at random-ish positions
+                for (int i = 0; i < NUM_SNOWFLAKES; i++) {
+                    snow[i].x = (i * 7) % DISPLAY_WIDTH;
+                    snow[i].y_phys = (i * 3) % DISPLAY_HEIGHT;
+                }
+                snow_initialized = true;
+            }
+
             display_clear();
-            
-            // Character position (centered on 32x8 display)
-            int char_base_x = 14;  // Center x for 3-wide character
-            int char_y = 2;         // Starting y position (physical rows)
-            
-            // Shiver offset (alternates -1, 0, +1)
-            int shiver_offset = ((animation_frame / 8) % 3) - 1;
-            
-            int char_x = char_base_x + shiver_offset;
-            
-            // Character body frame (alternates between two frames)
-            bool arms_out = (animation_frame / 12) % 2 == 0;
-            
-            // Draw character (3x4 sprite)
-            // Simple stick figure
-            // Frame 1 (arms in):  Frame 2 (arms out):
-            //   O                    \O/
-            //   |                     |
-            //   |                     |
-            
-            // Head (top row)
-            int head_y = (char_y + 7) % 8;
-            framebuffer[char_x + 1][head_y] = 1;
-            
-            // Body (middle two rows)
-            int body_y1 = (char_y + 1 + 7) % 8;
-            int body_y2 = (char_y + 2 + 7) % 8;
-            framebuffer[char_x + 1][body_y1] = 1;
-            framebuffer[char_x + 1][body_y2] = 1;
-            
-            // Arms (if arms_out)
-            if (arms_out) {
-                framebuffer[char_x][body_y1] = 1;
-                framebuffer[char_x + 2][body_y1] = 1;
-            }
-            
-            // Snowfall density: ramps up, stays steady, tapers off
-            float density;
-            if (elapsed_ms < 1000) {
-                density = (float)elapsed_ms / 1000.0f;
-            } else if (elapsed_ms < 5000) {
-                density = 1.0f;
-            } else {
-                density = (6000.0f - (float)elapsed_ms) / 1000.0f;
-            }
-            
-            // Spawn snow pixels above and around character
-            int num_snow = (int)(density * 8.0f);
-            for (int i = 0; i < num_snow; i++) {
-                // Random column around character area
-                int snow_x = char_base_x - 3 + ((animation_frame * 7 + i * 13) % 9);
-                // Snow drifts down based on frame
-                int snow_fall = (animation_frame + i * 3) % 8;
-                int snow_y_phys = snow_fall;
-                int snow_y_fb = (snow_y_phys + 7) % 8;
-                
-                if (snow_x >= 0 && snow_x < DISPLAY_WIDTH && snow_y_phys < char_y) {
-                    framebuffer[snow_x][snow_y_fb] = 1;
+
+            // Update and draw flakes
+            for (int i = 0; i < NUM_SNOWFLAKES; i++) {
+                // Move downward every frame
+                snow[i].y_phys++;
+                if (snow[i].y_phys >= DISPLAY_HEIGHT) {
+                    // Respawn at top with a shifted X so it doesn't look too regular
+                    snow[i].y_phys = 0;
+                    snow[i].x = (snow[i].x + 5) % DISPLAY_WIDTH;
+                }
+
+                int phys_y = snow[i].y_phys;
+                int fb_y = (phys_y + 7) % 8;
+
+                int x = snow[i].x;
+                if (x >= 0 && x < DISPLAY_WIDTH) {
+                    // Main flake
+                    framebuffer[x][fb_y] = 1;
+
+                    // Small trailing flake one row above, if in range
+                    int trail_y = phys_y - 1;
+                    if (trail_y >= 0) {
+                        int fb_trail = (trail_y + 7) % 8;
+                        framebuffer[x][fb_trail] = 1;
+                    }
                 }
             }
+
             break;
         }
         
         case DISPLAY_ANIM_MULTIBALL_DAZZLE: {
-            // Continuous overlay (does not clear score)
-            // Border chase + interior sparkles
-            
-            // Border chase - clockwise around 32x8 matrix
-            int border_len = (DISPLAY_WIDTH * 2) + (DISPLAY_HEIGHT * 2) - 4;
-            int chase_pos = animation_frame % border_len;
-            
-            // Calculate position along border
-            int bx, by_fb;
-            if (chase_pos < DISPLAY_WIDTH) {
-                // Top edge (left to right)
-                bx = chase_pos;
-                by_fb = 7;  // Physical row 0
-            } else if (chase_pos < DISPLAY_WIDTH + DISPLAY_HEIGHT - 1) {
-                // Right edge (top to bottom)
-                bx = DISPLAY_WIDTH - 1;
-                int phys_y = chase_pos - DISPLAY_WIDTH + 1;
-                by_fb = (phys_y + 7) % 8;
-            } else if (chase_pos < DISPLAY_WIDTH * 2 + DISPLAY_HEIGHT - 1) {
-                // Bottom edge (right to left)
-                bx = DISPLAY_WIDTH - 1 - (chase_pos - DISPLAY_WIDTH - DISPLAY_HEIGHT + 1);
-                by_fb = 6;  // Physical row 7
-            } else {
-                // Left edge (bottom to top)
-                int phys_y = 7 - (chase_pos - DISPLAY_WIDTH * 2 - DISPLAY_HEIGHT + 1);
-                bx = 0;
-                by_fb = (phys_y + 7) % 8;
+            // Multiball dazzle: energetic full-screen animation that feels like
+            // multiple balls flying around. This effect owns the display until
+            // it finishes.
+            uint32_t total_duration = 2500;
+            if (elapsed_ms > total_duration) {
+                current_animation = DISPLAY_ANIM_NONE;
+                display_clear();
+                break;
             }
-            
-            framebuffer[bx][by_fb] = 1;
-            
-            // Interior sparkles (3-4 random positions per frame)
-            // Avoid score area (top 5 rows)
-            for (int i = 0; i < 4; i++) {
-                int sx = ((animation_frame * 17 + i * 23) % 28) + 2;  // Interior columns
-                int sy_phys = 5 + ((animation_frame * 11 + i * 19) % 3);  // Rows 5-7
-                int sy_fb = (sy_phys + 7) % 8;
-                
-                if (sx >= 1 && sx < DISPLAY_WIDTH - 1) {
-                    framebuffer[sx][sy_fb] = 1;
+
+            display_clear();
+
+            // Three "balls" moving across the screen at different speeds and rows.
+            for (int i = 0; i < 3; i++) {
+                int speed = 1 + i;           // 1, 2, 3
+                int y_phys = 2 + i * 2;      // physical rows 2, 4, 6
+                int fb_y = (y_phys + 7) % 8; // map to framebuffer row
+
+                int x = (int)((animation_frame * speed + i * 7) % DISPLAY_WIDTH);
+                int trail = (x - 1 + DISPLAY_WIDTH) % DISPLAY_WIDTH;
+
+                // Main ball pixel
+                framebuffer[x][fb_y] = 1;
+                // One-pixel trail behind it
+                framebuffer[trail][fb_y] = 1;
+            }
+
+            // Border flash to emphasize the "jackpot" feeling intermittently.
+            if ((animation_frame / 5) % 2 == 0) {
+                // Top border (physical row 0 -> fb row 7)
+                for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                    framebuffer[x][7] = 1;
+                }
+                // Bottom border (physical row 7 -> fb row 6)
+                for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                    framebuffer[x][6] = 1;
                 }
             }
+
             break;
         }
         
         case DISPLAY_ANIM_CENTER_WATERFALL: {
-            // Continuous waterfall effect in center columns (13-18)
-            // Alternates even/odd pixels for shimmering
-            
-            bool even_frame = (animation_frame % 2) == 0;
-            
-            for (int x = 13; x < 19 && x < DISPLAY_WIDTH; x++) {
-                for (int phys_y = 0; phys_y < 8; phys_y++) {
-                    // Alternate even/odd based on frame and position
-                    bool show_pixel = even_frame ? ((phys_y % 2) == 0) : ((phys_y % 2) == 1);
-                    
-                    if (show_pixel) {
+            // Full-screen waterfall effect: bright background with falling vertical streaks.
+            // This effect owns the display until stopped by the host.
+            display_clear();
+
+            // Background "water" – lightly shimmering so the display feels mostly lit.
+            for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                for (int phys_y = 0; phys_y < DISPLAY_HEIGHT; phys_y++) {
+                    // Simple pattern: 2 of every 3 rows lit, shifting over time
+                    bool bg_on = ((phys_y + (animation_frame / 3)) % 3) != 0;
+                    if (bg_on) {
                         int fb_y = (phys_y + 7) % 8;
                         framebuffer[x][fb_y] = 1;
                     }
                 }
             }
+
+            // Stronger falling streaks: a subset of columns get bright vertical segments
+            for (int x = 0; x < DISPLAY_WIDTH; x++) {
+                // Every 4th column is a streak
+                if ((x % 4) != 0) {
+                    continue;
+                }
+
+                // Base of the streak moves downward over time
+                int base = (animation_frame + x) % DISPLAY_HEIGHT;
+
+                // Draw a 4-pixel-tall segment starting at base
+                for (int k = 0; k < 4; k++) {
+                    int phys_y = (base + k) % DISPLAY_HEIGHT;
+                    int fb_y = (phys_y + 7) % 8;
+                    framebuffer[x][fb_y] = 1;
+                }
+            }
+
             break;
         }
         
         case DISPLAY_ANIM_WATER_RIPPLE: {
-            // Companion to CENTER_WATERFALL
-            // Topmost row of water region with shifting checkerboard
-            
-            // Water surface at physical row 6
-            // Physical row N maps to framebuffer row (N+7)%8
-            int water_surface_phys = 6;
-            int fb_y = (water_surface_phys + 7) % 8;
-            
-            bool phase = (animation_frame / 2) % 2 == 0;
-            
+            // WATER_RIPPLE: short-lived bottom waves, then clear.
+            uint32_t total_duration = 1500;
+            if (elapsed_ms > total_duration) {
+                current_animation = DISPLAY_ANIM_NONE;
+                display_clear();
+                break;
+            }
+
+            display_clear();
+
+            int phase = animation_frame / 2;
+
+            // Two staggered wave rows near the bottom (physical rows 6 and 7)
+            int phys_y6 = 6;
+            int phys_y7 = 7;
+            int fb_y6 = (phys_y6 + 7) % 8;
+            int fb_y7 = (phys_y7 + 7) % 8;
+
             for (int x = 0; x < DISPLAY_WIDTH; x++) {
-                bool show = phase ? ((x % 2) == 0) : ((x % 2) == 1);
-                if (show) {
-                    framebuffer[x][fb_y] = 1;
+                bool wave6 = ((x + phase) % 6) < 3;
+                bool wave7 = ((x + phase + 3) % 6) < 3;
+
+                if (wave6) {
+                    framebuffer[x][fb_y6] = 1;
+                }
+                if (wave7) {
+                    framebuffer[x][fb_y7] = 1;
                 }
             }
+
             break;
         }
         
