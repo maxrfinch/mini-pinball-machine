@@ -250,6 +250,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                 }
                 bumper->enabled = 0;
                 playBounce((ball->game)->sound);
+                sound_play_haptic_bumper_light((ball->game)->sound);
             }
             return false; // Disable contact - lane targets don't bounce
         } else if (bumper->type == BUMPER_TYPE_WATER_POWERUP) {
@@ -261,6 +262,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                 }
                 bumper->enabled = 0;
                 playBounce((ball->game)->sound);
+                sound_play_haptic_bumper_light((ball->game)->sound);
                 return true; // Allow elastic collision for enabled water powerup bumpers
             } else {
                 return false; // Disable collision if bumper not enabled
@@ -278,6 +280,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
     } else if (otherCategory == CATEGORY_PADDLE) {
         // Ball-Flipper collision
         ball->killCounter = 0;
+        sound_play_haptic_flipper_hit((ball->game)->sound);
         return true;
     } else if (otherCategory == CATEGORY_LEFT_LOWER_BUMPER) {
         // Left lower slingshot
@@ -287,6 +290,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             (ball->game)->powerupScore += 25;
         }
         playBounce2((ball->game)->sound);
+        sound_play_haptic_bumper_solid((ball->game)->sound);
         return true;
     } else if (otherCategory == CATEGORY_RIGHT_LOWER_BUMPER) {
         // Right lower slingshot
@@ -296,6 +300,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             (ball->game)->powerupScore += 25;
         }
         playBounce2((ball->game)->sound);
+        sound_play_haptic_bumper_solid((ball->game)->sound);
         return true;
     } else if (otherCategory == CATEGORY_ONE_WAY) {
         // One-way gate logic - ported from Chipmunk's CollisionOneWay handler
@@ -853,6 +858,7 @@ void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, 
         }
 
         playLaunch(game->sound);
+        sound_play_haptic_launch(game->sound);
     }
 }
 
@@ -1008,6 +1014,7 @@ void physics_flippers_update(GameStruct *game,
     if (inputLeft(input)) {
         if (game->leftFlipperState == 0) {
             playFlipper(sound);
+            sound_play_haptic_flipper_empty(sound);
             game->leftFlipperState = 1;
         }
         targetAngleLeft = flipperActiveAngleLeft;
@@ -1031,6 +1038,7 @@ void physics_flippers_update(GameStruct *game,
     if (inputRight(input)) {
         if (game->rightFlipperState == 0) {
             playFlipper(sound);
+            sound_play_haptic_flipper_empty(sound);
             game->rightFlipperState = 1;
         }
         targetAngleRight = flipperActiveAngleRight;

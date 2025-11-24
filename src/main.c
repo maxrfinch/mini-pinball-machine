@@ -222,6 +222,7 @@ int main(void){
                         physics_add_ball(&game,89.5 - ballSize / 2,160 - (i * ballSize),0,-220,1);
                     }
                     playBluePowerupSound(sound);
+                    sound_play_haptic_excitement(sound);
                     game.bluePowerupOverlay = 1.0f;
                     game.ballPowerupState = -1;
                     game.gameScore += 500;
@@ -248,6 +249,7 @@ int main(void){
                     bumpers[12].enabled = 1;
                     bumpers[13].enabled = 1;
                     playRedPowerupSound(sound);
+                    sound_play_haptic_excitement(sound);
                     game.redPowerupOverlay = 1.0f;
                     game.gameScore += 500;
                     if (game.waterPowerupState == 0){
