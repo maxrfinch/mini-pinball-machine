@@ -216,7 +216,7 @@ int main(void){
                 
                 // Check powerups before dispensing balls
                 if (game.ballPowerupState == 0 && !bumpers[7].enabled && !bumpers[8].enabled && !bumpers[9].enabled){
-                    // spawn balls
+                    // spawn balls (multiball powerup)
                     for (int i =0; i < 3; i++){
                         physics_add_ball(&game,89.5 - ballSize / 2,160 - (i * ballSize),0,-220,1);
                     }
@@ -227,6 +227,9 @@ int main(void){
                     if (game.waterPowerupState == 0){
                         game.powerupScore += 500;
                     }
+                    // Send multiball animation to controller
+                    inputSendMultiballAnimation(input);
+                }
                 } else if (game.ballPowerupState == -1){
                     // Check if there are no balls left. Then powerup resets and bumpers reset.
                     if (game.numBalls == 0){
@@ -262,10 +265,17 @@ int main(void){
 
                 if (game.numBalls == 0){
                     if (game.numLives >= 1){
+                        // Send ball ready signal to controller if not already sent
+                        if (game.ballReadyEventSent == 0){
+                            inputSendBallReady(input);
+                            game.ballReadyEventSent = 1;
+                        }
+                        
                         if (inputCenterPressed(input)){
                             physics_add_ball(&game,89.5 - ballSize / 2,160,0,-220,0);
-                            // Center button strobes 5 times when ball is launched
-                            inputSetButtonLED(input, BUTTON_LED_CENTER, LED_MODE_STROBE, 255, 255, 0, 5);  // Yellow strobe
+                            // Send ball launched signal to controller
+                            inputSendBallLaunched(input);
+                            game.ballReadyEventSent = 0;  // Reset for next ball
                         }
                     } else {
                         // game over condition

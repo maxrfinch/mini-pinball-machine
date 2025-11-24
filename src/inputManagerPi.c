@@ -104,6 +104,8 @@ static void serialFlush(int fd)
 }
 
 static char tempString[64];
+static char receiveBuffer[256];
+static int receiveBufferPos = 0;
 
 InputManager* inputInit(){
     InputManager *input = malloc(sizeof(InputManager));
@@ -112,6 +114,8 @@ InputManager* inputInit(){
     input->leftKeyPressed = 0;
     input->rightKeyPressed = 0;
     input->centerKeyPressed = 0;
+    memset(receiveBuffer, 0, sizeof(receiveBuffer));
+    receiveBufferPos = 0;
     return input;
 }
 
@@ -119,10 +123,73 @@ void inputShutdown(InputManager* input){
     serialClose(input->fd);
 }
 
+// Parse button event from KB2040 (e.g., "EVT BUTTON LEFT DOWN")
+static void parseButtonEvent(InputManager* input, const char* line) {
+    // Expected format: "EVT BUTTON <LEFT|CENTER|RIGHT> <DOWN|UP|HELD>"
+    if (strncmp(line, "EVT BUTTON ", 11) != 0) {
+        return;
+    }
+    
+    const char* rest = line + 11; // Skip "EVT BUTTON "
+    
+    // Parse button name
+    int button = -1;
+    if (strncmp(rest, "LEFT ", 5) == 0) {
+        button = 0; // Left = bit 0
+        rest += 5;
+    } else if (strncmp(rest, "CENTER ", 7) == 0) {
+        button = 1; // Center = bit 1
+        rest += 7;
+    } else if (strncmp(rest, "RIGHT ", 6) == 0) {
+        button = 2; // Right = bit 2
+        rest += 6;
+    } else {
+        return; // Unknown button
+    }
+    
+    // Parse state
+    int pressed = 0;
+    if (strncmp(rest, "DOWN", 4) == 0 || strncmp(rest, "HELD", 4) == 0) {
+        pressed = 1;
+    } else if (strncmp(rest, "UP", 2) == 0) {
+        pressed = 0;
+    } else {
+        return; // Unknown state
+    }
+    
+    // Update keyState bit flags
+    int bitMask = (1 << button);
+    if (pressed) {
+        input->keyState |= bitMask;
+    } else {
+        input->keyState &= ~bitMask;
+    }
+    
+    fprintf(stderr, "DBG Pi parsed button event: button=%d pressed=%d keyState=0x%02x\n", 
+            button, pressed, input->keyState);
+}
+
 void inputUpdate(InputManager* input){
+    // Read available characters and parse button events
     while (serialDataAvail(input->fd) > 0){
-        input->keyState = serialGetchar(input->fd);
-        fprintf(stderr, "DBG Pi keyState=0x%02x\n", input->keyState);
+        int ch = serialGetchar(input->fd);
+        if (ch < 0) break;
+        
+        // Add to buffer
+        if (ch == '\n' || ch == '\r') {
+            // End of line - process the buffer
+            if (receiveBufferPos > 0) {
+                receiveBuffer[receiveBufferPos] = '\0';
+                parseButtonEvent(input, receiveBuffer);
+                receiveBufferPos = 0;
+            }
+        } else if (receiveBufferPos < sizeof(receiveBuffer) - 1) {
+            receiveBuffer[receiveBufferPos++] = (char)ch;
+        } else {
+            // Buffer overflow - reset and log warning
+            fprintf(stderr, "WARN: Input buffer overflow, discarding incomplete message\n");
+            receiveBufferPos = 0;
+        }
     }
 }
 
