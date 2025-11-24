@@ -25,12 +25,12 @@ static absolute_time_t last_effect_update = 0;
 
 // LED Board configuration
 static const LedBoard boards[NEOPIXEL_BOARDS] = {
-    {1, 0, 7, false, BOARD_POS_RIGHT_FRONT},   // Board 1: LEDs 0-7
+    {1, 0, 7, false, BOARD_POS_REAR},          // Board 1: LEDs 0-7
     {2, 8, 15, false, BOARD_POS_RIGHT_REAR},   // Board 2: LEDs 8-15
-    {3, 16, 23, false, BOARD_POS_CAMERA_BAR},  // Board 3: LEDs 16-23
-    {4, 24, 31, true, BOARD_POS_LEFT_REAR},    // Board 4: LEDs 24-31 (reversed)
+    {3, 16, 23, false, BOARD_POS_RIGHT_FRONT}, // Board 3: LEDs 16-23
+    {4, 24, 31, false, BOARD_POS_FRONT},       // Board 4: LEDs 24-31
     {5, 32, 39, true, BOARD_POS_LEFT_FRONT},   // Board 5: LEDs 32-39 (reversed)
-    {6, 40, 47, false, BOARD_POS_FRONT_BAR}    // Board 6: LEDs 40-47
+    {6, 40, 47, true, BOARD_POS_LEFT_REAR}     // Board 6: LEDs 40-47 (reversed)
 };
 
 static inline void put_pixel(uint32_t pixel_grb) {
@@ -143,7 +143,7 @@ static void effect_rainbow_wave(void) {
 }
 
 static void effect_camera_flash(void) {
-    // Only Board #3 flashes white, rest off
+    // Only Board #3 (Right Front) flashes white, rest off
     neopixel_clear();
     
     if ((effect_frame / 5) % 2 == 0) {

@@ -12,12 +12,12 @@
 
 // LED Board Configuration
 typedef enum {
-    BOARD_POS_RIGHT_FRONT = 0,
+    BOARD_POS_REAR = 0,
     BOARD_POS_RIGHT_REAR,
-    BOARD_POS_CAMERA_BAR,
-    BOARD_POS_LEFT_REAR,
+    BOARD_POS_RIGHT_FRONT,
+    BOARD_POS_FRONT,
     BOARD_POS_LEFT_FRONT,
-    BOARD_POS_FRONT_BAR
+    BOARD_POS_LEFT_REAR
 } BoardPosition;
 
 typedef struct {
