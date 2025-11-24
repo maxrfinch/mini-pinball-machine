@@ -276,8 +276,12 @@ void protocol_process(void) {
             cmd_buffer[cmd_buffer_pos++] = (char)c;
         } else {
             // Buffer overflow - consume characters until newline to resync
+            // Limit consumption to prevent infinite loop if no newline arrives
             printf("WARN: Command buffer overflow, discarding until newline\n");
-            while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT) {
+            int discard_count = 0;
+            const int MAX_DISCARD = 128;
+            while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT && discard_count < MAX_DISCARD) {
+                discard_count++;
                 if (c == '\n' || c == '\r') {
                     break;  // Found newline, resync complete
                 }

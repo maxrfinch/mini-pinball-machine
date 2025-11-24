@@ -116,6 +116,9 @@ static char tempString[128];  // Increased buffer size for longer commands
 static char receiveBuffer[256];
 static int receiveBufferPos = 0;
 
+// Configuration constants
+#define INTER_BATCH_DELAY_US 5000  // 5ms delay between command batches to prevent KB2040 buffer saturation
+
 // Helper function to send a command with proper flushing
 static void sendCommand(int fd, const char *cmd)
 {
@@ -139,9 +142,14 @@ static void sendCommandBatch(int fd, const char **commands, int count)
     serialDrain(fd);
     
     // Small delay to allow KB2040 to process before next batch
-    #define INTER_BATCH_DELAY_US 5000  // 5ms delay between command batches
     usleep(INTER_BATCH_DELAY_US);
-    #undef INTER_BATCH_DELAY_US
+}
+
+// Helper to send a 2-command batch (common case)
+static void sendCommand2(int fd, const char *cmd1, const char *cmd2)
+{
+    const char *commands[2] = {cmd1, cmd2};
+    sendCommandBatch(fd, commands, 2);
 }
 
 InputManager* inputInit(){
@@ -286,18 +294,15 @@ int inputCenterPressed(InputManager* input){
 
 // Send game state - Pi-centric architecture: Pi manages state, sends explicit effect commands
 void inputSetGameState(InputManager* input, InputGameState state){
-    char cmd1[128];
-    char cmd2[128];
-    const char *commands[2];
+    static char cmd1[128];
+    static char cmd2[128];
     
     switch (state){
         case STATE_MENU: {
             // Menu state: show menu navigation visuals
             sprintf(cmd1, "CMD NEO EFFECT ATTRACT\n");
             sprintf(cmd2, "CMD BUTTON EFFECT ALL MENU_NAVIGATION\n");
-            commands[0] = cmd1;
-            commands[1] = cmd2;
-            sendCommandBatch(input->fd, commands, 2);
+            sendCommand2(input->fd, cmd1, cmd2);
             break;
         }
         case STATE_GAME: {
@@ -305,18 +310,14 @@ void inputSetGameState(InputManager* input, InputGameState state){
             // Ball launch effect with center button pulse
             sprintf(cmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
             sprintf(cmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
-            commands[0] = cmd1;
-            commands[1] = cmd2;
-            sendCommandBatch(input->fd, commands, 2);
+            sendCommand2(input->fd, cmd1, cmd2);
             break;
         }
         case STATE_GAME_OVER: {
             // Game over state: pink pulse and fade
             sprintf(cmd1, "CMD NEO EFFECT PINK_PULSE\n");
             sprintf(cmd2, "CMD BUTTON EFFECT ALL GAME_OVER_FADE\n");
-            commands[0] = cmd1;
-            commands[1] = cmd2;
-            sendCommandBatch(input->fd, commands, 2);
+            sendCommand2(input->fd, cmd1, cmd2);
             break;
         }
     }
@@ -373,41 +374,32 @@ void inputSendEvent(InputManager *input, const char *event_name){
 // Convenience functions for common events
 void inputSendGameStart(InputManager *input){
     // Game start: transition to ball-ready visuals
-    char cmd1[128];
-    char cmd2[128];
-    const char *commands[2];
+    static char cmd1[128];
+    static char cmd2[128];
     
     sprintf(cmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
     sprintf(cmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
-    commands[0] = cmd1;
-    commands[1] = cmd2;
-    sendCommandBatch(input->fd, commands, 2);
+    sendCommand2(input->fd, cmd1, cmd2);
 }
 
 void inputSendBallReady(InputManager *input){
     // Ball ready: center button pulse
-    char cmd1[128];
-    char cmd2[128];
-    const char *commands[2];
+    static char cmd1[128];
+    static char cmd2[128];
     
     sprintf(cmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
     sprintf(cmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
-    commands[0] = cmd1;
-    commands[1] = cmd2;
-    sendCommandBatch(input->fd, commands, 2);
+    sendCommand2(input->fd, cmd1, cmd2);
 }
 
 void inputSendBallLaunched(InputManager *input){
     // Ball launched: transition to in-play visuals
-    char cmd1[128];
-    char cmd2[128];
-    const char *commands[2];
+    static char cmd1[128];
+    static char cmd2[128];
     
     sprintf(cmd1, "CMD NEO EFFECT NONE\n");
     sprintf(cmd2, "CMD BUTTON EFFECT ALL READY_STEADY_GLOW\n");
-    commands[0] = cmd1;
-    commands[1] = cmd2;
-    sendCommandBatch(input->fd, commands, 2);
+    sendCommand2(input->fd, cmd1, cmd2);
 }
 
 void inputSendBallSavedAnimation(InputManager *input){
