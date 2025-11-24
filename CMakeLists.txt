@@ -67,18 +67,26 @@ endif()
 # Allow caller to override via -DBOX2D_INCLUDE_DIR / -DBOX2D_LIB
 if (NOT DEFINED BOX2D_INCLUDE_DIR OR NOT DEFINED BOX2D_LIB)
     find_path(BOX2D_INCLUDE_DIR box2d/box2d.h
-        PATHS /usr/local/include /usr/include
+        PATHS
+            /usr/local/include
+            /usr/include
+            /usr/local/opt/box2d/include   # Homebrew (Intel macOS)
+            /opt/homebrew/include          # Homebrew (Apple Silicon)
     )
     find_library(BOX2D_LIB NAMES box2d
-        PATHS /usr/local/lib /usr/lib
+        PATHS
+            /usr/local/lib
+            /usr/lib
+            /usr/local/opt/box2d/lib       # Homebrew (Intel macOS)
+            /opt/homebrew/lib              # Homebrew (Apple Silicon)
     )
 endif()
 
 if (NOT BOX2D_INCLUDE_DIR OR NOT BOX2D_LIB)
     message(FATAL_ERROR
         "Box2D not found.\n"
-        "Build/install Box2D 3.x and rerun cmake with:\n"
-        "  -DBOX2D_INCLUDE_DIR=/usr/local/include -DBOX2D_LIB=/usr/local/lib/libbox2d.a"
+        "Build/install Box2D 3.x and rerun cmake with, for example:\n"
+        "  -DBOX2D_INCLUDE_DIR=/usr/local/opt/box2d/include -DBOX2D_LIB=/usr/local/opt/box2d/lib/libbox2d.dylib"
     )
 endif()
 
@@ -87,6 +95,30 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${BOX2D_INCLUDE_DIR}
     src
 )
+
+# ---------------------------------------------------------------------------
+# Resources: copy data files next to the executable
+# ---------------------------------------------------------------------------
+set(GAME_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/Resources")
+if (EXISTS "${GAME_RESOURCES_DIR}")
+    # First, copy the Resources tree as-is
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${GAME_RESOURCES_DIR}"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Resources"
+        COMMENT "Copying game Resources to build output"
+    )
+    # Then, if there is a Resources/assets folder, flatten its contents so that
+    # paths like Resources/Audio/... and Resources/Textures/... resolve correctly.
+    if (EXISTS "${GAME_RESOURCES_DIR}/assets")
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "${GAME_RESOURCES_DIR}/assets"
+                "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Resources"
+            COMMENT "Flattening Resources/assets into Resources for runtime paths"
+        )
+    endif()
+endif()
 
 # ---------------------------------------------------------------------------
 # Platform flags & linking
