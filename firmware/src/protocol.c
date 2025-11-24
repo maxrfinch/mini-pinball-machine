@@ -19,6 +19,7 @@
 
 #define CMD_BUFFER_SIZE 128
 #define MAX_CHARS_PER_CALL 256  // Prevent excessive processing in one call
+#define MAX_DISCARD 128         // Max chars to discard when recovering from overflow
 
 static char cmd_buffer[CMD_BUFFER_SIZE];
 static uint8_t cmd_buffer_pos = 0;
@@ -277,9 +278,8 @@ void protocol_process(void) {
         } else {
             // Buffer overflow - consume characters until newline to resync
             // Limit consumption to prevent infinite loop if no newline arrives
-            printf("WARN: Command buffer overflow, discarding until newline\n");
+            printf("WARN: Command buffer overflow at pos %d, discarding until newline\n", cmd_buffer_pos);
             int discard_count = 0;
-            const int MAX_DISCARD = 128;
             while ((c = getchar_timeout_us(0)) != PICO_ERROR_TIMEOUT && discard_count < MAX_DISCARD) {
                 discard_count++;
                 if (c == '\n' || c == '\r') {
