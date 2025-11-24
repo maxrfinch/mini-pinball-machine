@@ -325,6 +325,13 @@ SoundManager *initSound(){
         free(sound->flipper);
         free(sound->waterSplash);
         free(sound);
+        // Clean up audio resources
+        if (g_audioInitialized) {
+            StopAudioStream(g_hapticsStream);
+            UnloadAudioStream(g_hapticsStream);
+            g_audioInitialized = 0;
+        }
+        CloseAudioDevice();
         return NULL;
     }
     
