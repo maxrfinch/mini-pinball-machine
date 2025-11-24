@@ -14,11 +14,13 @@
  *   - Physically wired to speakers (Adafruit 1669)
  * 
  * IMPLEMENTATION:
- * 1. All game audio (Music + Sound) is panned fully right (pan = 1.0f)
+ * 1. All game audio (Music + Sound) is panned fully right (pan = 0.0f)
  *    using SetMusicPan() and SetSoundPan()
- * 2. One dedicated AudioStream generates haptic waveforms and is panned
- *    fully left (pan = -1.0f) using SetAudioStreamPan()
+ * 2. One dedicated AudioStream generates haptic waveforms and is written
+ *    directly to the left channel (right=0.0) in the buffer.
  * 3. Raylib's internal mixer combines everything to the audio device
+ *
+ * // NOTE: In this raylib build, pan=0.0 maps to full RIGHT, pan=1.0 maps to full LEFT.
  * 
  * This split-channel design allows simultaneous haptic feedback
  * and audio output on hardware with a single stereo audio jack.
@@ -277,10 +279,11 @@ SoundManager *initSound(){
     // Initialize raylib audio device
     InitAudioDevice();
     
-    // Create dedicated AudioStream for haptics, panned fully left
+    // Create dedicated AudioStream for haptics (dedicated left channel)
+    SetAudioStreamBufferSizeDefault(AUDIO_BUFFER_SIZE);
     g_hapticsStream = LoadAudioStream(SAMPLE_RATE, 16, CHANNELS);
     SetAudioStreamVolume(g_hapticsStream, 1.0f);
-    SetAudioStreamPan(g_hapticsStream, -1.0f);  // Pan fully left for haptics
+    // No need to set pan: we write explicit stereo samples (left=haptics, right=0.0)
     PlayAudioStream(g_hapticsStream);
     g_audioInitialized = 1;
     
@@ -293,8 +296,8 @@ SoundManager *initSound(){
     // Load music streams and pan them fully right for game audio
     sound->menuMusic = LoadMusicStream("Resources/Audio/1.mp3");
     sound->gameMusic = LoadMusicStream("Resources/Audio/5.mp3");
-    SetMusicPan(sound->menuMusic, 1.0f);  // Pan fully right for speakers
-    SetMusicPan(sound->gameMusic, 1.0f);  // Pan fully right for speakers
+    SetMusicPan(sound->menuMusic, 0.0f);  // Pan fully right for speakers
+    SetMusicPan(sound->gameMusic, 0.0f);  // Pan fully right for speakers
     
     // Load sound effects and allocate arrays for polyphonic playback
     sound->redPowerup = malloc(sizeof(Sound) * 4);
@@ -338,8 +341,8 @@ SoundManager *initSound(){
     // Load sound effects and pan them all fully right for game audio
     sound->launch = LoadSound("Resources/Audio/Click_Heavy_00.wav");
     sound->water = LoadSound("Resources/Audio/water.wav");
-    SetSoundPan(sound->launch, 1.0f);  // Pan fully right for speakers
-    SetSoundPan(sound->water, 1.0f);   // Pan fully right for speakers
+    SetSoundPan(sound->launch, 0.0f);  // Pan fully right for speakers
+    SetSoundPan(sound->water, 0.0f);   // Pan fully right for speakers
     
     for (int i = 0; i < 4; i++){
         sound->redPowerup[i] = LoadSound("Resources/Audio/redPowerup.wav");
@@ -354,16 +357,16 @@ SoundManager *initSound(){
         sound->waterSplash[i] = LoadSound("Resources/Audio/water2.wav");
         
         // Pan all sounds fully right for game audio on speakers
-        SetSoundPan(sound->redPowerup[i], 1.0f);
-        SetSoundPan(sound->bluePowerup[i], 1.0f);
-        SetSoundPan(sound->slowdown[i], 1.0f);
-        SetSoundPan(sound->speedup[i], 1.0f);
-        SetSoundPan(sound->upperBouncer[i], 1.0f);
-        SetSoundPan(sound->click[i], 1.0f);
-        SetSoundPan(sound->bounce1[i], 1.0f);
-        SetSoundPan(sound->bounce2[i], 1.0f);
-        SetSoundPan(sound->flipper[i], 1.0f);
-        SetSoundPan(sound->waterSplash[i], 1.0f);
+        SetSoundPan(sound->redPowerup[i], 0.0f);
+        SetSoundPan(sound->bluePowerup[i], 0.0f);
+        SetSoundPan(sound->slowdown[i], 0.0f);
+        SetSoundPan(sound->speedup[i], 0.0f);
+        SetSoundPan(sound->upperBouncer[i], 0.0f);
+        SetSoundPan(sound->click[i], 0.0f);
+        SetSoundPan(sound->bounce1[i], 0.0f);
+        SetSoundPan(sound->bounce2[i], 0.0f);
+        SetSoundPan(sound->flipper[i], 0.0f);
+        SetSoundPan(sound->waterSplash[i], 0.0f);
     }
     
     return sound;
