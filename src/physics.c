@@ -925,7 +925,7 @@ static void debug_draw_body(b2BodyId bodyId, DebugColor outlineColor, DebugColor
  *    using the debug draw API defined in physicsDebugDraw.h
  *  - This provides a visual representation of the physics simulation for debugging
  */
-void physics_debug_draw(GameStruct *game) {
+void physics_debug_draw(const GameStruct *game) {
     if (B2_IS_NULL(game->world)) {
         return;
     }

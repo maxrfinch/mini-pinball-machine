@@ -19,7 +19,7 @@ void physics_shutdown(GameStruct *game);
 void physics_add_ball(GameStruct *game, float px, float py, float vx, float vy, int type);
 
 // Draw physics debug visualization (walls, bodies, shapes)
-void physics_debug_draw(GameStruct *game);
+void physics_debug_draw(const GameStruct *game);
 
 // Initialize flipper system
 void physics_flippers_init(GameStruct *game, b2BodyId *leftFlipperBody, b2BodyId *rightFlipperBody);
