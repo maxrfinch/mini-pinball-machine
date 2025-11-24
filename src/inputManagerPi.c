@@ -186,7 +186,8 @@ void inputUpdate(InputManager* input){
         } else if (receiveBufferPos < sizeof(receiveBuffer) - 1) {
             receiveBuffer[receiveBufferPos++] = (char)ch;
         } else {
-            // Buffer overflow - reset
+            // Buffer overflow - reset and log warning
+            fprintf(stderr, "WARN: Input buffer overflow, discarding incomplete message\n");
             receiveBufferPos = 0;
         }
     }
