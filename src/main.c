@@ -230,7 +230,6 @@ int main(void){
                     }
                     // Send multiball animation to controller
                     inputSendMultiballAnimation(input);
-                }
                 } else if (game.ballPowerupState == -1){
                     // Check if there are no balls left. Then powerup resets and bumpers reset.
                     if (game.numBalls == 0){
