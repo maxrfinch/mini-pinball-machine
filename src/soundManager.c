@@ -4,20 +4,21 @@
  * Audio system with dedicated haptics channel.
  * 
  * ARCHITECTURE:
- * - Uses raylib's standard audio system with custom channel routing
+ * - Uses raylib's standard audio system with pan-based channel routing
  * - LEFT CHANNEL  = HAPTICS ONLY
  *   - Procedurally generated low-frequency waveforms
  *   - Physically wired to TT25-8 shaker
  *   - No music or sound effects
- * - RIGHT CHANNEL = MONO GAME AUDIO ONLY
- *   - All game music and sound effects mixed to mono
+ * - RIGHT CHANNEL = GAME AUDIO ONLY
+ *   - All game music and sound effects mixed by raylib
  *   - Physically wired to speakers (Adafruit 1669)
  * 
- * IMPLEMENTATION APPROACH:
- * Due to raylib's architecture, we use a hybrid approach:
- * 1. Raylib's normal Sound/Music system continues to handle game audio
- * 2. We create a dedicated AudioStream for haptics (left channel only)
- * 3. Game audio is manually adjusted to mono and right-channel via pan settings
+ * IMPLEMENTATION:
+ * 1. All game audio (Music + Sound) is panned fully right (pan = 1.0f)
+ *    using SetMusicPan() and SetSoundPan()
+ * 2. One dedicated AudioStream generates haptic waveforms and is panned
+ *    fully left (pan = -1.0f) using SetAudioStreamPan()
+ * 3. Raylib's internal mixer combines everything to the audio device
  * 
  * This split-channel design allows simultaneous haptic feedback
  * and audio output on hardware with a single stereo audio jack.
@@ -260,6 +261,7 @@ static void haptics_trigger(HapticEffectType type) {
 
 static AudioStream g_hapticsStream = {0};
 static int g_audioInitialized = 0;
+static short g_audioBuffer[AUDIO_BUFFER_SIZE * CHANNELS];  // Pre-allocated buffer for haptics
 
 // ============================================================================
 // INITIALIZATION
@@ -267,13 +269,18 @@ static int g_audioInitialized = 0;
 
 SoundManager *initSound(){
     SoundManager *sound = malloc(sizeof(SoundManager));
+    if (!sound) {
+        fprintf(stderr, "ERROR: Failed to allocate SoundManager\n");
+        return NULL;
+    }
     
     // Initialize raylib audio device
     InitAudioDevice();
     
-    // Create audio stream for haptics (left channel) + silence (right channel)
+    // Create dedicated AudioStream for haptics, panned fully left
     g_hapticsStream = LoadAudioStream(SAMPLE_RATE, 16, CHANNELS);
     SetAudioStreamVolume(g_hapticsStream, 1.0f);
+    SetAudioStreamPan(g_hapticsStream, -1.0f);  // Pan fully left for haptics
     PlayAudioStream(g_hapticsStream);
     g_audioInitialized = 1;
     
@@ -283,13 +290,11 @@ SoundManager *initSound(){
     g_haptics.t = 0.0f;
     g_haptics.phase = 0.0f;
     
-    // Load music streams
+    // Load music streams and pan them fully right for game audio
     sound->menuMusic = LoadMusicStream("Resources/Audio/1.mp3");
     sound->gameMusic = LoadMusicStream("Resources/Audio/5.mp3");
-    
-    // Set music to play on right channel only (pan = 1.0 means fully right)
-    // Note: raylib's SetMusicPan may not be available in all versions
-    // This is a best-effort approach for channel routing
+    SetMusicPan(sound->menuMusic, 1.0f);  // Pan fully right for speakers
+    SetMusicPan(sound->gameMusic, 1.0f);  // Pan fully right for speakers
     
     // Load sound effects and allocate arrays for polyphonic playback
     sound->redPowerup = malloc(sizeof(Sound) * 4);
@@ -302,8 +307,32 @@ SoundManager *initSound(){
     sound->bounce2 = malloc(sizeof(Sound) * 4);
     sound->flipper = malloc(sizeof(Sound) * 4);
     sound->waterSplash = malloc(sizeof(Sound) * 4);
+    
+    // Check for allocation failures
+    if (!sound->redPowerup || !sound->bluePowerup || !sound->slowdown || !sound->speedup ||
+        !sound->upperBouncer || !sound->click || !sound->bounce1 || !sound->bounce2 ||
+        !sound->flipper || !sound->waterSplash) {
+        fprintf(stderr, "ERROR: Failed to allocate sound arrays\n");
+        // Clean up any successful allocations (free() handles NULL safely)
+        if (sound->redPowerup) free(sound->redPowerup);
+        if (sound->bluePowerup) free(sound->bluePowerup);
+        if (sound->slowdown) free(sound->slowdown);
+        if (sound->speedup) free(sound->speedup);
+        if (sound->upperBouncer) free(sound->upperBouncer);
+        if (sound->click) free(sound->click);
+        if (sound->bounce1) free(sound->bounce1);
+        if (sound->bounce2) free(sound->bounce2);
+        if (sound->flipper) free(sound->flipper);
+        if (sound->waterSplash) free(sound->waterSplash);
+        free(sound);
+        return NULL;
+    }
+    
+    // Load sound effects and pan them all fully right for game audio
     sound->launch = LoadSound("Resources/Audio/Click_Heavy_00.wav");
     sound->water = LoadSound("Resources/Audio/water.wav");
+    SetSoundPan(sound->launch, 1.0f);  // Pan fully right for speakers
+    SetSoundPan(sound->water, 1.0f);   // Pan fully right for speakers
     
     for (int i = 0; i < 4; i++){
         sound->redPowerup[i] = LoadSound("Resources/Audio/redPowerup.wav");
@@ -316,6 +345,18 @@ SoundManager *initSound(){
         sound->bounce2[i] = LoadSound("Resources/Audio/redPowerup3.wav");
         sound->flipper[i] = LoadSound("Resources/Audio/Slide_Sharp_02.wav");
         sound->waterSplash[i] = LoadSound("Resources/Audio/water2.wav");
+        
+        // Pan all sounds fully right for game audio on speakers
+        SetSoundPan(sound->redPowerup[i], 1.0f);
+        SetSoundPan(sound->bluePowerup[i], 1.0f);
+        SetSoundPan(sound->slowdown[i], 1.0f);
+        SetSoundPan(sound->speedup[i], 1.0f);
+        SetSoundPan(sound->upperBouncer[i], 1.0f);
+        SetSoundPan(sound->click[i], 1.0f);
+        SetSoundPan(sound->bounce1[i], 1.0f);
+        SetSoundPan(sound->bounce2[i], 1.0f);
+        SetSoundPan(sound->flipper[i], 1.0f);
+        SetSoundPan(sound->waterSplash[i], 1.0f);
     }
     
     return sound;
@@ -355,29 +396,29 @@ void updateSound(SoundManager *sound, GameStruct *game){
         }
     }
     
-    // Update haptics audio stream
-    // Generate samples: left channel = haptics, right channel = silence
+    // Update haptics audio stream (panned left via SetAudioStreamPan)
+    // This stream is mixed by raylib alongside all game audio
     if (g_audioInitialized && IsAudioStreamProcessed(g_hapticsStream)) {
-        short *buffer = (short*)malloc(AUDIO_BUFFER_SIZE * CHANNELS * sizeof(short));
-        
+        // Fill buffer with haptic waveforms
+        // Note: We generate stereo frames (left=haptic, right=0) and rely on
+        // SetAudioStreamPan(-1.0f) to route the signal to the left channel only
         for (int i = 0; i < AUDIO_BUFFER_SIZE; i++) {
             // Generate haptic sample for left channel
             float hapticSample = haptics_generate_sample((float)SAMPLE_RATE);
             
-            // Right channel is silent (game audio plays through raylib's normal mixer)
+            // Right channel is silent in our buffer
             float silentSample = 0.0f;
             
             // Convert float samples [-1.0, 1.0] to 16-bit signed integers
             short leftSample = (short)(hapticSample * 32767.0f);
             short rightSample = (short)(silentSample * 32767.0f);
             
-            buffer[i * 2 + 0] = leftSample;   // Left channel = haptics
-            buffer[i * 2 + 1] = rightSample;  // Right channel = silence
+            g_audioBuffer[i * 2 + 0] = leftSample;   // Left = haptics
+            g_audioBuffer[i * 2 + 1] = rightSample;  // Right = 0
         }
         
-        // Submit buffer to audio stream
-        UpdateAudioStream(g_hapticsStream, buffer, AUDIO_BUFFER_SIZE);
-        free(buffer);
+        // Submit buffer to haptics stream (raylib mixes it with game audio)
+        UpdateAudioStream(g_hapticsStream, g_audioBuffer, AUDIO_BUFFER_SIZE);
     }
 }
 
@@ -385,13 +426,10 @@ void updateSound(SoundManager *sound, GameStruct *game){
 // GAME AUDIO PLAYBACK FUNCTIONS
 // ============================================================================
 // These functions play sound effects through raylib's normal audio system.
-// In the ideal implementation, these would be routed to the right channel only,
-// but raylib's standard API plays sounds to both channels.
-//
-// NOTE: For true mono-to-right-channel routing, you would need to:
-// 1. Load sounds and manually convert to mono
-// 2. Use SetSoundPan(sound, 1.0f) if available in your raylib version
-// 3. Or implement a custom audio processor/callback
+// All sounds are panned fully right (pan=1.0f) during initialization via
+// SetSoundPan(), which routes them to the right channel (speakers).
+// Raylib's mixer combines these with the music (also panned right) and
+// the haptics stream (panned left).
 
 void playBounce(SoundManager *sound){
     for (int i = 0; i < 4; i++){
@@ -543,6 +581,12 @@ void shutdownSound(SoundManager *sound){
         StopAudioStream(g_hapticsStream);
         UnloadAudioStream(g_hapticsStream);
         g_audioInitialized = 0;
+    }
+    
+    // Check if sound manager is valid (could be NULL if initSound failed)
+    if (!sound) {
+        CloseAudioDevice();
+        return;
     }
     
     // Unload music streams
