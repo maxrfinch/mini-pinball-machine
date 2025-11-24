@@ -111,12 +111,21 @@ int main() {
     
     
     // Main event loop
+    uint32_t loop_count = 0;
+    
+    // Serial processing optimization: call protocol_process multiple times per loop
+    // to minimize command latency and increase effective polling rate
+    #define PROTOCOL_CALLS_PER_LOOP 3
+    
     while (1) {
+        // Process incoming commands - HIGHEST PRIORITY
+        // Do this multiple times per loop to minimize latency
+        for (int i = 0; i < PROTOCOL_CALLS_PER_LOOP; i++) {
+            protocol_process();
+        }
+        
         // Update heartbeat LED
         update_heartbeat();
-        
-        // Process incoming commands
-        protocol_process();
         
         // Poll button states
         buttons_poll();
@@ -138,13 +147,15 @@ int main() {
         // Update display animations
         display_update_animation();
         
-        // Update displays
+        // Update displays (I2C operations are slow)
         display_update();
         //i2c0_scan();
 
+        loop_count++;
         
-        // Small delay to prevent tight loop
-        sleep_ms(10);
+        // Reduced delay to increase serial processing frequency
+        // Still allows CPU to handle USB and other interrupts
+        sleep_ms(2);
     }
     
     return 0;
