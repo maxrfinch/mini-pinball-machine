@@ -134,6 +134,8 @@ int main(void){
 
     // Debug draw toggle state
     int debugDrawEnabled = 0;
+    const int MAX_PHYSICS_STEPS_PER_FRAME = 16;
+    int stepCount = 0;
 
     while (!WindowShouldClose()){
         int prevGameState = lastGameState;
@@ -171,8 +173,7 @@ int main(void){
         inputUpdate(input);
 
         // STEP SIMULATION AT FIXED RATE with safety cap
-        const int MAX_PHYSICS_STEPS_PER_FRAME = 16;
-        int stepCount = 0;
+        stepCount = 0;
         while (accumulatedTime > timestep && stepCount < MAX_PHYSICS_STEPS_PER_FRAME){
             accumulatedTime -= timestep;
             stepCount++;
@@ -385,11 +386,11 @@ int main(void){
                                 b2Body_ApplyForceToCenter(balls[i].body, force, true);
                                 // Apply special forces for flipper
                                 float flipperForce = -1000.0f;
-                                if (pos.x <= worldWidth / 2.0f && fabsf(deltaAngularVelocityLeft) > 0){
+                                if (pos.x <= worldWidth / 2.0f && fabsf(deltaAngularVelocityLeft) > 0.0f){
                                     b2Vec2 flipForce = {0, flipperForce};
                                     b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
                                 }
-                                if (pos.x >= worldWidth / 2.0f && fabsf(deltaAngularVelocityRight) > 0){
+                                if (pos.x >= worldWidth / 2.0f && fabsf(deltaAngularVelocityRight) > 0.0f){
                                     b2Vec2 flipForce = {0, flipperForce};
                                     b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
                                 }
