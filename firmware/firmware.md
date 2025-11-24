@@ -114,12 +114,12 @@ For resolving conflicting effect requests, the controller uses a simple priority
 - Power: 5V (≥3A recommended)
 - 1000 µF capacitor across 5V and GND
 - Boards:
-  - Board 1: Right Front (0–7)
+  - Board 1: Rear (0–7)
   - Board 2: Right Rear (8–15)
-  - Board 3: Camera Bar (16–23)
-  - Board 4: Left Rear (24–31, reversed)
+  - Board 3: Right Front (16–23)
+  - Board 4: Front (24–31)
   - Board 5: Left Front (32–39, reversed)
-  - Board 6: Front Bar (40–47)
+  - Board 6: Left Rear (40–47, reversed)
 
 ### I²C0 (GPIO12/13)
 All devices daisy‑chain via STEMMA QT:
