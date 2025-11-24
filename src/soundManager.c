@@ -270,7 +270,7 @@ static short g_audioBuffer[AUDIO_BUFFER_SIZE * CHANNELS];  // Pre-allocated buff
 SoundManager *initSound(){
     SoundManager *sound = malloc(sizeof(SoundManager));
     if (!sound) {
-        fprintf(stderr, "ERROR: Failed to allocate SoundManager\n");
+        fprintf(stderr, "ERROR: Failed to allocate memory for SoundManager\n");
         return NULL;
     }
     
@@ -312,18 +312,18 @@ SoundManager *initSound(){
     if (!sound->redPowerup || !sound->bluePowerup || !sound->slowdown || !sound->speedup ||
         !sound->upperBouncer || !sound->click || !sound->bounce1 || !sound->bounce2 ||
         !sound->flipper || !sound->waterSplash) {
-        fprintf(stderr, "ERROR: Failed to allocate sound arrays\n");
+        fprintf(stderr, "ERROR: Failed to allocate memory for sound effect arrays\n");
         // Clean up any successful allocations (free() handles NULL safely)
-        if (sound->redPowerup) free(sound->redPowerup);
-        if (sound->bluePowerup) free(sound->bluePowerup);
-        if (sound->slowdown) free(sound->slowdown);
-        if (sound->speedup) free(sound->speedup);
-        if (sound->upperBouncer) free(sound->upperBouncer);
-        if (sound->click) free(sound->click);
-        if (sound->bounce1) free(sound->bounce1);
-        if (sound->bounce2) free(sound->bounce2);
-        if (sound->flipper) free(sound->flipper);
-        if (sound->waterSplash) free(sound->waterSplash);
+        free(sound->redPowerup);
+        free(sound->bluePowerup);
+        free(sound->slowdown);
+        free(sound->speedup);
+        free(sound->upperBouncer);
+        free(sound->click);
+        free(sound->bounce1);
+        free(sound->bounce2);
+        free(sound->flipper);
+        free(sound->waterSplash);
         free(sound);
         return NULL;
     }
@@ -540,34 +540,38 @@ void playWaterSplash(SoundManager *sound){
 // ============================================================================
 // These functions trigger procedural haptic effects on the left channel.
 // They are safe to call from game logic at any time and do not block.
+//
+// NOTE: The SoundManager parameter is unused but kept for consistency with
+// other sound API functions (playBounce, playFlipper, etc.). This allows
+// callers to use the same pattern for all audio calls.
 
 void sound_play_haptic_flipper_empty(SoundManager *sound) {
-    (void)sound;  // Unused parameter, kept for API consistency
+    (void)sound;  // Unused - haptics use global state
     haptics_trigger(HAPTIC_FLIPPER_EMPTY);
 }
 
 void sound_play_haptic_flipper_hit(SoundManager *sound) {
-    (void)sound;  // Unused parameter, kept for API consistency
+    (void)sound;  // Unused - haptics use global state
     haptics_trigger(HAPTIC_FLIPPER_HIT);
 }
 
 void sound_play_haptic_launch(SoundManager *sound) {
-    (void)sound;  // Unused parameter, kept for API consistency
+    (void)sound;  // Unused - haptics use global state
     haptics_trigger(HAPTIC_LAUNCH);
 }
 
 void sound_play_haptic_bumper_light(SoundManager *sound) {
-    (void)sound;  // Unused parameter, kept for API consistency
+    (void)sound;  // Unused - haptics use global state
     haptics_trigger(HAPTIC_BUMPER_LIGHT);
 }
 
 void sound_play_haptic_bumper_solid(SoundManager *sound) {
-    (void)sound;  // Unused parameter, kept for API consistency
+    (void)sound;  // Unused - haptics use global state
     haptics_trigger(HAPTIC_BUMPER_SOLID);
 }
 
 void sound_play_haptic_excitement(SoundManager *sound) {
-    (void)sound;  // Unused parameter, kept for API consistency
+    (void)sound;  // Unused - haptics use global state
     haptics_trigger(HAPTIC_EXCITEMENT);
 }
 
