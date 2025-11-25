@@ -60,4 +60,7 @@ extern const float redPowerupOverlayAlpha;   // Alpha multiplier for red powerup
 extern const float bluePowerupOverlayAlpha;  // Alpha multiplier for blue powerup overlay
 extern const float icePowerupOverlayAlpha;   // Alpha multiplier for ice powerup overlay
 
+// Trail history size for ball rendering
+#define TRAIL_HISTORY_SIZE 16
+
 #endif

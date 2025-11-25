@@ -65,17 +65,13 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
             continue; // Skip inactive balls early
         }
         // Bounds check trailStartIndex before accessing trail history
-        if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= 16) {
+        if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= TRAIL_HISTORY_SIZE) {
             TraceLog(LOG_WARNING, "Ball %d trailStartIndex out of bounds: %d, clamping to 0", i, balls[i].trailStartIndex);
             balls[i].trailStartIndex = 0;
         }
-        for (int ii = 1; ii <= 16; ii++){
-            int index = (balls[i].trailStartIndex + ii - 1);
-            if (index >= 16){ index -= 16; }
-            // Defensive clamp to prevent out-of-bounds access
-            if (index < 0) index = 0;
-            if (index >= 16) index = 15;
-            float trailSize = ballSize * sqrt(ii/16.0f);
+        for (int ii = 1; ii <= TRAIL_HISTORY_SIZE; ii++){
+            int index = (balls[i].trailStartIndex + ii - 1) % TRAIL_HISTORY_SIZE;
+            float trailSize = ballSize * sqrt(ii/(float)TRAIL_HISTORY_SIZE);
             Color ballColorLocal = (Color){255,183,0,255};
             if (balls[i].type == 1){ ballColorLocal = BLUE; }
             if (game->slowMotion == 1){ ballColorLocal = WHITE; }

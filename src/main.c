@@ -311,14 +311,14 @@ int main(void){
                         continue; // Skip inactive balls early
                     }
                     // Bounds check trailStartIndex before array access
-                    if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= 16) {
+                    if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= TRAIL_HISTORY_SIZE) {
                         TraceLog(LOG_WARNING, "Ball %d trailStartIndex out of bounds: %d, clamping to 0", i, balls[i].trailStartIndex);
                         balls[i].trailStartIndex = 0;
                     }
                     b2Vec2 pos = b2Body_GetPosition(balls[i].body);
                     balls[i].locationHistoryX[balls[i].trailStartIndex] = pos.x;
                     balls[i].locationHistoryY[balls[i].trailStartIndex] = pos.y;
-                    balls[i].trailStartIndex = (balls[i].trailStartIndex + 1) % 16;
+                    balls[i].trailStartIndex = (balls[i].trailStartIndex + 1) % TRAIL_HISTORY_SIZE;
                 }
 
                 //handler lower bumpers
