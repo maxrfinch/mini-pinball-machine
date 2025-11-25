@@ -31,9 +31,6 @@ Bumper* bumpers = NULL;
 // Global water system instance
 static WaterSystem waterSystem;
 
-// Convert from real render coordinates to virtual game coordinates
-Vector2 GetGameMousePosition(void);
-
 // AddWaterImpulse: Called from physics.c when ball hits water
 void AddWaterImpulse(float x, float impulse) {
     Water_AddImpulse(&waterSystem, x, impulse);
@@ -41,35 +38,6 @@ void AddWaterImpulse(float x, float impulse) {
     if (waterSystem.impactIntensity > 1.5f) {
         waterSystem.impactIntensity = 1.5f;
     }
-}
-// Convert from real render coordinates to virtual game coordinates
-Vector2 GetGameMousePosition(void) {
-    int renderW = GetRenderWidth();
-    int renderH = GetRenderHeight();
-
-    float scaleX = (float)renderW / (float)screenWidth;
-    float scaleY = (float)renderH / (float)screenHeight;
-    float scale  = (scaleX < scaleY) ? scaleX : scaleY;
-
-    float drawW = (float)screenWidth  * scale;
-    float drawH = (float)screenHeight * scale;
-
-    float offsetX = (renderW - drawW) * 0.5f;
-    float offsetY = (renderH - drawH) * 0.5f;
-
-    Vector2 m = GetMousePosition();  // in renderW x renderH
-
-    // If outside the drawn canvas, return an invalid coordinate
-    if (m.x < offsetX || m.x > offsetX + drawW ||
-        m.y < offsetY || m.y > offsetY + drawH) {
-        return (Vector2){ -1.0f, -1.0f };
-    }
-
-    // Map into virtual [0, screenWidth] x [0, screenHeight]
-    float gx = (m.x - offsetX) * ((float)screenWidth  / drawW);
-    float gy = (m.y - offsetY) * ((float)screenHeight / drawH);
-
-    return (Vector2){ gx, gy };
 }
 
 int main(void){
