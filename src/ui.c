@@ -1,11 +1,12 @@
 #include "ui.h"
 #include "constants.h"
+#include "util.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <math.h>
 #include <sys/time.h>
 
-static long long millis() {
+static long long millis_ui() {
     struct timeval te;
     gettimeofday(&te, NULL);
     long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000;
@@ -18,7 +19,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
                  float shaderSeconds) {
     
     ClearBackground((Color){255,183,0,255});
-    float timeFactor = (millis() - elapsedTimeStart) / 1000.0f;
+    float timeFactor = (millis_ui() - elapsedTimeStart) / 1000.0f;
     float xOffset = sin(timeFactor) * 50.0f;
     float yOffset = cos(timeFactor) * 50.0f;
     float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
@@ -57,7 +58,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
 
     if (game->menuState == 0) {
         // High scores scene - cycle between all-time (10s) and top 3 (10s)
-        long long currentTime = millis();
+        long long currentTime = millis_ui();
         if (game->menuHighScoreTimer == 0) {
             game->menuHighScoreTimer = currentTime;
         }
@@ -183,10 +184,40 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         Vector2 controlsTextPos = { 283.59f, 651.51f };
         float controlsFontSize = 27.08f;
 
-        // Draw placeholder text for system info
+        // Update cached CPU temperature (10 second refresh interval)
+        long long currentTimeMs = millis_ui();
+        if (game->lastTempReadTime == 0 || 
+            (currentTimeMs - game->lastTempReadTime) >= 10000) {
+            game->cachedCpuTemp = readCpuTemperature();
+            game->lastTempReadTime = currentTimeMs;
+        }
+
+        // Update cached battery percentage (60 second refresh interval)
+        if (game->lastBatteryReadTime == 0 || 
+            (currentTimeMs - game->lastBatteryReadTime) >= 60000) {
+            game->cachedBatteryPercent = readBatteryPercent();
+            game->lastBatteryReadTime = currentTimeMs;
+        }
+
+        // Draw system info text with live values
+        char tempLabel[32];
+        char batteryLabel[32];
+
+        if (game->cachedCpuTemp >= 0) {
+            sprintf(tempLabel, "Sys Temp: %dC", game->cachedCpuTemp);
+        } else {
+            sprintf(tempLabel, "Sys Temp: --C");
+        }
+
+        if (game->cachedBatteryPercent >= 0) {
+            sprintf(batteryLabel, "Battery Life: %d%%", game->cachedBatteryPercent);
+        } else {
+            sprintf(batteryLabel, "Battery Life: --%%");
+        }
+
         DrawTextEx(res->font1, "Vol: --", volumeTextPos, volumeFontSize, 1.0f, WHITE);
-        DrawTextEx(res->font1, "Temp: --", tempTextPos, tempFontSize, 1.0f, WHITE);
-        DrawTextEx(res->font1, "Battery: --", batteryTextPos, batteryFontSize, 1.0f, WHITE);
+        DrawTextEx(res->font1, tempLabel, tempTextPos, tempFontSize, 1.0f, WHITE);
+        DrawTextEx(res->font1, batteryLabel, batteryTextPos, batteryFontSize, 1.0f, WHITE);
 
         // Button hitbox rectangles (for drawing outlines - not filled)
         Rectangle shutdownHit = { 56.38f, 527.0f, 156.43f, 67.5f };
@@ -223,7 +254,7 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
                      float shaderSeconds) {
     
     ClearBackground((Color){255,183,0,255});
-    float timeFactor = (millis() - elapsedTimeStart) / 1000.0f;
+    float timeFactor = (millis_ui() - elapsedTimeStart) / 1000.0f;
     float xOffset = sin(timeFactor) * 50.0f;
     float yOffset = cos(timeFactor) * 50.0f;
     float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
@@ -256,7 +287,7 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
     }
 
     DrawTexturePro(res->gameOverOverlay1,(Rectangle){0,0,res->gameOverOverlay1.width,res->gameOverOverlay1.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
-    DrawTexturePro(res->gameOverOverlay2,(Rectangle){0,0,res->gameOverOverlay2.width,res->gameOverOverlay2.height},(Rectangle){0,12 + sin((millis() - elapsedTimeStart) / 1000.0f)*5.0f,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
+    DrawTexturePro(res->gameOverOverlay2,(Rectangle){0,0,res->gameOverOverlay2.width,res->gameOverOverlay2.height},(Rectangle){0,12 + sin((millis_ui() - elapsedTimeStart) / 1000.0f)*5.0f,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
 
     char tempString[128];
     sprintf(tempString,"%ld",game->gameScore);
@@ -272,7 +303,7 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
             DrawTextEx(res->font2, tempString, (Vector2){54 + (i * 62) - textWidth / 2,510}, 60, 1.0, WHITE);
         }
     }
-    DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){54 + (game->nameSelectIndex * 62),595+ (5 * sin((millis()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
+    DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){54 + (game->nameSelectIndex * 62),595+ (5 * sin((millis_ui()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
 }
 
 void UI_DrawTransition(const GameStruct *game, float shaderSeconds) {

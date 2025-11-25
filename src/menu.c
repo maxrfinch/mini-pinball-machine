@@ -7,6 +7,12 @@ void Menu_Init(GameStruct *game, MenuPinball *menuPinballs, int numMenuPinballs)
     game->menuState = 0;
     game->menuHighScoreTimer = 0;
     
+    // Initialize telemetry cache for System Scene
+    game->cachedCpuTemp = -1;
+    game->cachedBatteryPercent = -1;
+    game->lastTempReadTime = 0;
+    game->lastBatteryReadTime = 0;
+    
     // Initialize menu pinballs
     for (int i = 0; i < numMenuPinballs; i++) {
         menuPinballs[i].px = -100;
