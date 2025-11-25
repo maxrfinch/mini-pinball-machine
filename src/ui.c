@@ -246,9 +246,15 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
                 playClick(game->sound);
             } else if (CheckCollisionPointRec(mousePos, shutdownRect)) {
                 // Shutdown the Raspberry Pi
+                // Note: Requires passwordless sudo for shutdown command
+                // Configure with: echo "pi ALL=(ALL) NOPASSWD: /sbin/shutdown" | sudo tee /etc/sudoers.d/shutdown
                 playClick(game->sound);
                 #if defined(PLATFORM_RPI) || defined(PLATFORM_LINUX)
-                system("sudo shutdown -h now");
+                int result = system("sudo shutdown -h now");
+                if (result != 0) {
+                    // Shutdown command failed - continue running
+                    printf("Warning: shutdown command failed with code %d\n", result);
+                }
                 #endif
             } else if (CheckCollisionPointRec(mousePos, quitRect)) {
                 // Quit to desktop
