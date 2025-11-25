@@ -215,21 +215,6 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             debugUIEnabled = !debugUIEnabled;
         }
 
-        // Text positions and font sizes (normalized coordinates based on 450×800 design)
-        
-
-        Vector2 tempTextPos = { UI_X(0.3558f), UI_Y(0.5401f) };     // 160.09/450, 432.09/800
-        float tempFontSize = UI_Height(0.0284f);                     // 22.75/800
-
-        Vector2 batteryTextPos = { UI_X(0.3230f), UI_Y(0.6114f) };  // 145.35/450, 489.09/800
-        float batteryFontSize = UI_Height(0.0284f);                  // 22.75/800
-
-        
-        Vector2 scoresTextPos = { UI_X(0.1253f), UI_Y(0.8144f) };   // 56.38/450, 651.51/800
-        float scoresFontSize = UI_Height(0.0339f);                   // 27.08/800
-
-        Vector2 controlsTextPos = { UI_X(0.6302f), UI_Y(0.8144f) }; // 283.59/450, 651.51/800
-        float controlsFontSize = UI_Height(0.0339f);                 // 27.08/800
 
         // Volume button positions (normalized coordinates based on original 450×800 design)
         // Original values: volButtonY=470, volMinusX=85, volButtonSize=40
@@ -306,30 +291,49 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         char tempLabel[32];
         char batteryLabel[32];
 
-        // Display current volume percentage
+        // Display current volume percentage (centered)
         float volCenterX = 0.5f;
         int volumePercent = (int)roundf(sound_getGameVolume(game->sound) * 100.0f);
         sprintf(volumeLabel, "Volume: %d%%", volumePercent);
         float volumeFontSize = UI_Height(0.04f); // 27.08/800 (scaled to height)
         float volTextWidth = MeasureTextEx(res->font1, volumeLabel, volumeFontSize, 1.0).x;
-        float halfWidthNormalized = (volTextWidth / 2.0f) / screenWidth;
+        float volHalfWidthNormalized = (volTextWidth / 2.0f) / screenWidth;
         Vector2 volumeTextPos = { 
-            UI_X(volCenterX - halfWidthNormalized),  // Properly centered
+            UI_X(volCenterX - volHalfWidthNormalized),
             UI_Y(0.43125f) 
-        };   // 138.52/450, 380.24/800                   
+        };
         DrawTextEx(res->font1, volumeLabel, volumeTextPos, volumeFontSize, 1.0f, WHITE);
 
+        // Display system temperature (centered)
+        float tempCenterX = 0.5f;
         if (game->cachedCpuTemp >= 0) {
             sprintf(tempLabel, "Sys Temp: %dC", game->cachedCpuTemp);
         } else {
             sprintf(tempLabel, "Sys Temp: --C");
         }
+        float tempFontSize = UI_Height(0.04f);
+        float tempTextWidth = MeasureTextEx(res->font1, tempLabel, tempFontSize, 1.0).x;
+        float tempHalfWidthNormalized = (tempTextWidth / 2.0f) / screenWidth;
+        Vector2 tempTextPos = {
+            UI_X(tempCenterX - tempHalfWidthNormalized),
+            UI_Y(0.50f)  // Adjust Y position as needed
+        };
+        DrawTextEx(res->font1, tempLabel, tempTextPos, tempFontSize, 1.0f, WHITE);
 
+        // Display battery life (centered)
+        float batteryCenterX = 0.5f;
         if (game->cachedBatteryPercent >= 0) {
             sprintf(batteryLabel, "Battery Life: %d%%", game->cachedBatteryPercent);
         } else {
             sprintf(batteryLabel, "Battery Life: --%%");
         }
+        float batteryFontSize = UI_Height(0.04f);
+        float batteryTextWidth = MeasureTextEx(res->font1, batteryLabel, batteryFontSize, 1.0).x;
+        float batteryHalfWidthNormalized = (batteryTextWidth / 2.0f) / screenWidth;
+        Vector2 batteryTextPos = {
+            UI_X(batteryCenterX - batteryHalfWidthNormalized),
+            UI_Y(0.57f)  // Adjust Y position as needed
+        };
 
         DrawTextEx(res->font1, tempLabel, tempTextPos, tempFontSize, 1.0f, WHITE);
         DrawTextEx(res->font1, batteryLabel, batteryTextPos, batteryFontSize, 1.0f, WHITE);
