@@ -148,6 +148,15 @@ elseif(APPLE)
 elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
     add_definitions(-DPLATFORM_LINUX)
 
+    # Detect if we're on Raspberry Pi
+    if(EXISTS "/proc/device-tree/model")
+        file(READ "/proc/device-tree/model" PI_MODEL)
+        if(PI_MODEL MATCHES "Raspberry Pi")
+            add_definitions(-DPLATFORM_RPI)
+            message(STATUS "Detected Raspberry Pi - enabling Pi-specific features")
+        endif()
+    endif()
+
     # Standard desktop build: raylib uses GLFW/X11 or Wayland underneath.
     target_link_libraries(${PROJECT_NAME} PRIVATE
         ${RAYLIB_LIB}
