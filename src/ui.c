@@ -14,6 +14,11 @@ static long long millis_ui() {
     return milliseconds;
 }
 
+// Round a float to the nearest 0.1 (10% increment)
+static float roundToTenth(float value) {
+    return roundf(value * 10.0f) / 10.0f;
+}
+
 void UI_DrawMenu(GameStruct *game, const Resources *res,
                  const MenuPinball *menuPinballs, int numMenuPinballs,
                  ScoreHelper *scores, long long elapsedTimeStart,
@@ -196,23 +201,19 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             if (CheckCollisionPointRec(mousePos, volMinusRect)) {
                 // Volume down by 10%
                 float currentVolume = sound_getGameVolume(game->sound);
-                float newVolume = currentVolume - 0.1f;
+                float newVolume = roundToTenth(currentVolume - 0.1f);
                 if (newVolume < 0.0f) {
                     newVolume = 0.0f;
                 }
-                // Round to nearest 10% to avoid floating point drift
-                newVolume = ((int)(newVolume * 10.0f + 0.5f)) / 10.0f;
                 sound_setGameVolume(game->sound, newVolume);
                 playClick(game->sound);
             } else if (CheckCollisionPointRec(mousePos, volPlusRect)) {
                 // Volume up by 10%
                 float currentVolume = sound_getGameVolume(game->sound);
-                float newVolume = currentVolume + 0.1f;
+                float newVolume = roundToTenth(currentVolume + 0.1f);
                 if (newVolume > 1.0f) {
                     newVolume = 1.0f;
                 }
-                // Round to nearest 10% to avoid floating point drift
-                newVolume = ((int)(newVolume * 10.0f + 0.5f)) / 10.0f;
                 sound_setGameVolume(game->sound, newVolume);
                 playClick(game->sound);
             }
@@ -224,7 +225,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         char batteryLabel[32];
 
         // Display current volume percentage
-        int volumePercent = (int)(sound_getGameVolume(game->sound) * 100.0f + 0.5f);
+        int volumePercent = (int)roundf(sound_getGameVolume(game->sound) * 100.0f);
         sprintf(volumeLabel, "Volume: %d%%", volumePercent);
         DrawTextEx(res->font1, volumeLabel, volumeTextPos, volumeFontSize, 1.0f, WHITE);
 

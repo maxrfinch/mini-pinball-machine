@@ -478,68 +478,44 @@ void updateSound(SoundManager *sound, GameStruct *game){
 // during rapid succession. With 8 slots, sounds can overlap naturally
 // without needing to stop previous instances in most cases.
 
+// Helper macro for round-robin sound playback
+#define PLAY_SOUND_ROUND_ROBIN(soundArray, indexVar) do { \
+    int idx = (indexVar); \
+    StopSound((soundArray)[idx]); \
+    PlaySound((soundArray)[idx]); \
+    (indexVar) = (idx + 1) % SOUND_POOL_SIZE; \
+} while(0)
+
 void playBounce(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->bounce1Index;
-    StopSound(sound->bounce1[idx]);
-    PlaySound(sound->bounce1[idx]);
-    sound->bounce1Index = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->bounce1, sound->bounce1Index);
 }
 
 void playBounce2(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->bounce2Index;
-    StopSound(sound->bounce2[idx]);
-    PlaySound(sound->bounce2[idx]);
-    sound->bounce2Index = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->bounce2, sound->bounce2Index);
 }
 
 void playClick(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->clickIndex;
-    StopSound(sound->click[idx]);
-    PlaySound(sound->click[idx]);
-    sound->clickIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->click, sound->clickIndex);
 }
 
 void playSlowdownSound(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->slowdownIndex;
-    StopSound(sound->slowdown[idx]);
-    PlaySound(sound->slowdown[idx]);
-    sound->slowdownIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->slowdown, sound->slowdownIndex);
 }
 
 void playSpeedupSound(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->speedupIndex;
-    StopSound(sound->speedup[idx]);
-    PlaySound(sound->speedup[idx]);
-    sound->speedupIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->speedup, sound->speedupIndex);
 }
 
 void playRedPowerupSound(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->redPowerupIndex;
-    StopSound(sound->redPowerup[idx]);
-    PlaySound(sound->redPowerup[idx]);
-    sound->redPowerupIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->redPowerup, sound->redPowerupIndex);
 }
 
 void playBluePowerupSound(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->bluePowerupIndex;
-    StopSound(sound->bluePowerup[idx]);
-    PlaySound(sound->bluePowerup[idx]);
-    sound->bluePowerupIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->bluePowerup, sound->bluePowerupIndex);
 }
 
 void playUpperBouncerSound(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->upperBouncerIndex;
-    StopSound(sound->upperBouncer[idx]);
-    PlaySound(sound->upperBouncer[idx]);
-    sound->upperBouncerIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->upperBouncer, sound->upperBouncerIndex);
 }
 
 void playLaunch(SoundManager *sound){
@@ -548,11 +524,7 @@ void playLaunch(SoundManager *sound){
 }
 
 void playFlipper(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->flipperIndex;
-    StopSound(sound->flipper[idx]);
-    PlaySound(sound->flipper[idx]);
-    sound->flipperIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->flipper, sound->flipperIndex);
 }
 
 void playWater(SoundManager *sound){
@@ -561,11 +533,7 @@ void playWater(SoundManager *sound){
 }
 
 void playWaterSplash(SoundManager *sound){
-    // Use round-robin to prevent audio cutoff in rapid succession
-    int idx = sound->waterSplashIndex;
-    StopSound(sound->waterSplash[idx]);
-    PlaySound(sound->waterSplash[idx]);
-    sound->waterSplashIndex = (idx + 1) % SOUND_POOL_SIZE;
+    PLAY_SOUND_ROUND_ROBIN(sound->waterSplash, sound->waterSplashIndex);
 }
 
 // ============================================================================
