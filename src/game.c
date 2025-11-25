@@ -58,6 +58,18 @@ void Game_StartGame(GameStruct *game, Bumper *bumpers) {
     bumpers[13].enabled = 0;
 }
 
+void Game_SpawnBall(GameStruct *game, float x, float y, float vx, float vy, int type) {
+    // Wrapper around physics_add_ball for cleaner API
+    physics_add_ball(game, x, y, vx, vy, type);
+}
+
+void Game_SpawnMultiBalls(GameStruct *game, float x, float y, int count, float vx, float vy, int type) {
+    // Spawn multiple balls, each offset vertically by ballSize
+    for (int i = 0; i < count; i++) {
+        physics_add_ball(game, x, y - (i * ballSize), vx, vy, type);
+    }
+}
+
 void Game_Update(GameStruct *game,
                  Bumper *bumpers,
                  InputManager *input,

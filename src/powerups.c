@@ -1,5 +1,6 @@
 #include "powerups.h"
 #include "constants.h"
+#include "game.h"
 #include <math.h>
 
 void Powerups_Init(GameStruct *game, PowerupSystem *ps) {
@@ -105,4 +106,56 @@ void Powerups_Update(GameStruct *game,
     
     // Store slowMotionFactor back to game for physics integration
     game->slowMotionFactor = ps->slowMotionFactor;
+}
+
+void Powerups_CheckMultiball(GameStruct *game, Bumper *bumpers, SoundManager *sound, InputManager *input) {
+    // Check powerups before dispensing balls
+    if (game->ballPowerupState == 0 && !bumpers[7].enabled && !bumpers[8].enabled && !bumpers[9].enabled){
+        // spawn balls (multiball powerup)
+        Game_SpawnMultiBalls(game, 89.5 - ballSize / 2, 160, 3, 0, -220, 1);
+        playBluePowerupSound(sound);
+        sound_play_haptic_excitement(sound);
+        game->bluePowerupOverlay = 1.0f;
+        game->ballPowerupState = -1;
+        game->gameScore += 500;
+        if (game->waterPowerupState == 0){
+            game->powerupScore += 500;
+        }
+        // Send multiball animation to controller
+        inputSendMultiballAnimation(input);
+    } else if (game->ballPowerupState == -1){
+        // Check if there are no balls left. Then powerup resets and bumpers reset.
+        if (game->numBalls == 0){
+            game->ballPowerupState = 0;
+            bumpers[7].enabled = 1;
+            bumpers[8].enabled = 1;
+            bumpers[9].enabled = 1;
+        }
+    }
+}
+
+void Powerups_CheckBumperPowerup(GameStruct *game, Bumper *bumpers, SoundManager *sound) {
+    if (game->bumperPowerupState == 0 && !bumpers[4].enabled && !bumpers[5].enabled && !bumpers[6].enabled){
+        // spawn bumpers
+        game->bumperPowerupState = -1;
+        bumpers[10].enabled = 1;
+        bumpers[11].enabled = 1;
+        bumpers[12].enabled = 1;
+        bumpers[13].enabled = 1;
+        playRedPowerupSound(sound);
+        sound_play_haptic_excitement(sound);
+        game->redPowerupOverlay = 1.0f;
+        game->gameScore += 500;
+        if (game->waterPowerupState == 0){
+            game->powerupScore += 500;
+        }
+    } else if (game->bumperPowerupState == -1){
+        if (!bumpers[10].enabled && !bumpers[11].enabled && !bumpers[12].enabled && !bumpers[13].enabled){
+            game->bumperPowerupState = 0;
+            bumpers[4].enabled = 1;
+            bumpers[5].enabled = 1;
+            bumpers[6].enabled = 1;
+            game->redPowerupOverlay = 1.0f;
+        }
+    }
 }

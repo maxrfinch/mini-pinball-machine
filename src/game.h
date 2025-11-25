@@ -20,4 +20,10 @@ void Game_Update(GameStruct *game,
 // Start a new game
 void Game_StartGame(GameStruct *game, Bumper *bumpers);
 
+// Spawn a single ball at the given position with initial velocity and type
+void Game_SpawnBall(GameStruct *game, float x, float y, float vx, float vy, int type);
+
+// Spawn multiple balls at the given position, each offset vertically by ballSize
+void Game_SpawnMultiBalls(GameStruct *game, float x, float y, int count, float vx, float vy, int type);
+
 #endif // GAME_H

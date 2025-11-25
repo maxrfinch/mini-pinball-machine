@@ -21,4 +21,12 @@ void Powerups_Update(GameStruct *game,
                      SoundManager *sound,
                      float effectiveTimestep);
 
+// Check and handle multiball powerup activation and reset
+// Called when ball powerup is ready or in progress
+void Powerups_CheckMultiball(GameStruct *game, Bumper *bumpers, SoundManager *sound, InputManager *input);
+
+// Check and handle bumper powerup activation and reset
+// Called when bumper powerup is ready or in progress
+void Powerups_CheckBumperPowerup(GameStruct *game, Bumper *bumpers, SoundManager *sound);
+
 #endif // POWERUPS_H
