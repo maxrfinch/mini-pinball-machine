@@ -474,8 +474,8 @@ int main(void){
         BeginDrawing();
         ClearBackground(BLACK);   // letterbox bars color
 
-        int renderW = GetRenderWidth();
-        int renderH = GetRenderHeight();
+        int renderW = GetMonitorWidth(0);   // Get primary monitor width
+        int renderH = GetMonitorHeight(0); // Get primary monitor height
 
         
 
