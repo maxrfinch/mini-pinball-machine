@@ -57,7 +57,7 @@ int main(void){
     // Render-to-texture target at virtual resolution (600 x 1024)
     RenderTexture2D gameTarget = LoadRenderTexture(screenWidth, screenHeight);
     // Keep pixels crisp; use TEXTURE_FILTER_BILINEAR if you want smoothing
-    SetTextureFilter(gameTarget.texture, TEXTURE_FILTER_POINT);
+    SetTextureFilter(gameTarget.texture, TEXTURE_FILTER_BILINEAR);
 
     SoundManager *sound = initSound();
     game.sound = sound;
