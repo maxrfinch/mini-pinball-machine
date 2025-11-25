@@ -14,23 +14,16 @@ static long long millis() {
 }
 
 void Render_Gameplay(const GameStruct *game, const Resources *res,
-                     const Bumper *bumpers, int numBumpers,
+                     const Bumper *bumpers, int numBumpersParam,
                      b2BodyId leftFlipperBody, b2BodyId rightFlipperBody,
                      float shaderSeconds, float iceOverlayAlpha,
                      int debugDrawEnabled, long long elapsedTimeStart) {
     
-    const float ballSize = 5.0f;
-    const float bumperSize = 10.0f;
-    const float smallBumperSize = 4.0f;
-    const int maxBalls = 256;
-    
     ClearBackground((Color){40,1,42,255});
 
     // Draw powerup status under game background
-    float powerupProportion = game->powerupScoreDisplay / 5000.0f;
+    float powerupProportion = game->powerupScoreDisplay / powerupTargetScore;
     if (powerupProportion > 1.0f){ powerupProportion = 1.0f; }
-    float powerupFullY = 64.0f;
-    float powerupEmptyY = 104.4f;
     float powerupHeight = (powerupEmptyY - powerupFullY) * 2;
     float powerupY = powerupFullY - (powerupProportion * powerupHeight / 2.0f);
     BeginShaderMode(res->swirlShader);
@@ -44,23 +37,23 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
     }
 
     // render bumpers which belong behind balls.
-    for (int i = 0; i < numBumpers; i++){
+    for (int i = 0; i < numBumpersParam; i++){
         b2Vec2 pos = b2Body_GetPosition(bumpers[i].body);
         if (bumpers[i].type == 2 || bumpers[i].type == 3){
             float width = 8.0f;
             float height = 2.0f;
-            Color bumperColor = (Color){0,0,0,80};
+            Color bumperColorLocal = (Color){0,0,0,80};
             if (bumpers[i].enabled == 0){
                 width = 8.0f;
                 height = 1.5f;
             } else {
                 if (bumpers[i].type == 2){
-                    bumperColor = RED;
+                    bumperColorLocal = RED;
                 } else if (bumpers[i].type == 3){
-                    bumperColor = BLUE;
+                    bumperColorLocal = BLUE;
                 }
             }
-            DrawTexturePro(res->bumper3,(Rectangle){0,0,res->bumper3.width,res->bumper3.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},bumpers[i].angle,bumperColor);
+            DrawTexturePro(res->bumper3,(Rectangle){0,0,res->bumper3.width,res->bumper3.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,width * worldToScreen,height * worldToScreen},(Vector2){(width / 2.0) * worldToScreen,(height / 2.0) * worldToScreen},bumpers[i].angle,bumperColorLocal);
         }
     }
 
@@ -83,10 +76,10 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
             if (index < 0) index = 0;
             if (index >= 16) index = 15;
             float trailSize = ballSize * sqrt(ii/16.0f);
-            Color ballColor = (Color){255,183,0,255};
-            if (balls[i].type == 1){ ballColor = BLUE; }
-            if (game->slowMotion == 1){ ballColor = WHITE; }
-            DrawTexturePro(res->trailTex,(Rectangle){0,0,res->trailTex.width,res->trailTex.height},(Rectangle){balls[i].locationHistoryX[index] * worldToScreen,balls[i].locationHistoryY[index] * worldToScreen,trailSize * worldToScreen,trailSize * worldToScreen},(Vector2){(trailSize / 2.0) * worldToScreen,(trailSize / 2.0) * worldToScreen},0,ballColor);
+            Color ballColorLocal = (Color){255,183,0,255};
+            if (balls[i].type == 1){ ballColorLocal = BLUE; }
+            if (game->slowMotion == 1){ ballColorLocal = WHITE; }
+            DrawTexturePro(res->trailTex,(Rectangle){0,0,res->trailTex.width,res->trailTex.height},(Rectangle){balls[i].locationHistoryX[index] * worldToScreen,balls[i].locationHistoryY[index] * worldToScreen,trailSize * worldToScreen,trailSize * worldToScreen},(Vector2){(trailSize / 2.0) * worldToScreen,(trailSize / 2.0) * worldToScreen},0,ballColorLocal);
 
         }
     }
@@ -98,14 +91,14 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
             continue; // Skip inactive balls early
         }
         b2Vec2 pos = b2Body_GetPosition(balls[i].body);
-        Color ballColor = (Color){255,183,0,255};
-        if (balls[i].type == 1){ ballColor = BLUE; }
-        if (game->slowMotion == 1){ ballColor = WHITE; }
-        DrawTexturePro(res->ballTex,(Rectangle){0,0,res->ballTex.width,res->ballTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,ballSize * worldToScreen,ballSize * worldToScreen},(Vector2){(ballSize / 2.0) * worldToScreen,(ballSize / 2.0) * worldToScreen},0,ballColor);
+        Color ballColorLocal = (Color){255,183,0,255};
+        if (balls[i].type == 1){ ballColorLocal = BLUE; }
+        if (game->slowMotion == 1){ ballColorLocal = WHITE; }
+        DrawTexturePro(res->ballTex,(Rectangle){0,0,res->ballTex.width,res->ballTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,ballSize * worldToScreen,ballSize * worldToScreen},(Vector2){(ballSize / 2.0) * worldToScreen,(ballSize / 2.0) * worldToScreen},0,ballColorLocal);
     }
 
     // Render bumpers which belong in front of balls
-    for (int i = 0; i < numBumpers; i++){
+    for (int i = 0; i < numBumpersParam; i++){
         b2Vec2 pos = b2Body_GetPosition(bumpers[i].body);
         if (bumpers[i].type == 0){
             float bounceScale = 0.2f;
