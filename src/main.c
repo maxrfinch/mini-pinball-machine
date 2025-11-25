@@ -474,8 +474,8 @@ int main(void){
         BeginDrawing();
         ClearBackground(BLACK);   // letterbox bars color
 
-        int renderW = GetScreenWidth();
-        int renderH = GetScreenHeight();
+        int renderW = GetRenderWidth();
+        int renderH = GetRenderHeight();
 
         // Compute uniform scale so the whole 600x1024 fits without cropping
         float scaleX = (float)renderW / (float)screenWidth;
@@ -488,21 +488,6 @@ int main(void){
         // Center on screen (letterboxing)
         float offsetX = (renderW - drawW) * 0.5f;
         float offsetY = (renderH - drawH) * 0.5f;
-
-        // Add after line 478 in main.c
-        #if defined(PLATFORM_RPI)
-            static int printOnce = 0;
-            if (printOnce == 0) {
-                printf("=== RENDER DEBUG ===\n");
-                printf("Virtual canvas: %d×%d\n", screenWidth, screenHeight);
-                printf("Physical screen: %d×%d\n", renderW, renderH);
-                printf("Scale: %.4f (scaleX=%.4f, scaleY=%.4f)\n", scale, scaleX, scaleY);
-                printf("DrawSize: %.2f×%.2f\n", drawW, drawH);
-                printf("Offset: (%.2f, %.2f)\n", offsetX, offsetY);
-                printf("==================\n");
-                printOnce = 1;
-            }
-        #endif
 
         // Draw the render texture to screen.
         // Note: src.height is NEGATIVE to flip the texture vertically (raylib quirk).
