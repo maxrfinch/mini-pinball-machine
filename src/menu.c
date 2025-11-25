@@ -53,9 +53,9 @@ void Menu_Update(GameStruct *game,
     }
     if (inputLeftPressed(input)) {
         playClick(sound);
-        game->menuState++;
-        if (game->menuState > 2) {
-            game->menuState = 0;  // Wrap to high scores
+        game->menuState--;
+        if (game->menuState < 0) {
+            game->menuState = 2;  // Wrap to controls
         }
         // Reset high score timer when entering high scores scene
         if (game->menuState == 0) {
@@ -64,9 +64,9 @@ void Menu_Update(GameStruct *game,
     }
     if (inputRightPressed(input)) {
         playClick(sound);
-        game->menuState--;
-        if (game->menuState < 0) {
-            game->menuState = 2;  // Wrap to system menu
+        game->menuState++;
+        if (game->menuState > 2) {
+            game->menuState = 0;  // Wrap to high scores
         }
         // Reset high score timer when entering high scores scene
         if (game->menuState == 0) {
