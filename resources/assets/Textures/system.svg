@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 900 1600" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linecap:square;stroke-linejoin:round;stroke-miterlimit:1.5;">
+    <g transform="matrix(1,0,0,1,0,-2)">
+        <g id="Controls" transform="matrix(1,0,0,1,0,2)">
+            <rect x="0" y="0" width="900" height="1600" style="fill:none;"/>
+            <g transform="matrix(1.128497,0,0,0.67689,-18.112279,216.908721)">
+                <path d="M769.264,669.372C769.264,644.911 757.352,625.051 742.68,625.051L86.941,625.051C72.269,625.051 60.357,644.911 60.357,669.372L60.357,1483.668L769.264,1483.668L769.264,669.372Z" style="fill-opacity:0.87;"/>
+            </g>
+            <g transform="matrix(1.128497,0,0,0.140828,-18.112279,1136.05833)">
+                <path d="M769.264,625.051L60.357,625.051L60.357,1270.642C60.357,1388.214 72.269,1483.668 86.941,1483.668L742.68,1483.668C757.352,1483.668 769.264,1388.214 769.264,1270.642L769.264,625.051Z" style="fill-opacity:0.72;"/>
+            </g>
+            <path d="M412.978,1550L80,1550C63.443,1550 50,1536.557 50,1520L50,1397.541C50,1380.983 63.443,1367.541 80,1367.541L820,1367.541C836.557,1367.541 850,1380.983 850,1397.541L850,1520C850,1536.557 836.558,1550 820,1550L502.375,1550L457.676,1594.011L412.978,1550Z" style="fill:rgb(255,58,148);fill-opacity:0.72;"/>
+            <path d="M412.978,1550L85,1550C68.443,1550 55,1536.557 55,1520L55,1402.5C55,1385.943 68.443,1372.5 85,1372.5L820,1372.5C836.557,1372.5 850,1385.943 850,1402.5L850,1520C850,1536.557 836.558,1550 820,1550L502.375,1550L457.676,1594.011L412.978,1550Z" style="fill:rgb(255,58,148);fill-opacity:0.72;"/>
+            <g transform="matrix(1,0,0,1,-30.000001,144.499481)">
+                <g transform="matrix(66.666667,0,0,66.666667,674.366668,1335.52457)">
+                </g>
+                <text x="285.633px" y="1335.525px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:66.667px;fill:white;">Start Game!</text>
+            </g>
+            <g transform="matrix(1,0,0,1,345.623119,-23.065665)">
+                <g transform="matrix(54.166667,0,0,54.166667,438.123055,1326.082143)">
+                </g>
+                <text x="221.565px" y="1326.082px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:54.167px;fill:white;">Contr<tspan x="365.919px 398.961px " y="1326.082px 1326.082px ">ol</tspan>s</text>
+            </g>
+            <g transform="matrix(-1.022322,0,0,0.781659,905.255439,282.575629)">
+                <path d="M101.968,1267.671L80,1286.2L102.177,1303.498L101.968,1267.671Z" style="fill:white;stroke:white;stroke-width:6.87px;"/>
+            </g>
+            <g id="Shutdown">
+                <g transform="matrix(1.303571,0,0,0.767045,-56.698267,382.068182)">
+                    <path d="M370,920L370,1008C370,1032.284 358.399,1052 344.11,1052L155.89,1052C141.601,1052 130,1032.284 130,1008L130,920C130,895.716 141.601,876 155.89,876L344.11,876C358.399,876 370,895.716 370,920Z" style="fill:none;stroke:white;stroke-opacity:0.87;stroke-width:5.84px;"/>
+                </g>
+                <g transform="matrix(1,0,0,1,-4.305438,-5)">
+                    <g transform="matrix(50,0,0,50,392.9,1145.4)">
+                    </g>
+                    <text x="154.1px" y="1145.4px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:50px;fill:white;">Shutdown</text>
+                </g>
+            </g>
+            <g id="Desktop">
+                <g transform="matrix(1.303571,0,0,0.767045,301.424787,382.068182)">
+                    <path d="M370,920L370,1008C370,1032.284 358.399,1052 344.11,1052L155.89,1052C141.601,1052 130,1032.284 130,1008L130,920C130,895.716 141.601,876 155.89,876L344.11,876C358.399,876 370,895.716 370,920Z" style="fill:none;stroke:rgb(225,225,225);stroke-opacity:0.98;stroke-width:5.84px;"/>
+                </g>
+                <g transform="matrix(1,0,0,1,353.817616,-5)">
+                    <g transform="matrix(50,0,0,50,373.475,1145.4)">
+                    </g>
+                    <text x="173.525px" y="1145.4px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:50px;fill:white;">Desktop</text>
+                </g>
+            </g>
+            <g id="volumeDown">
+                <g transform="matrix(1.724138,0,0,1.724138,-81.658141,-503.103448)">
+                    <circle cx="141.766" cy="721" r="29" style="fill:rgb(255,58,148);fill-opacity:0.92;"/>
+                </g>
+                <g transform="matrix(1,0,0,1,0,-2)">
+                    <use xlink:href="#_Image1" x="151" y="737" width="21px" height="12px"/>
+                </g>
+            </g>
+            <g id="volumeUp">
+                <g transform="matrix(1.724138,0,0,1.724138,489.322029,-503.103448)">
+                    <circle cx="141.766" cy="721" r="29" style="fill:rgb(255,58,148);fill-opacity:0.92;"/>
+                </g>
+                <g transform="matrix(1,0,0,1,0,-2)">
+                    <use xlink:href="#_Image2" x="711" y="722" width="44px" height="44px"/>
+                </g>
+            </g>
+            <g transform="matrix(1,0,0,1,32.766003,-23.065665)">
+                <g transform="matrix(54.166667,0,0,54.166667,247.483335,1326.082143)">
+                </g>
+                <text x="80px" y="1326.082px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:54.167px;fill:white;">Scor<tspan x="191.313px 222.404px " y="1326.082px 1326.082px ">es</tspan></text>
+            </g>
+            <g id="Volume" transform="matrix(1,0,0,1,143.444368,-555.14862)">
+                <g transform="matrix(54.166667,0,0,54.166667,470.513965,1315.62362)">
+                </g>
+                <text x="133.597px" y="1315.624px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:54.167px;fill:white;">V<tspan x="168.751px 201.793px " y="1315.624px 1315.624px ">ol</tspan>ume: 80%</text>
+            </g>
+            <g id="System-Temp" serif:id="System Temp" transform="matrix(1,0,0,1,143.444368,-445.14862)">
+                <g transform="matrix(37.5,0,0,37.5,427.380632,1309.32362)">
+                </g>
+                <text x="176.731px" y="1309.324px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:37.5px;fill:white;">Sys T<tspan x="264.931px 286.456px " y="1309.324px 1309.324px ">em</tspan>p: 55c</text>
+            </g>
+            <g id="Battery" transform="matrix(1,0,0,1,143.444368,-331.14862)">
+                <g transform="matrix(37.5,0,0,37.5,456.855632,1309.32362)">
+                </g>
+                <text x="147.256px" y="1309.324px" style="font-family:'Avenir-Black', 'Avenir', sans-serif;font-weight:800;font-size:37.5px;fill:white;">Battery Life: 58%</text>
+            </g>
+            <g transform="matrix(1.022322,0,0,0.781659,-9.033281,280.695363)">
+                <path d="M101.968,1267.671L80,1286.2L102.177,1303.498L101.968,1267.671Z" style="fill:white;stroke:white;stroke-width:6.87px;"/>
+            </g>
+        </g>
+    </g>
+    <defs>
+        <image id="_Image1" width="21px" height="12px" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABUAAAAMCAYAAACNzvbFAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAARElEQVQoke3OsQ3AIBQD0fsRu9AwX7aCgRgG01AhSlMl17h7MlwoACRloFjAiMpCX3kaAI/j3d6PfhlNazvQDJ4MxrkJ1atRxXlWTpwAAAAASUVORK5CYII="/>
+        <image id="_Image2" width="44px" height="44px" xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACwAAAAsCAYAAAAehFoBAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAA0ElEQVRYhe2ZMQoCMRRE58sKVoKCjbfQW1h4IHt7D2FnJ3gBL+AtLLaxFizGSiyz8DMLgXl1MvMCHxII0BhRI4RkD6ArLDtGxCnbVSoZynJA1qxG0aRGyJhYWI2F1VhYjYXVWFiNhdV0AEByBWCayBnyTJ2TXCc6XhHxDgAg+QCwSYSNwT4ibs2NhIXVWFiNhdU0J/y7OHYAFomcM8qHvwC4JjruEfFM7P9D8sMyhxpdzY2EhdVYWI2F1VhYjYXVWFhNc8K1/um2A9b0lbra4gsz6EIDMHYmIAAAAABJRU5ErkJggg=="/>
+    </defs>
+</svg>
