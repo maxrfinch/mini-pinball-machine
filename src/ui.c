@@ -136,9 +136,9 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             showTopThree = 1;
         }
     } else if (game->menuState == 1) {
-        currentOverlay = res->menuOverlayControls;
-    } else {  // menuState == 2
         currentOverlay = res->menuOverlaySystem;
+    } else {  // menuState == 2
+        currentOverlay = res->menuOverlayControls;
     }
 
     // Draw the appropriate overlay
