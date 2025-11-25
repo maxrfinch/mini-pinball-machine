@@ -62,12 +62,12 @@ int readBatteryPercent(void) {
     }
     close(fd);
     
-    // Swap bytes: data[0] is LSB, data[1] is MSB after swap
-    // High byte = integer percentage, Low byte = fractional (1/256 increments)
-    int percent = data[1];  // Integer portion after byte swap
+    // The fuel gauge returns the SOC as a 16-bit value where:
+    // data[0] = LSB (fractional percentage in 1/256 increments)
+    // data[1] = MSB (integer percentage 0-100)
+    int percent = data[1];
     
-    // Clamp to valid range
-    if (percent < 0) percent = 0;
+    // Clamp to valid range (0-100)
     if (percent > 100) percent = 100;
     
     return percent;

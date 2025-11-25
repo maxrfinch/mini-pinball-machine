@@ -208,7 +208,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         if (game->cachedBatteryPercent >= 0) {
             sprintf(batteryLabel, "Battery Life: %d%%", game->cachedBatteryPercent);
         } else {
-            sprintf(batteryLabel, "Battery Life: --%");
+            sprintf(batteryLabel, "Battery Life: --%%");
         }
 
         DrawTextEx(res->font1, "Vol: --", volumeTextPos, volumeFontSize, 1.0f, WHITE);
