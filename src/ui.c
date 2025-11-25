@@ -216,8 +216,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         }
 
         // Text positions and font sizes (normalized coordinates based on 450×800 design)
-        Vector2 volumeTextPos = { UI_X(0.3078f), UI_Y(0.4753f) };   // 138.52/450, 380.24/800
-        float volumeFontSize = UI_Height(0.0339f);                   // 27.08/800 (scaled to height)
+        
 
         Vector2 tempTextPos = { UI_X(0.3558f), UI_Y(0.5401f) };     // 160.09/450, 432.09/800
         float tempFontSize = UI_Height(0.0284f);                     // 22.75/800
@@ -235,16 +234,16 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         // Volume button positions (normalized coordinates based on original 450×800 design)
         // Original values: volButtonY=470, volMinusX=85, volButtonSize=40
         // Note: volPlusX adjusted to 325 (was 445) to keep button fully on-screen with symmetric margins
-        Rectangle volMinusRect = UI_Rect(0.1889f, 0.5875f, 0.0889f, 0.0500f);  // 85/450, 470/800, 40/450, 40/800
-        Rectangle volPlusRect = UI_Rect(0.7222f, 0.5875f, 0.0889f, 0.0500f);   // 325/450, 470/800, 40/450, 40/800
+        Rectangle volMinusRect = UI_Rect(0.1253333333f, 0.43125f, 0.1111111111f, 0.0625f);  // 85/450, 470/800, 40/450, 40/800
+        Rectangle volPlusRect = UI_Rect(0.7596666667f, 0.43125f, 0.1111111111f, 0.0625f);   // 325/450, 470/800, 40/450, 40/800
 
         // Shutdown button position (normalized coordinates)
         // Original: x=85, y=570, w=156, h=67
-        Rectangle shutdownRect = UI_Rect(0.1889f, 0.7125f, 0.3467f, 0.0838f);  // 85/450, 570/800, 156/450, 67/800
+        Rectangle shutdownRect = UI_Rect(0.1253333333f, 0.65875f, 0.3476666667f, 0.084375f);  // 85/450, 570/800, 156/450, 67/800
 
         // Quit button position (normalized coordinates)
         // Original: x=255, y=570, w=156, h=67
-        Rectangle quitRect = UI_Rect(0.5667f, 0.7125f, 0.3467f, 0.0838f);      // 255/450, 570/800, 156/450, 67/800
+        Rectangle quitRect = UI_Rect(0.5232222222f, 0.65875f, 0.3476666667f, 0.084375f);      // 255/450, 570/800, 156/450, 67/800
 
         // Update cached CPU temperature (10 second refresh interval)
         long long currentTimeMs = millis_ui();
@@ -308,8 +307,16 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         char batteryLabel[32];
 
         // Display current volume percentage
+        float volCenterX = 0.5f;
         int volumePercent = (int)roundf(sound_getGameVolume(game->sound) * 100.0f);
         sprintf(volumeLabel, "Volume: %d%%", volumePercent);
+        float volumeFontSize = UI_Height(0.04f); // 27.08/800 (scaled to height)
+        float volTextWidth = MeasureTextEx(res->font1, volumeLabel, volumeFontSize, 1.0).x;
+        float halfWidthNormalized = (volTextWidth / 2.0f) / screenWidth;
+        Vector2 volumeTextPos = { 
+            UI_X(volCenterX - halfWidthNormalized),  // Properly centered
+            UI_Y(0.43125f) 
+        };   // 138.52/450, 380.24/800                   
         DrawTextEx(res->font1, volumeLabel, volumeTextPos, volumeFontSize, 1.0f, WHITE);
 
         if (game->cachedCpuTemp >= 0) {
