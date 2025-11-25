@@ -43,6 +43,9 @@ const float ballReadyTextSize = 40.0f;   // Font size for ball text
 const int launchInstructionY = 650;      // Y position of launch instruction text
 const float launchInstructionSize = 20.0f; // Font size for launch instruction
 
+const int ballReadyOverlayMargin = 238;  // Width margin for ball ready overlay (screenWidth - margin = width)
+const int ballReadyInnerMargin = 242;    // Width margin for inner rectangle
+
 const int arrowAnimBaseY = 625;          // Base Y position for arrow animation
 const int arrowAnimSpacing = 20;         // Spacing between arrows
 const int arrowAnimCount = 8;            // Number of arrows to draw

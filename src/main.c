@@ -306,11 +306,12 @@ int main(void){
                 }
 
                 //Update ball trails
+                // Note: This bounds check fixes the game state (unlike render.c which uses a local copy)
                 for (int i = 0; i < maxBalls; i++){
                     if (balls[i].active != 1){
                         continue; // Skip inactive balls early
                     }
-                    // Bounds check trailStartIndex before array access
+                    // Bounds check and fix trailStartIndex before array access
                     if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= TRAIL_HISTORY_SIZE) {
                         TraceLog(LOG_WARNING, "Ball %d trailStartIndex out of bounds: %d, clamping to 0", i, balls[i].trailStartIndex);
                         balls[i].trailStartIndex = 0;

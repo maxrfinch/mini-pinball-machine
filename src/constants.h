@@ -51,6 +51,9 @@ extern const float ballReadyTextSize;     // Font size for ball text
 extern const int launchInstructionY;      // Y position of launch instruction text
 extern const float launchInstructionSize; // Font size for launch instruction
 
+extern const int ballReadyOverlayMargin;  // Width margin for ball ready overlay (screenWidth - margin = width)
+extern const int ballReadyInnerMargin;    // Width margin for inner rectangle
+
 extern const int arrowAnimBaseY;          // Base Y position for arrow animation
 extern const int arrowAnimSpacing;        // Spacing between arrows
 extern const int arrowAnimCount;          // Number of arrows to draw

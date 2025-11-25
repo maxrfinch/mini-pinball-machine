@@ -64,13 +64,14 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
         if (balls[i].active != 1){
             continue; // Skip inactive balls early
         }
-        // Bounds check trailStartIndex before accessing trail history
-        if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= TRAIL_HISTORY_SIZE) {
-            TraceLog(LOG_WARNING, "Ball %d trailStartIndex out of bounds: %d, clamping to 0", i, balls[i].trailStartIndex);
-            balls[i].trailStartIndex = 0;
+        // Bounds check trailStartIndex - use local clamped value to avoid modifying game state during render
+        int trailStart = balls[i].trailStartIndex;
+        if (trailStart < 0 || trailStart >= TRAIL_HISTORY_SIZE) {
+            TraceLog(LOG_WARNING, "Ball %d trailStartIndex out of bounds: %d, using 0 for rendering", i, trailStart);
+            trailStart = 0;
         }
         for (int ii = 1; ii <= TRAIL_HISTORY_SIZE; ii++){
-            int index = (balls[i].trailStartIndex + ii - 1) % TRAIL_HISTORY_SIZE;
+            int index = (trailStart + ii - 1) % TRAIL_HISTORY_SIZE;
             float trailSize = ballSize * sqrt(ii/(float)TRAIL_HISTORY_SIZE);
             Color ballColorLocal = (Color){255,183,0,255};
             if (balls[i].type == 1){ ballColorLocal = BLUE; }
@@ -235,8 +236,8 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
     }
 
     if (game->numBalls == 0 && game->numLives > 0){
-        DrawRectangleRounded((Rectangle){ballReadyOverlayX,ballReadyOverlayY,screenWidth-238,ballReadyOverlayHeight},0.1,16,(Color){0,0,0,100});
-        DrawRectangleRounded((Rectangle){ballReadyOverlayX+ballReadyPadding,ballReadyOverlayY+ballReadyPadding,screenWidth-242,ballReadyOverlayHeight-ballReadyPadding},0.1,16,(Color){0,0,0,100});
+        DrawRectangleRounded((Rectangle){ballReadyOverlayX,ballReadyOverlayY,screenWidth-ballReadyOverlayMargin,ballReadyOverlayHeight},0.1,16,(Color){0,0,0,100});
+        DrawRectangleRounded((Rectangle){ballReadyOverlayX+ballReadyPadding,ballReadyOverlayY+ballReadyPadding,screenWidth-ballReadyInnerMargin,ballReadyOverlayHeight-ballReadyPadding},0.1,16,(Color){0,0,0,100});
 
         const int totalBalls = 3;
         int currentBall = totalBalls - game->numLives + 1;
