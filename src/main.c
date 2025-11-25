@@ -494,13 +494,17 @@ int main(void){
         #if defined(PLATFORM_RPI)
             static int printOnce = 0;
             if (printOnce == 0) {
-                TraceLog(LOG_INFO, "=== RENDER DEBUG ===");
-                TraceLog(LOG_INFO, "Virtual canvas: %dx%d", screenWidth, screenHeight);
-                TraceLog(LOG_INFO, "Physical screen: %dx%d", renderW, renderH);
-                TraceLog(LOG_INFO, "Scale: %.4f (scaleX=%.4f, scaleY=%.4f)", scale, scaleX, scaleY);
-                TraceLog(LOG_INFO, "DrawSize: %.2fx%.2f", drawW, drawH);
-                TraceLog(LOG_INFO, "Offset: (%.2f, %.2f)", offsetX, offsetY);
-                TraceLog(LOG_INFO, "====================");
+                FILE *debugFile = fopen("/home/maxfinch/render_debug.txt", "w");
+                if (debugFile != NULL) {
+                    fprintf(debugFile, "=== RENDER DEBUG ===\n");
+                    fprintf(debugFile, "Virtual canvas: %dx%d\n", screenWidth, screenHeight);
+                    fprintf(debugFile, "Physical screen: %dx%d\n", renderW, renderH);
+                    fprintf(debugFile, "Scale: %.4f (scaleX=%.4f, scaleY=%.4f)\n", scale, scaleX, scaleY);
+                    fprintf(debugFile, "DrawSize: %.2fx%.2f\n", drawW, drawH);
+                    fprintf(debugFile, "Offset: (%.2f, %.2f)\n", offsetX, offsetY);
+                    fprintf(debugFile, "====================\n");
+                    fclose(debugFile);
+                }
                 printOnce = 1;
             }
         #endif
