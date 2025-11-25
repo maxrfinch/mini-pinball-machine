@@ -153,10 +153,10 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         float volumeFontSize = 27.08f;
 
         Vector2 tempTextPos = { 160.09f, 432.09f };
-        float tempFontSize = 18.75f;
+        float tempFontSize = 22.75f;
 
         Vector2 batteryTextPos = { 145.35f, 489.09f };
-        float batteryFontSize = 18.75f;
+        float batteryFontSize = 22.75f;
 
         
         Vector2 scoresTextPos = { 56.38f, 651.51f };
