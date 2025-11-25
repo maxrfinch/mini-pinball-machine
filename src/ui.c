@@ -4,6 +4,7 @@
 #include "soundManager.h"
 #include "raylib.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <sys/time.h>
 
@@ -18,6 +19,9 @@ static long long millis_ui() {
 static float roundToTenth(float value) {
     return roundf(value * 10.0f) / 10.0f;
 }
+
+// Debug UI toggle - press Tab to show button hitboxes
+static int debugUIEnabled = 0;
 
 void UI_DrawMenu(GameStruct *game, const Resources *res,
                  const MenuPinball *menuPinballs, int numMenuPinballs,
@@ -154,6 +158,11 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
     } else if (game->menuState == 2) {
         // System menu - display system info and buttons
 
+        // Toggle debug UI drawing with Tab key
+        if (IsKeyPressed(KEY_TAB)) {
+            debugUIEnabled = !debugUIEnabled;
+        }
+
         // Text positions and font sizes (exact coordinates)
         Vector2 volumeTextPos = { 138.52f, 380.24f };
         float volumeFontSize = 27.08f;
@@ -184,6 +193,20 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         Rectangle volMinusRect = { volMinusX, volButtonY, volButtonSize, volButtonSize };
         Rectangle volPlusRect = { volPlusX, volButtonY, volButtonSize, volButtonSize };
 
+        // Shutdown and Quit button hitboxes (transparent overlays over existing texture buttons)
+        // These buttons are rendered as part of menuOverlaySystem texture
+        float shutdownButtonX = 85.0f;
+        float shutdownButtonY = 570.0f;
+        float shutdownButtonW = 156.0f;
+        float shutdownButtonH = 67.0f;
+        Rectangle shutdownRect = { shutdownButtonX, shutdownButtonY, shutdownButtonW, shutdownButtonH };
+
+        float quitButtonX = 255.0f;
+        float quitButtonY = 570.0f;
+        float quitButtonW = 156.0f;
+        float quitButtonH = 67.0f;
+        Rectangle quitRect = { quitButtonX, quitButtonY, quitButtonW, quitButtonH };
+
         // Update cached CPU temperature (10 second refresh interval)
         long long currentTimeMs = millis_ui();
         if (game->lastTempReadTime == 0 || 
@@ -199,7 +222,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             game->lastBatteryReadTime = currentTimeMs;
         }
 
-        // Handle touchscreen volume button input (transparent overlays)
+        // Handle touchscreen button input (transparent overlays)
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mousePos = GetMousePosition();
             
@@ -221,6 +244,22 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
                 }
                 sound_setGameVolume(game->sound, newVolume);
                 playClick(game->sound);
+            } else if (CheckCollisionPointRec(mousePos, shutdownRect)) {
+                // Shutdown the Raspberry Pi
+                // Note: Requires passwordless sudo for shutdown command
+                // Configure with: echo "pi ALL=(ALL) NOPASSWD: /sbin/shutdown" | sudo tee /etc/sudoers.d/shutdown
+                playClick(game->sound);
+                #if defined(PLATFORM_RPI) || defined(PLATFORM_LINUX)
+                int result = system("sudo shutdown -h now");
+                if (result != 0) {
+                    // Shutdown command failed - continue running
+                    printf("Warning: shutdown command failed with code %d\n", result);
+                }
+                #endif
+            } else if (CheckCollisionPointRec(mousePos, quitRect)) {
+                // Quit to desktop
+                playClick(game->sound);
+                game->quitRequested = 1;
             }
         }
 
@@ -249,6 +288,23 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         DrawTextEx(res->font1, tempLabel, tempTextPos, tempFontSize, 1.0f, WHITE);
         DrawTextEx(res->font1, batteryLabel, batteryTextPos, batteryFontSize, 1.0f, WHITE);
 
+        // Debug UI: Draw button hitboxes when Tab is pressed
+        if (debugUIEnabled) {
+            // Draw volume button hitboxes
+            DrawRectangleLinesEx(volMinusRect, 2, RED);
+            DrawTextEx(res->font1, "VOL-", (Vector2){volMinusRect.x + 2, volMinusRect.y + 2}, 12.0f, 1.0f, RED);
+            
+            DrawRectangleLinesEx(volPlusRect, 2, RED);
+            DrawTextEx(res->font1, "VOL+", (Vector2){volPlusRect.x + 2, volPlusRect.y + 2}, 12.0f, 1.0f, RED);
+            
+            // Draw shutdown button hitbox
+            DrawRectangleLinesEx(shutdownRect, 2, ORANGE);
+            DrawTextEx(res->font1, "SHUTDOWN", (Vector2){shutdownRect.x + 2, shutdownRect.y + 2}, 12.0f, 1.0f, ORANGE);
+            
+            // Draw quit button hitbox
+            DrawRectangleLinesEx(quitRect, 2, GREEN);
+            DrawTextEx(res->font1, "QUIT", (Vector2){quitRect.x + 2, quitRect.y + 2}, 12.0f, 1.0f, GREEN);
+        }
         
     }
 }
