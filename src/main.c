@@ -137,7 +137,10 @@ int main(void){
     const int MAX_PHYSICS_STEPS_PER_FRAME = 16;
     int stepCount = 0;
 
-    while (!WindowShouldClose()){
+    // Initialize quit request flag
+    game.quitRequested = 0;
+
+    while (!WindowShouldClose() && !game.quitRequested){
         int prevGameState = lastGameState;
 
         endTime = millis();

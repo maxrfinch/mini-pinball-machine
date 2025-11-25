@@ -165,6 +165,9 @@ struct GameStructData {
     long long lastTempReadTime;      // Timestamp of last temp read (for 10s refresh)
     long long lastBatteryReadTime;   // Timestamp of last battery read (for 60s refresh)
 
+    // System menu action flags
+    int quitRequested;               // 1 if quit to desktop was requested
+
 };
 
 #endif
