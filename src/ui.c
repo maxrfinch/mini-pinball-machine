@@ -181,7 +181,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         
         */
         float volButtonSize = 40.0f;
-        float volButtonY = 440.0f;
+        float volButtonY = 460.0f;
         float volMinusX = 85.0f;
         float volPlusX = 445.0f;
         Rectangle volMinusRect = { volMinusX, volButtonY, volButtonSize, volButtonSize };
