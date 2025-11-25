@@ -149,6 +149,7 @@ struct GameStructData {
     // System telemetry cache for System Scene display
     int cachedCpuTemp;               // Cached CPU temperature in Celsius (-1 if not read)
     int cachedBatteryPercent;        // Cached battery percentage (-1 if not read)
+    long long lastTempReadTime;      // Timestamp of last temp read (for 10s refresh)
     long long lastBatteryReadTime;   // Timestamp of last battery read (for 60s refresh)
 
 };

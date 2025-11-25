@@ -10,6 +10,7 @@ void Menu_Init(GameStruct *game, MenuPinball *menuPinballs, int numMenuPinballs)
     // Initialize telemetry cache for System Scene
     game->cachedCpuTemp = -1;
     game->cachedBatteryPercent = -1;
+    game->lastTempReadTime = 0;
     game->lastBatteryReadTime = 0;
     
     // Initialize menu pinballs

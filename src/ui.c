@@ -184,11 +184,15 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         Vector2 controlsTextPos = { 283.59f, 651.51f };
         float controlsFontSize = 27.08f;
 
-        // Update cached CPU temperature (refreshes each call - lightweight file read)
-        game->cachedCpuTemp = readCpuTemperature();
+        // Update cached CPU temperature (10 second refresh interval)
+        long long currentTimeMs = millis_ui();
+        if (game->lastTempReadTime == 0 || 
+            (currentTimeMs - game->lastTempReadTime) >= 10000) {
+            game->cachedCpuTemp = readCpuTemperature();
+            game->lastTempReadTime = currentTimeMs;
+        }
 
         // Update cached battery percentage (60 second refresh interval)
-        long long currentTimeMs = millis_ui();
         if (game->lastBatteryReadTime == 0 || 
             (currentTimeMs - game->lastBatteryReadTime) >= 60000) {
             game->cachedBatteryPercent = readBatteryPercent();
