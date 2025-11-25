@@ -172,10 +172,18 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         float controlsFontSize = 27.08f;
 
         // Volume button hitboxes (transparent overlays over existing texture buttons)
+        /*
+        pkill pinball
+        cd ../
+        git pull
+        cd build
+        make
+        
+        */
         float volButtonSize = 40.0f;
-        float volButtonY = 380.0f;
-        float volMinusX = 80.0f;
-        float volPlusX = 440.0f;
+        float volButtonY = 400.0f;
+        float volMinusX = 85.0f;
+        float volPlusX = 445.0f;
         Rectangle volMinusRect = { volMinusX, volButtonY, volButtonSize, volButtonSize };
         Rectangle volPlusRect = { volPlusX, volButtonY, volButtonSize, volButtonSize };
 
