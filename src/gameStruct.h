@@ -146,6 +146,11 @@ struct GameStructData {
     // Ball ready state tracking for LED animation
     int ballReadyEventSent;          // 1 if BALL_READY event was sent, 0 otherwise
 
+    // System telemetry cache for System Scene display
+    int cachedCpuTemp;               // Cached CPU temperature in Celsius (-1 if not read)
+    int cachedBatteryPercent;        // Cached battery percentage (-1 if not read)
+    long long lastBatteryReadTime;   // Timestamp of last battery read (for 60s refresh)
+
 };
 
 #endif
