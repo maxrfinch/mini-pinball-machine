@@ -477,6 +477,21 @@ int main(void){
         int renderW = GetRenderWidth();
         int renderH = GetRenderHeight();
 
+        // Add after line 478 in main.c
+        #if defined(PLATFORM_RPI)
+            static int printOnce = 0;
+            if (printOnce == 0) {
+                printf("=== RENDER DEBUG ===\n");
+                printf("Virtual canvas: %d×%d\n", screenWidth, screenHeight);
+                printf("Physical screen: %d×%d\n", renderW, renderH);
+                printf("Scale: %.4f (scaleX=%.4f, scaleY=%.4f)\n", scale, scaleX, scaleY);
+                printf("DrawSize: %.2f×%.2f\n", drawW, drawH);
+                printf("Offset: (%.2f, %.2f)\n", offsetX, offsetY);
+                printf("==================\n");
+                printOnce = 1;
+            }
+        #endif
+
         // Compute uniform scale so the whole 600x1024 fits without cropping
         float scaleX = (float)renderW / (float)screenWidth;
         float scaleY = (float)renderH / (float)screenHeight;
