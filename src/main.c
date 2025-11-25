@@ -50,9 +50,11 @@ int main(void){
     SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(screenWidth, screenHeight, "Mini Pinball!");
     SetTargetFPS(60);
-
-    // Go fullscreen
-    ToggleFullscreen();
+    
+    // Go fullscreen only on Raspberry Pi
+    #if defined(PLATFORM_RPI)
+        ToggleFullscreen();
+    #endif
 
     // Render-to-texture target at virtual resolution (600 x 1024)
     RenderTexture2D gameTarget = LoadRenderTexture(screenWidth, screenHeight);
