@@ -491,6 +491,20 @@ int main(void){
         float offsetX = (renderW - drawW) * 0.5f;
         float offsetY = (renderH - drawH) * 0.5f;
 
+        #if defined(PLATFORM_RPI)
+            static int printOnce = 0;
+            if (printOnce == 0) {
+                TraceLog(LOG_INFO, "=== RENDER DEBUG ===");
+                TraceLog(LOG_INFO, "Virtual canvas: %dx%d", screenWidth, screenHeight);
+                TraceLog(LOG_INFO, "Physical screen: %dx%d", renderW, renderH);
+                TraceLog(LOG_INFO, "Scale: %.4f (scaleX=%.4f, scaleY=%.4f)", scale, scaleX, scaleY);
+                TraceLog(LOG_INFO, "DrawSize: %.2fx%.2f", drawW, drawH);
+                TraceLog(LOG_INFO, "Offset: (%.2f, %.2f)", offsetX, offsetY);
+                TraceLog(LOG_INFO, "====================");
+                printOnce = 1;
+            }
+        #endif
+
         // Draw the render texture to screen.
         // Note: src.height is NEGATIVE to flip the texture vertically (raylib quirk).
         DrawTexturePro(
