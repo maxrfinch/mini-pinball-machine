@@ -146,11 +146,74 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
                        (Vector2){0,0},0,WHITE);
     } else if (game->menuState == 2) {
         // System menu - display system info and buttons
-        DrawTextEx(res->font1, "System", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "System", 36.0, 1.0).x/2, 329}, 36.0, 1.0, WHITE);
+        // Uses exact 450x800 absolute coordinates derived from 900x1600 design-space SVG
+
+        // Volume circles (radius = 25.0f)
+        Vector2 volDownCenter = { 81.38f, 370.0f };
+        Vector2 volUpCenter = { 366.87f, 370.0f };
+        float volCircleRadius = 25.0f;
+
+        // Draw volume circles
+        DrawCircleLines((int)volDownCenter.x, (int)volDownCenter.y, volCircleRadius, WHITE);
+        DrawCircleLines((int)volUpCenter.x, (int)volUpCenter.y, volCircleRadius, WHITE);
+
+        // Draw volume down indicator (minus sign)
+        DrawLineEx((Vector2){volDownCenter.x - 10.0f, volDownCenter.y}, 
+                   (Vector2){volDownCenter.x + 10.0f, volDownCenter.y}, 3.0f, WHITE);
         
-        // TODO: Add system stats (temp, volume, battery) - placeholder for now
-        DrawTextEx(res->font1, "[System Info]", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "[System Info]", 24.0, 1.0).x/2, 380}, 24.0, 1.0, WHITE);
-        DrawTextEx(res->font1, "[Shutdown/Quit buttons]", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "[Shutdown/Quit buttons]", 24.0, 1.0).x/2, 420}, 24.0, 1.0, WHITE);
+        // Draw volume up indicator (plus sign)
+        DrawLineEx((Vector2){volUpCenter.x - 10.0f, volUpCenter.y}, 
+                   (Vector2){volUpCenter.x + 10.0f, volUpCenter.y}, 3.0f, WHITE);
+        DrawLineEx((Vector2){volUpCenter.x, volUpCenter.y - 10.0f}, 
+                   (Vector2){volUpCenter.x, volUpCenter.y + 10.0f}, 3.0f, WHITE);
+
+        // Text positions and font sizes (exact coordinates)
+        Vector2 volumeTextPos = { 138.52f, 380.24f };
+        float volumeFontSize = 27.08f;
+
+        Vector2 tempTextPos = { 160.09f, 432.09f };
+        float tempFontSize = 18.75f;
+
+        Vector2 batteryTextPos = { 145.35f, 489.09f };
+        float batteryFontSize = 18.75f;
+
+        Vector2 scoresTextPos = { 56.38f, 651.51f };
+        float scoresFontSize = 27.08f;
+
+        Vector2 controlsTextPos = { 283.59f, 651.51f };
+        float controlsFontSize = 27.08f;
+
+        // Draw placeholder text for system info
+        DrawTextEx(res->font1, "Vol: --", volumeTextPos, volumeFontSize, 1.0f, WHITE);
+        DrawTextEx(res->font1, "Temp: --", tempTextPos, tempFontSize, 1.0f, WHITE);
+        DrawTextEx(res->font1, "Battery: --", batteryTextPos, batteryFontSize, 1.0f, WHITE);
+
+        // Button hitbox rectangles (for drawing outlines - not filled)
+        Rectangle shutdownHit = { 56.38f, 527.0f, 156.43f, 67.5f };
+        Rectangle desktopHit = { 235.44f, 527.0f, 156.43f, 67.5f };
+
+        // Draw button outlines
+        DrawRectangleLinesEx(shutdownHit, 2.0f, WHITE);
+        DrawRectangleLinesEx(desktopHit, 2.0f, WHITE);
+
+        // Draw button labels centered in their hitboxes
+        const char *shutdownText = "Shutdown";
+        Vector2 shutdownTextSize = MeasureTextEx(res->font1, shutdownText, 24.0f, 1.0f);
+        DrawTextEx(res->font1, shutdownText, 
+                   (Vector2){shutdownHit.x + (shutdownHit.width - shutdownTextSize.x) / 2.0f,
+                             shutdownHit.y + (shutdownHit.height - shutdownTextSize.y) / 2.0f},
+                   24.0f, 1.0f, WHITE);
+
+        const char *desktopText = "Desktop";
+        Vector2 desktopTextSize = MeasureTextEx(res->font1, desktopText, 24.0f, 1.0f);
+        DrawTextEx(res->font1, desktopText, 
+                   (Vector2){desktopHit.x + (desktopHit.width - desktopTextSize.x) / 2.0f,
+                             desktopHit.y + (desktopHit.height - desktopTextSize.y) / 2.0f},
+                   24.0f, 1.0f, WHITE);
+
+        // Draw navigation labels (Scores / Controls)
+        DrawTextEx(res->font1, "Scores", scoresTextPos, scoresFontSize, 1.0f, WHITE);
+        DrawTextEx(res->font1, "Controls", controlsTextPos, controlsFontSize, 1.0f, WHITE);
     }
 }
 
