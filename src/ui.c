@@ -90,6 +90,12 @@ static float roundToTenth(float value) {
 static Vector2 UI_GetVirtualMousePosition(void) {
     Vector2 mousePos = GetMousePosition();
     
+    // Validate screen dimensions to prevent division by zero
+    if (screenWidth <= 0 || screenHeight <= 0) {
+        // Return mouse position as-is if virtual dimensions are invalid
+        return mousePos;
+    }
+    
     // Get physical screen dimensions
     int renderW = GetRenderWidth();
     int renderH = GetRenderHeight();
@@ -98,6 +104,12 @@ static Vector2 UI_GetVirtualMousePosition(void) {
     float scaleX = (float)renderW / (float)screenWidth;
     float scaleY = (float)renderH / (float)screenHeight;
     float scale = (scaleX < scaleY) ? scaleX : scaleY;
+    
+    // Validate scale to prevent division by zero
+    if (scale <= 0.0f) {
+        // Return mouse position as-is if scale is invalid
+        return mousePos;
+    }
     
     float drawW = (float)screenWidth * scale;
     float drawH = (float)screenHeight * scale;
