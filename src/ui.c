@@ -201,13 +201,13 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
                 y += (27.0 * 0.8) + 2;
             }
         }
-    } else if (game->menuState == 1) {
+    } else if (game->menuState == 2) {
         // Controls - keep existing rendering
         DrawTexturePro(res->menuControls,
                        (Rectangle){0,0,res->menuControls.width,res->menuControls.height},
                        (Rectangle){26,320,res->menuControls.width/2,res->menuControls.height/2},
                        (Vector2){0,0},0,WHITE);
-    } else if (game->menuState == 2) {
+    } else if (game->menuState == 1) {
         // System menu - display system info and buttons
 
         // Toggle debug UI drawing with Tab key

@@ -477,6 +477,18 @@ int main(void){
         int renderW = GetScreenWidth();
         int renderH = GetScreenHeight();
 
+        // Compute uniform scale so the whole 600x1024 fits without cropping
+        float scaleX = (float)renderW / (float)screenWidth;
+        float scaleY = (float)renderH / (float)screenHeight;
+        float scale = (scaleX < scaleY) ? scaleX : scaleY;
+
+        float drawW = (float)screenWidth  * scale;
+        float drawH = (float)screenHeight * scale;
+
+        // Center on screen (letterboxing)
+        float offsetX = (renderW - drawW) * 0.5f;
+        float offsetY = (renderH - drawH) * 0.5f;
+
         // Add after line 478 in main.c
         #if defined(PLATFORM_RPI)
             static int printOnce = 0;
@@ -491,18 +503,6 @@ int main(void){
                 printOnce = 1;
             }
         #endif
-
-        // Compute uniform scale so the whole 600x1024 fits without cropping
-        float scaleX = (float)renderW / (float)screenWidth;
-        float scaleY = (float)renderH / (float)screenHeight;
-        float scale = (scaleX < scaleY) ? scaleX : scaleY;
-
-        float drawW = (float)screenWidth  * scale;
-        float drawH = (float)screenHeight * scale;
-
-        // Center on screen (letterboxing)
-        float offsetX = (renderW - drawW) * 0.5f;
-        float offsetY = (renderH - drawH) * 0.5f;
 
         // Draw the render texture to screen.
         // Note: src.height is NEGATIVE to flip the texture vertically (raylib quirk).
