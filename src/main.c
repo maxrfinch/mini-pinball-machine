@@ -487,8 +487,8 @@ int main(void){
         BeginDrawing();
         ClearBackground(BLACK);   // letterbox bars color
 
-        int renderW = GetRenderWidth();
-        int renderH = GetRenderHeight();
+        int renderW = GetScreenWidth();
+        int renderH = GetScreenHeight();
 
         // Compute uniform scale so the whole 600x1024 fits without cropping
         float scaleX = (float)renderW / (float)screenWidth;
