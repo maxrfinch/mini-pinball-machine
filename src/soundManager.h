@@ -31,4 +31,8 @@ void sound_play_haptic_bumper_light(SoundManager *sound);    // Light/glancing b
 void sound_play_haptic_bumper_solid(SoundManager *sound);    // Solid bumper/slingshot hit
 void sound_play_haptic_excitement(SoundManager *sound);      // Big event (multiball, jackpot, etc.)
 
+// Volume control functions (affects game audio only, not haptics)
+float sound_getGameVolume(SoundManager *sound);              // Get current game volume (0.0 to 1.0)
+void sound_setGameVolume(SoundManager *sound, float volume); // Set game volume (0.0 to 1.0)
+
 #endif

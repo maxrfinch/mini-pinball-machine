@@ -260,6 +260,7 @@ static void haptics_trigger(HapticEffectType type) {
 #define SAMPLE_RATE 48000
 #define CHANNELS 2
 #define AUDIO_BUFFER_SIZE 4096
+#define SOUND_POOL_SIZE 8  // Number of polyphonic slots per sound effect
 
 static AudioStream g_hapticsStream = {0};
 static int g_audioInitialized = 0;
@@ -275,6 +276,21 @@ SoundManager *initSound(){
         fprintf(stderr, "ERROR: Failed to allocate memory for SoundManager\n");
         return NULL;
     }
+    
+    // Initialize game volume to 100%
+    sound->gameVolume = 1.0f;
+    
+    // Initialize round-robin indices for polyphonic playback
+    sound->redPowerupIndex = 0;
+    sound->bluePowerupIndex = 0;
+    sound->slowdownIndex = 0;
+    sound->speedupIndex = 0;
+    sound->upperBouncerIndex = 0;
+    sound->clickIndex = 0;
+    sound->bounce1Index = 0;
+    sound->bounce2Index = 0;
+    sound->flipperIndex = 0;
+    sound->waterSplashIndex = 0;
     
     // Initialize raylib audio device
     InitAudioDevice();
@@ -298,18 +314,20 @@ SoundManager *initSound(){
     sound->gameMusic = LoadMusicStream("Resources/Audio/5.mp3");
     SetMusicPan(sound->menuMusic, 0.0f);  // Pan fully right for speakers
     SetMusicPan(sound->gameMusic, 0.0f);  // Pan fully right for speakers
+    SetMusicVolume(sound->menuMusic, sound->gameVolume);
+    SetMusicVolume(sound->gameMusic, sound->gameVolume);
     
     // Load sound effects and allocate arrays for polyphonic playback
-    sound->redPowerup = malloc(sizeof(Sound) * 4);
-    sound->bluePowerup = malloc(sizeof(Sound) * 4);
-    sound->slowdown = malloc(sizeof(Sound) * 4);
-    sound->speedup = malloc(sizeof(Sound) * 4);
-    sound->upperBouncer = malloc(sizeof(Sound) * 4);
-    sound->click = malloc(sizeof(Sound) * 4);
-    sound->bounce1 = malloc(sizeof(Sound) * 4);
-    sound->bounce2 = malloc(sizeof(Sound) * 4);
-    sound->flipper = malloc(sizeof(Sound) * 4);
-    sound->waterSplash = malloc(sizeof(Sound) * 4);
+    sound->redPowerup = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->bluePowerup = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->slowdown = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->speedup = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->upperBouncer = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->click = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->bounce1 = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->bounce2 = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->flipper = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
+    sound->waterSplash = malloc(sizeof(Sound) * SOUND_POOL_SIZE);
     
     // Check for allocation failures
     if (!sound->redPowerup || !sound->bluePowerup || !sound->slowdown || !sound->speedup ||
@@ -343,8 +361,10 @@ SoundManager *initSound(){
     sound->water = LoadSound("Resources/Audio/water.wav");
     SetSoundPan(sound->launch, 0.0f);  // Pan fully right for speakers
     SetSoundPan(sound->water, 0.0f);   // Pan fully right for speakers
+    SetSoundVolume(sound->launch, sound->gameVolume);
+    SetSoundVolume(sound->water, sound->gameVolume);
     
-    for (int i = 0; i < 4; i++){
+    for (int i = 0; i < SOUND_POOL_SIZE; i++){
         sound->redPowerup[i] = LoadSound("Resources/Audio/redPowerup.wav");
         sound->bluePowerup[i] = LoadSound("Resources/Audio/redPowerup.wav");
         sound->slowdown[i] = LoadSound("Resources/Audio/slowdown.wav");
@@ -367,6 +387,18 @@ SoundManager *initSound(){
         SetSoundPan(sound->bounce2[i], 0.0f);
         SetSoundPan(sound->flipper[i], 0.0f);
         SetSoundPan(sound->waterSplash[i], 0.0f);
+        
+        // Set volume for all sounds
+        SetSoundVolume(sound->redPowerup[i], sound->gameVolume);
+        SetSoundVolume(sound->bluePowerup[i], sound->gameVolume);
+        SetSoundVolume(sound->slowdown[i], sound->gameVolume);
+        SetSoundVolume(sound->speedup[i], sound->gameVolume);
+        SetSoundVolume(sound->upperBouncer[i], sound->gameVolume);
+        SetSoundVolume(sound->click[i], sound->gameVolume);
+        SetSoundVolume(sound->bounce1[i], sound->gameVolume);
+        SetSoundVolume(sound->bounce2[i], sound->gameVolume);
+        SetSoundVolume(sound->flipper[i], sound->gameVolume);
+        SetSoundVolume(sound->waterSplash[i], sound->gameVolume);
     }
     
     return sound;
@@ -398,7 +430,8 @@ void updateSound(SoundManager *sound, GameStruct *game){
                 sound->gameMusicVolume = 0.3f;
             }
         }
-        SetMusicVolume(sound->gameMusic, sound->gameMusicVolume);
+        // Apply both game volume and music volume multiplier
+        SetMusicVolume(sound->gameMusic, sound->gameMusicVolume * sound->gameVolume);
         if (game->slowMotionFactor < 1.0f){
             SetMusicPitch(sound->gameMusic, 0.7f);
         } else {
@@ -440,109 +473,67 @@ void updateSound(SoundManager *sound, GameStruct *game){
 // SetSoundPan(), which routes them to the right channel (speakers).
 // Raylib's mixer combines these with the music (also panned right) and
 // the haptics stream (panned left).
+//
+// Round-robin playback with SOUND_POOL_SIZE slots prevents audio cutoff
+// during rapid succession. With 8 slots, sounds can overlap naturally
+// without needing to stop previous instances in most cases.
+
+// Helper macro for round-robin sound playback
+#define PLAY_SOUND_ROUND_ROBIN(soundArray, indexVar) do { \
+    int idx = (indexVar); \
+    StopSound((soundArray)[idx]); \
+    PlaySound((soundArray)[idx]); \
+    (indexVar) = (idx + 1) % SOUND_POOL_SIZE; \
+} while(0)
 
 void playBounce(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->bounce1[i])){
-            PlaySound(sound->bounce1[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->bounce1, sound->bounce1Index);
 }
 
 void playBounce2(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->bounce2[i])){
-            PlaySound(sound->bounce2[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->bounce2, sound->bounce2Index);
 }
 
 void playClick(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->click[i])){
-            PlaySound(sound->click[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->click, sound->clickIndex);
 }
 
 void playSlowdownSound(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->slowdown[i])){
-            PlaySound(sound->slowdown[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->slowdown, sound->slowdownIndex);
 }
 
 void playSpeedupSound(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->speedup[i])){
-            PlaySound(sound->speedup[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->speedup, sound->speedupIndex);
 }
 
 void playRedPowerupSound(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->redPowerup[i])){
-            PlaySound(sound->redPowerup[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->redPowerup, sound->redPowerupIndex);
 }
 
 void playBluePowerupSound(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->bluePowerup[i])){
-            PlaySound(sound->bluePowerup[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->bluePowerup, sound->bluePowerupIndex);
 }
 
 void playUpperBouncerSound(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->upperBouncer[i])){
-            PlaySound(sound->upperBouncer[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->upperBouncer, sound->upperBouncerIndex);
 }
 
 void playLaunch(SoundManager *sound){
-    if (!IsSoundPlaying(sound->launch)){
-        PlaySound(sound->launch);
-        return;
-    }
+    StopSound(sound->launch);
+    PlaySound(sound->launch);
 }
 
 void playFlipper(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->flipper[i])){
-            PlaySound(sound->flipper[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->flipper, sound->flipperIndex);
 }
 
 void playWater(SoundManager *sound){
-    if (!IsSoundPlaying(sound->water)){
-        PlaySound(sound->water);
-        return;
-    }
+    StopSound(sound->water);
+    PlaySound(sound->water);
 }
 
 void playWaterSplash(SoundManager *sound){
-    for (int i = 0; i < 4; i++){
-        if (!IsSoundPlaying(sound->waterSplash[i])){
-            PlaySound(sound->waterSplash[i]);
-            return;
-        }
-    }
+    PLAY_SOUND_ROUND_ROBIN(sound->waterSplash, sound->waterSplashIndex);
 }
 
 // ============================================================================
@@ -586,6 +577,47 @@ void sound_play_haptic_excitement(SoundManager *sound) {
 }
 
 // ============================================================================
+// VOLUME CONTROL
+// ============================================================================
+
+float sound_getGameVolume(SoundManager *sound) {
+    if (!sound) return 1.0f;
+    return sound->gameVolume;
+}
+
+void sound_setGameVolume(SoundManager *sound, float volume) {
+    if (!sound) return;
+    
+    // Clamp volume to valid range [0.0, 1.0]
+    if (volume < 0.0f) volume = 0.0f;
+    if (volume > 1.0f) volume = 1.0f;
+    
+    sound->gameVolume = volume;
+    
+    // Update music volumes
+    SetMusicVolume(sound->menuMusic, volume);
+    SetMusicVolume(sound->gameMusic, volume * sound->gameMusicVolume);
+    
+    // Update individual sound volumes
+    SetSoundVolume(sound->launch, volume);
+    SetSoundVolume(sound->water, volume);
+    
+    // Update sound array volumes
+    for (int i = 0; i < SOUND_POOL_SIZE; i++) {
+        SetSoundVolume(sound->redPowerup[i], volume);
+        SetSoundVolume(sound->bluePowerup[i], volume);
+        SetSoundVolume(sound->slowdown[i], volume);
+        SetSoundVolume(sound->speedup[i], volume);
+        SetSoundVolume(sound->upperBouncer[i], volume);
+        SetSoundVolume(sound->click[i], volume);
+        SetSoundVolume(sound->bounce1[i], volume);
+        SetSoundVolume(sound->bounce2[i], volume);
+        SetSoundVolume(sound->flipper[i], volume);
+        SetSoundVolume(sound->waterSplash[i], volume);
+    }
+}
+
+// ============================================================================
 // SHUTDOWN
 // ============================================================================
 
@@ -612,7 +644,7 @@ void shutdownSound(SoundManager *sound){
     UnloadSound(sound->water);
     
     // Unload sound arrays
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < SOUND_POOL_SIZE; i++) {
         UnloadSound(sound->redPowerup[i]);
         UnloadSound(sound->bluePowerup[i]);
         UnloadSound(sound->slowdown[i]);

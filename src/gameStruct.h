@@ -26,6 +26,19 @@ typedef struct SoundManagerObject {
     Sound launch;
     Sound water;
     float gameMusicVolume;
+    float gameVolume;  // Global volume for all game audio (0.0 to 1.0), not haptics
+    
+    // Round-robin indices for polyphonic sound playback (prevents audio cutoff)
+    int redPowerupIndex;
+    int bluePowerupIndex;
+    int slowdownIndex;
+    int speedupIndex;
+    int upperBouncerIndex;
+    int clickIndex;
+    int bounce1Index;
+    int bounce2Index;
+    int flipperIndex;
+    int waterSplashIndex;
 } SoundManager;
 
 typedef struct {
