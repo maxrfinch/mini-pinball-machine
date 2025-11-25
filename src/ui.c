@@ -22,10 +22,14 @@
 //   Rectangle button = UI_Rect(0.5f, 0.5f, 0.2f, 0.1f);
 //   // Creates a button at center (50%, 50%) with size (20% width, 10% height)
 //
-// For new UI elements, design at 450×800 and divide by those values to get
-// normalized coordinates:
-//   normalizedX = pixelX / 450.0f
-//   normalizedY = pixelY / 800.0f
+// Reference Design:
+//   The original UI was designed for 450×800 resolution. To convert pixel
+//   coordinates to normalized values:
+//     normalizedX = pixelX / 450.0f
+//     normalizedY = pixelY / 800.0f
+//
+//   Note: Elements stretch proportionally with resolution. For UI elements
+//   that must maintain aspect ratio, additional logic would be needed.
 // ============================================================================
 
 // UI coordinate helpers - converts normalized positions (0.0-1.0) to screen pixels
@@ -229,9 +233,10 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         float controlsFontSize = UI_Height(0.0339f);                 // 27.08/800
 
         // Volume button positions (normalized coordinates based on original 450×800 design)
-        // Original: volButtonY=470, volMinusX=85, volPlusX=445, volButtonSize=40
+        // Original values: volButtonY=470, volMinusX=85, volButtonSize=40
+        // Note: volPlusX adjusted to 325 (was 445) to keep button fully on-screen with symmetric margins
         Rectangle volMinusRect = UI_Rect(0.1889f, 0.5875f, 0.0889f, 0.0500f);  // 85/450, 470/800, 40/450, 40/800
-        Rectangle volPlusRect = UI_Rect(0.9889f, 0.5875f, 0.0889f, 0.0500f);   // 445/450, 470/800, 40/450, 40/800
+        Rectangle volPlusRect = UI_Rect(0.7222f, 0.5875f, 0.0889f, 0.0500f);   // 325/450, 470/800, 40/450, 40/800
 
         // Shutdown button position (normalized coordinates)
         // Original: x=85, y=570, w=156, h=67
