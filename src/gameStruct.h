@@ -118,6 +118,7 @@ struct GameStructData {
     float transitionAlpha;
     int numLives;
     int menuState;
+    long long menuHighScoreTimer;  // Timer for cycling between all-time and top 3 scores
     int nameSelectIndex;
     int nameSelectDone;
     int slowMotion;

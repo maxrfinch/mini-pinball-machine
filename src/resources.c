@@ -24,7 +24,10 @@ void Resources_Init(Resources *res) {
     res->rightFlipperTex = LoadTexture("Resources/Textures/flipperR.png");
     res->bgMenu = LoadTexture("Resources/Textures/bgMenu.png");
     res->titleOverlay = LoadTexture("Resources/Textures/titleOverlay.png");
-    res->menuOverlay1 = LoadTexture("Resources/Textures/menuOverlay1.png");
+    res->menuOverlaySystem = LoadTexture("Resources/Textures/menuOverlaySystem.png");
+    res->menuOverlayControls = LoadTexture("Resources/Textures/menuOverlayControls.png");
+    res->menuOverlayHighscores = LoadTexture("Resources/Textures/menuOverlayHighscores.png");
+    res->menuOverlayTopScores = LoadTexture("Resources/Textures/menuOverlayTopScores.png");
     res->gameOverOverlay1 = LoadTexture("Resources/Textures/gameOverOverlay1.png");
     res->gameOverOverlay2 = LoadTexture("Resources/Textures/gameOverOverlay2.png");
     res->arrowRight = LoadTexture("Resources/Textures/arrowRight.png");
@@ -125,7 +128,10 @@ void Resources_Unload(Resources *res) {
     UnloadTexture(res->rightFlipperTex);
     UnloadTexture(res->bgMenu);
     UnloadTexture(res->titleOverlay);
-    UnloadTexture(res->menuOverlay1);
+    UnloadTexture(res->menuOverlaySystem);
+    UnloadTexture(res->menuOverlayControls);
+    UnloadTexture(res->menuOverlayHighscores);
+    UnloadTexture(res->menuOverlayTopScores);
     UnloadTexture(res->gameOverOverlay1);
     UnloadTexture(res->gameOverOverlay2);
     UnloadTexture(res->arrowRight);

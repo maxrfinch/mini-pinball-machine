@@ -22,7 +22,10 @@ typedef struct Resources {
     Texture2D rightFlipperTex;
     Texture2D bgMenu;
     Texture2D titleOverlay;
-    Texture2D menuOverlay1;
+    Texture2D menuOverlaySystem;
+    Texture2D menuOverlayControls;
+    Texture2D menuOverlayHighscores;
+    Texture2D menuOverlayTopScores;
     Texture2D gameOverOverlay1;
     Texture2D gameOverOverlay2;
     Texture2D arrowRight;
