@@ -173,9 +173,9 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
 
         // Volume button hitboxes (transparent overlays over existing texture buttons)
         float volButtonSize = 40.0f;
-        float volButtonY = 340.0f;
+        float volButtonY = 300.0f;
         float volMinusX = 80.0f;
-        float volPlusX = 400.0f;
+        float volPlusX = 420.0f;
         Rectangle volMinusRect = { volMinusX, volButtonY, volButtonSize, volButtonSize };
         Rectangle volPlusRect = { volPlusX, volButtonY, volButtonSize, volButtonSize };
 
