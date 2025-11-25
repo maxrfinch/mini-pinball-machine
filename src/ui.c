@@ -1,6 +1,7 @@
 #include "ui.h"
 #include "constants.h"
 #include "util.h"
+#include "soundManager.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <math.h>
@@ -165,6 +166,14 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         Vector2 controlsTextPos = { 283.59f, 651.51f };
         float controlsFontSize = 27.08f;
 
+        // Volume button hitboxes (transparent overlays over existing texture buttons)
+        float volButtonSize = 40.0f;
+        float volButtonY = 370.0f;
+        float volMinusX = 60.0f;
+        float volPlusX = 380.0f;
+        Rectangle volMinusRect = { volMinusX, volButtonY, volButtonSize, volButtonSize };
+        Rectangle volPlusRect = { volPlusX, volButtonY, volButtonSize, volButtonSize };
+
         // Update cached CPU temperature (10 second refresh interval)
         long long currentTimeMs = millis_ui();
         if (game->lastTempReadTime == 0 || 
@@ -180,9 +189,44 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             game->lastBatteryReadTime = currentTimeMs;
         }
 
+        // Handle touchscreen volume button input (transparent overlays)
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mousePos = GetMousePosition();
+            
+            if (CheckCollisionPointRec(mousePos, volMinusRect)) {
+                // Volume down by 10%
+                float currentVolume = sound_getGameVolume(game->sound);
+                float newVolume = currentVolume - 0.1f;
+                if (newVolume < 0.0f) {
+                    newVolume = 0.0f;
+                }
+                // Round to nearest 10% to avoid floating point drift
+                newVolume = ((int)(newVolume * 10.0f + 0.5f)) / 10.0f;
+                sound_setGameVolume(game->sound, newVolume);
+                playClick(game->sound);
+            } else if (CheckCollisionPointRec(mousePos, volPlusRect)) {
+                // Volume up by 10%
+                float currentVolume = sound_getGameVolume(game->sound);
+                float newVolume = currentVolume + 0.1f;
+                if (newVolume > 1.0f) {
+                    newVolume = 1.0f;
+                }
+                // Round to nearest 10% to avoid floating point drift
+                newVolume = ((int)(newVolume * 10.0f + 0.5f)) / 10.0f;
+                sound_setGameVolume(game->sound, newVolume);
+                playClick(game->sound);
+            }
+        }
+
         // Draw system info text with live values
+        char volumeLabel[32];
         char tempLabel[32];
         char batteryLabel[32];
+
+        // Display current volume percentage
+        int volumePercent = (int)(sound_getGameVolume(game->sound) * 100.0f + 0.5f);
+        sprintf(volumeLabel, "Volume: %d%%", volumePercent);
+        DrawTextEx(res->font1, volumeLabel, volumeTextPos, volumeFontSize, 1.0f, WHITE);
 
         if (game->cachedCpuTemp >= 0) {
             sprintf(tempLabel, "Sys Temp: %dC", game->cachedCpuTemp);
