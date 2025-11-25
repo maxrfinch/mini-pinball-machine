@@ -11,7 +11,7 @@ extern "C" {
 #endif
 
 // Draws menu / attract mode overlays when in a menu state
-void UI_DrawMenu(const GameStruct *game, const Resources *res,
+void UI_DrawMenu(GameStruct *game, const Resources *res,
                  const MenuPinball *menuPinballs, int numMenuPinballs,
                  ScoreHelper *scores, long long elapsedTimeStart,
                  float shaderSeconds);

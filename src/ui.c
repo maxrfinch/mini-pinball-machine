@@ -12,7 +12,7 @@ static long long millis() {
     return milliseconds;
 }
 
-void UI_DrawMenu(const GameStruct *game, const Resources *res,
+void UI_DrawMenu(GameStruct *game, const Resources *res,
                  const MenuPinball *menuPinballs, int numMenuPinballs,
                  ScoreHelper *scores, long long elapsedTimeStart,
                  float shaderSeconds) {
@@ -51,35 +51,106 @@ void UI_DrawMenu(const GameStruct *game, const Resources *res,
         DrawTexturePro(res->ballTex,(Rectangle){0,0,res->ballTex.width,res->ballTex.height},(Rectangle){menuPinballs[i].px,menuPinballs[i].py,30,30},(Vector2){0,0},0,(Color){255,183,0,255});
     }
 
-    DrawTexturePro(res->menuOverlay1,(Rectangle){0,0,res->titleOverlay.width,res->titleOverlay.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
-    DrawTexturePro(res->titleOverlay,(Rectangle){0,0,res->titleOverlay.width,res->titleOverlay.height},(Rectangle){0,12 + sin(timeFactor)*5.0f,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
+    // Determine which overlay to draw based on menuState and timer
+    Texture2D currentOverlay;
+    int showTopThree = 0;
 
-    if (game->menuState == 0){
-        DrawTextEx(res->font1, "Top Scores", (Vector2){153,329}, 36.0, 1.0, WHITE);
-        float y = 362;
-        char tempString[128];
-        for (int i = 1; i <= 10; i++){
-            ScoreObject *score = getRankedScore(scores,i);
-            if (score != NULL){
-                sprintf(tempString,"%d)",i);
-                DrawTextEx(res->font1, tempString, (Vector2){66 - MeasureTextEx(res->font1, tempString, 27.0, 1.0).x,y}, 27.0, 1.0, WHITE);
-                sprintf(tempString,"%s",score->scoreName);
-                DrawTextEx(res->font1, tempString, (Vector2){75,y}, 27.0, 1.0, WHITE);
-                float scoreNameWidth = MeasureTextEx(res->font1, tempString, 27.0, 1.0).x;
-                sprintf(tempString,"%d",score->scoreValue);
-                float scoreValueWidth = MeasureTextEx(res->font1, tempString, 27.0, 1.0).x;
-                DrawTextEx(res->font1, tempString, (Vector2){404 - scoreValueWidth,y}, 27.0, 1.0, WHITE);
-                float lineY = y + 27.0 / 2.0f - 1.0f;
-                DrawLineEx((Vector2){75 + (scoreNameWidth + 10),lineY}, (Vector2){404 - (scoreValueWidth + 10),lineY}, 2, (Color){255,255,255,50});
-            } else {
-                sprintf(tempString,"%d)",i);
-                DrawTextEx(res->font1, tempString, (Vector2){66 - MeasureTextEx(res->font1, tempString, 27.0, 1.0).x,y}, 27.0, 1.0, GRAY);
-                DrawTextEx(res->font1, "No Score", (Vector2){75,y}, 27.0, 1.0, GRAY);
-            }
-            y += (27.0 * 0.8) + 2;
+    if (game->menuState == 0) {
+        // High scores scene - cycle between all-time (10s) and top 3 (10s)
+        long long currentTime = millis();
+        if (game->menuHighScoreTimer == 0) {
+            game->menuHighScoreTimer = currentTime;
         }
-    } else if (game->menuState == 1){
-        DrawTexturePro(res->menuControls,(Rectangle){0,0,res->menuControls.width,res->menuControls.height},(Rectangle){26,320,res->menuControls.width/2,res->menuControls.height/2},(Vector2){0,0},0,WHITE);
+        
+        long long elapsed = currentTime - game->menuHighScoreTimer;
+        int cyclePosition = (elapsed / 10000) % 2;  // 10 second intervals, 0 or 1
+        
+        if (cyclePosition == 0) {
+            currentOverlay = res->menuOverlayHighscores;
+            showTopThree = 0;
+        } else {
+            currentOverlay = res->menuOverlayTopScores;
+            showTopThree = 1;
+        }
+    } else if (game->menuState == 1) {
+        currentOverlay = res->menuOverlayControls;
+    } else {  // menuState == 2
+        currentOverlay = res->menuOverlaySystem;
+    }
+
+    // Draw the appropriate overlay
+    DrawTexturePro(currentOverlay,
+                   (Rectangle){0,0,currentOverlay.width,currentOverlay.height},
+                   (Rectangle){0,0,screenWidth,screenHeight},
+                   (Vector2){0,0},0,WHITE);
+
+    DrawTexturePro(res->titleOverlay,
+                   (Rectangle){0,0,res->titleOverlay.width,res->titleOverlay.height},
+                   (Rectangle){0,12 + sin(timeFactor)*5.0f,screenWidth,screenHeight},
+                   (Vector2){0,0},0,WHITE);
+
+    // Render content based on menu state
+    if (game->menuState == 0) {
+        // High scores - show either top 10 or top 3
+        if (showTopThree) {
+            DrawTextEx(res->font1, "Top 3", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "Top 3", 36.0, 1.0).x/2, 329}, 36.0, 1.0, WHITE);
+            float y = 362;
+            char tempString[128];
+            for (int i = 1; i <= 3; i++) {
+                ScoreObject *score = getRankedScore(scores, i);
+                if (score != NULL) {
+                    sprintf(tempString,"%d)",i);
+                    DrawTextEx(res->font1, tempString, (Vector2){66 - MeasureTextEx(res->font1, tempString, 27.0, 1.0).x,y}, 27.0, 1.0, WHITE);
+                    sprintf(tempString,"%s",score->scoreName);
+                    DrawTextEx(res->font1, tempString, (Vector2){75,y}, 27.0, 1.0, WHITE);
+                    float scoreNameWidth = MeasureTextEx(res->font1, tempString, 27.0, 1.0).x;
+                    sprintf(tempString,"%d",score->scoreValue);
+                    float scoreValueWidth = MeasureTextEx(res->font1, tempString, 27.0, 1.0).x;
+                    DrawTextEx(res->font1, tempString, (Vector2){404 - scoreValueWidth,y}, 27.0, 1.0, WHITE);
+                    float lineY = y + 27.0 / 2.0f - 1.0f;
+                    DrawLineEx((Vector2){75 + (scoreNameWidth + 10),lineY}, (Vector2){404 - (scoreValueWidth + 10),lineY}, 2, (Color){255,255,255,50});
+                }
+                y += (27.0 * 1.5) + 5;  // Larger spacing for top 3
+            }
+        } else {
+            // Existing top 10 rendering code
+            DrawTextEx(res->font1, "Top Scores", (Vector2){153,329}, 36.0, 1.0, WHITE);
+            float y = 362;
+            char tempString[128];
+            for (int i = 1; i <= 10; i++){
+                ScoreObject *score = getRankedScore(scores,i);
+                if (score != NULL){
+                    sprintf(tempString,"%d)",i);
+                    DrawTextEx(res->font1, tempString, (Vector2){66 - MeasureTextEx(res->font1, tempString, 27.0, 1.0).x,y}, 27.0, 1.0, WHITE);
+                    sprintf(tempString,"%s",score->scoreName);
+                    DrawTextEx(res->font1, tempString, (Vector2){75,y}, 27.0, 1.0, WHITE);
+                    float scoreNameWidth = MeasureTextEx(res->font1, tempString, 27.0, 1.0).x;
+                    sprintf(tempString,"%d",score->scoreValue);
+                    float scoreValueWidth = MeasureTextEx(res->font1, tempString, 27.0, 1.0).x;
+                    DrawTextEx(res->font1, tempString, (Vector2){404 - scoreValueWidth,y}, 27.0, 1.0, WHITE);
+                    float lineY = y + 27.0 / 2.0f - 1.0f;
+                    DrawLineEx((Vector2){75 + (scoreNameWidth + 10),lineY}, (Vector2){404 - (scoreValueWidth + 10),lineY}, 2, (Color){255,255,255,50});
+                } else {
+                    sprintf(tempString,"%d)",i);
+                    DrawTextEx(res->font1, tempString, (Vector2){66 - MeasureTextEx(res->font1, tempString, 27.0, 1.0).x,y}, 27.0, 1.0, GRAY);
+                    DrawTextEx(res->font1, "No Score", (Vector2){75,y}, 27.0, 1.0, GRAY);
+                }
+                y += (27.0 * 0.8) + 2;
+            }
+        }
+    } else if (game->menuState == 1) {
+        // Controls - keep existing rendering
+        DrawTexturePro(res->menuControls,
+                       (Rectangle){0,0,res->menuControls.width,res->menuControls.height},
+                       (Rectangle){26,320,res->menuControls.width/2,res->menuControls.height/2},
+                       (Vector2){0,0},0,WHITE);
+    } else if (game->menuState == 2) {
+        // System menu - display system info and buttons
+        DrawTextEx(res->font1, "System", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "System", 36.0, 1.0).x/2, 329}, 36.0, 1.0, WHITE);
+        
+        // TODO: Add system stats (temp, volume, battery) - placeholder for now
+        DrawTextEx(res->font1, "[System Info]", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "[System Info]", 24.0, 1.0).x/2, 380}, 24.0, 1.0, WHITE);
+        DrawTextEx(res->font1, "[Shutdown/Quit buttons]", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "[Shutdown/Quit buttons]", 24.0, 1.0).x/2, 420}, 24.0, 1.0, WHITE);
     }
 }
 

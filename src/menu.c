@@ -5,6 +5,7 @@
 
 void Menu_Init(GameStruct *game, MenuPinball *menuPinballs, int numMenuPinballs) {
     game->menuState = 0;
+    game->menuHighScoreTimer = 0;
     
     // Initialize menu pinballs
     for (int i = 0; i < numMenuPinballs; i++) {
@@ -36,19 +37,27 @@ void Menu_Update(GameStruct *game,
 
     // Handle menu input
     if (inputCenterPressed(input)) {
-        game->transitionState = 1;
-        game->transitionTarget = TRANSITION_TO_GAME;
-        playClick(sound);
-        // Send game start event - Pico handles 5x strobe animation
-        inputSendGameStart(input);
+        // Only start game if NOT on system menu
+        if (game->menuState != 2) {
+            game->transitionState = 1;
+            game->transitionTarget = TRANSITION_TO_GAME;
+            playClick(sound);
+            inputSendGameStart(input);
+        }
     }
     if (inputLeftPressed(input)) {
         playClick(sound);
-        game->menuState = 1;
+        game->menuState--;
+        if (game->menuState < 0) {
+            game->menuState = 2;  // Wrap to system menu
+        }
     }
     if (inputRightPressed(input)) {
         playClick(sound);
-        game->menuState = 0;
+        game->menuState++;
+        if (game->menuState > 2) {
+            game->menuState = 0;  // Wrap to high scores
+        }
     }
 }
 
