@@ -62,14 +62,15 @@ int readBatteryPercent(void) {
     }
     close(fd);
     
-    // The fuel gauge returns the SOC as a 16-bit value where:
-    // data[0] = LSB (fractional percentage in 1/256 increments)
-    // data[1] = MSB (integer percentage 0-100)
-    int percent = data[1];
-    
-    // Clamp to valid range (0-100)
+    // Correct interpretation:
+    // data[0] = MSB (integer percentage)
+    // data[1] = LSB (fractional percentage in 1/256 increments)
+    float soc = data[0] + (data[1] / 256.0f);
+
+    int percent = (int)(soc + 0.5f);  // round to nearest whole %
+    if (percent < 0) percent = 0;
     if (percent > 100) percent = 100;
-    
+
     return percent;
 #else
     // Not on Linux - return unavailable
