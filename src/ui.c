@@ -8,6 +8,58 @@
 #include <math.h>
 #include <sys/time.h>
 
+// ============================================================================
+// UI Coordinate System
+// ============================================================================
+// 
+// These helper functions convert normalized coordinates (0.0 to 1.0) into
+// actual screen pixel coordinates based on screenWidth and screenHeight.
+//
+// This ensures UI elements scale properly when resolution changes and makes
+// it easy to maintain consistent layouts across different screen sizes.
+//
+// Usage:
+//   Rectangle button = UI_Rect(0.5f, 0.5f, 0.2f, 0.1f);
+//   // Creates a button at center (50%, 50%) with size (20% width, 10% height)
+//
+// Reference Design:
+//   The original UI was designed for 450×800 resolution. To convert pixel
+//   coordinates to normalized values:
+//     normalizedX = pixelX / 450.0f
+//     normalizedY = pixelY / 800.0f
+//
+//   Note: Elements stretch proportionally with resolution. For UI elements
+//   that must maintain aspect ratio, additional logic would be needed.
+// ============================================================================
+
+// UI coordinate helpers - converts normalized positions (0.0-1.0) to screen pixels
+// These ensure UI elements scale properly with any screen resolution changes
+static inline float UI_X(float normalizedX) {
+    return screenWidth * normalizedX;
+}
+
+static inline float UI_Y(float normalizedY) {
+    return screenHeight * normalizedY;
+}
+
+static inline float UI_Width(float normalizedWidth) {
+    return screenWidth * normalizedWidth;
+}
+
+static inline float UI_Height(float normalizedHeight) {
+    return screenHeight * normalizedHeight;
+}
+
+// Convenience function for creating rectangles with normalized coordinates
+static inline Rectangle UI_Rect(float normX, float normY, float normW, float normH) {
+    return (Rectangle){
+        UI_X(normX),
+        UI_Y(normY),
+        UI_Width(normW),
+        UI_Height(normH)
+    };
+}
+
 static long long millis_ui() {
     struct timeval te;
     gettimeofday(&te, NULL);
@@ -163,49 +215,36 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             debugUIEnabled = !debugUIEnabled;
         }
 
-        // Text positions and font sizes (exact coordinates)
-        Vector2 volumeTextPos = { 138.52f, 380.24f };
-        float volumeFontSize = 27.08f;
+        // Text positions and font sizes (normalized coordinates based on 450×800 design)
+        Vector2 volumeTextPos = { UI_X(0.3078f), UI_Y(0.4753f) };   // 138.52/450, 380.24/800
+        float volumeFontSize = UI_Height(0.0339f);                   // 27.08/800 (scaled to height)
 
-        Vector2 tempTextPos = { 160.09f, 432.09f };
-        float tempFontSize = 22.75f;
+        Vector2 tempTextPos = { UI_X(0.3558f), UI_Y(0.5401f) };     // 160.09/450, 432.09/800
+        float tempFontSize = UI_Height(0.0284f);                     // 22.75/800
 
-        Vector2 batteryTextPos = { 145.35f, 489.09f };
-        float batteryFontSize = 22.75f;
+        Vector2 batteryTextPos = { UI_X(0.3230f), UI_Y(0.6114f) };  // 145.35/450, 489.09/800
+        float batteryFontSize = UI_Height(0.0284f);                  // 22.75/800
 
         
-        Vector2 scoresTextPos = { 56.38f, 651.51f };
-        float scoresFontSize = 27.08f;
+        Vector2 scoresTextPos = { UI_X(0.1253f), UI_Y(0.8144f) };   // 56.38/450, 651.51/800
+        float scoresFontSize = UI_Height(0.0339f);                   // 27.08/800
 
-        Vector2 controlsTextPos = { 283.59f, 651.51f };
-        float controlsFontSize = 27.08f;
+        Vector2 controlsTextPos = { UI_X(0.6302f), UI_Y(0.8144f) }; // 283.59/450, 651.51/800
+        float controlsFontSize = UI_Height(0.0339f);                 // 27.08/800
 
-        // Volume button hitboxes (transparent overlays over existing texture buttons)
-        /*
-        float volButtonY = 370.0f;
-        float volMinusX = 60.0f;
-        float volPlusX = 380.0f;
-        */
-        float volButtonSize = 40.0f;
-        float volButtonY = 470.0f;
-        float volMinusX = 85.0f;
-        float volPlusX = 445.0f;
-        Rectangle volMinusRect = { volMinusX, volButtonY, volButtonSize, volButtonSize };
-        Rectangle volPlusRect = { volPlusX, volButtonY, volButtonSize, volButtonSize };
+        // Volume button positions (normalized coordinates based on original 450×800 design)
+        // Original values: volButtonY=470, volMinusX=85, volButtonSize=40
+        // Note: volPlusX adjusted to 325 (was 445) to keep button fully on-screen with symmetric margins
+        Rectangle volMinusRect = UI_Rect(0.1889f, 0.5875f, 0.0889f, 0.0500f);  // 85/450, 470/800, 40/450, 40/800
+        Rectangle volPlusRect = UI_Rect(0.7222f, 0.5875f, 0.0889f, 0.0500f);   // 325/450, 470/800, 40/450, 40/800
 
-        // Shutdown and Quit button hitboxes (transparent overlays over existing texture buttons)
-        // These buttons are rendered as part of menuOverlaySystem texture
-        float shutdownButtonX = 85.0f;
-        float shutdownButtonY = 570.0f;
-        float shutdownButtonW = 156.0f;
-        float shutdownButtonH = 67.0f;
-        Rectangle shutdownRect = { shutdownButtonX, shutdownButtonY, shutdownButtonW, shutdownButtonH };
+        // Shutdown button position (normalized coordinates)
+        // Original: x=85, y=570, w=156, h=67
+        Rectangle shutdownRect = UI_Rect(0.1889f, 0.7125f, 0.3467f, 0.0838f);  // 85/450, 570/800, 156/450, 67/800
 
-        float quitButtonX = 255.0f;
-        float quitButtonY = 570.0f;
-        float quitButtonW = 156.0f;
-        float quitButtonH = 67.0f;
-        Rectangle quitRect = { quitButtonX, quitButtonY, quitButtonW, quitButtonH };
+        // Quit button position (normalized coordinates)
+        // Original: x=255, y=570, w=156, h=67
+        Rectangle quitRect = UI_Rect(0.5667f, 0.7125f, 0.3467f, 0.0838f);      // 255/450, 570/800, 156/450, 67/800
 
         // Update cached CPU temperature (10 second refresh interval)
         long long currentTimeMs = millis_ui();
