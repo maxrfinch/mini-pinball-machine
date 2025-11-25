@@ -30,3 +30,24 @@ const float powerupFullY = 64.0f;
 const float powerupEmptyY = 104.4f;
 const float powerupTargetScore = 5000.0f;
 const float slowMoCooldownDuration = 20.0f;
+
+// UI constants - Ball ready overlay
+const int ballReadyOverlayX = 108;       // X position of ball ready overlay rectangle
+const int ballReadyOverlayY = 600;       // Y position of ball ready overlay rectangle
+const int ballReadyOverlayHeight = 80;   // Height of ball ready overlay rectangle
+const int ballReadyPadding = 4;          // Padding for inner rectangle
+
+const int ballReadyTextY = 610;          // Y position of "Ball X / Y" text
+const float ballReadyTextSize = 40.0f;   // Font size for ball text
+
+const int launchInstructionY = 650;      // Y position of launch instruction text
+const float launchInstructionSize = 20.0f; // Font size for launch instruction
+
+const int arrowAnimBaseY = 625;          // Base Y position for arrow animation
+const int arrowAnimSpacing = 20;         // Spacing between arrows
+const int arrowAnimCount = 8;            // Number of arrows to draw
+
+// UI constants - Powerup overlay alpha multipliers
+const float redPowerupOverlayAlpha = 40.0f;   // Alpha multiplier for red powerup overlay
+const float bluePowerupOverlayAlpha = 128.0f; // Alpha multiplier for blue powerup overlay
+const float icePowerupOverlayAlpha = 128.0f;  // Alpha multiplier for ice powerup overlay

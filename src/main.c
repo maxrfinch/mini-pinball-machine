@@ -87,6 +87,14 @@ int main(void){
 
     //create balls array
     Ball* balls = malloc(maxBalls * sizeof(Ball));
+    if (balls == NULL) {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for balls array");
+        physics_shutdown(&game);
+        shutdownSound(sound);
+        Resources_Unload(&resources);
+        CloseWindow();
+        return 1;
+    }
     game.balls = balls;
     game.numBalls = 0;
     for (int i = 0; i < maxBalls; i++){
@@ -98,6 +106,15 @@ int main(void){
 
     // Menu setup
     MenuPinball* menuPinballs = malloc(32 * sizeof(MenuPinball));
+    if (menuPinballs == NULL) {
+        TraceLog(LOG_ERROR, "Failed to allocate memory for menu pinballs array");
+        free(game.balls);
+        physics_shutdown(&game);
+        shutdownSound(sound);
+        Resources_Unload(&resources);
+        CloseWindow();
+        return 1;
+    }
 
     // Setup input
     InputManager *input = inputInit();
@@ -220,55 +237,9 @@ int main(void){
                     game.oldGameScore = game.gameScore;
                 }
                 
-                // Check powerups before dispensing balls
-                if (game.ballPowerupState == 0 && !bumpers[7].enabled && !bumpers[8].enabled && !bumpers[9].enabled){
-                    // spawn balls (multiball powerup)
-                    for (int i =0; i < 3; i++){
-                        physics_add_ball(&game,89.5 - ballSize / 2,160 - (i * ballSize),0,-220,1);
-                    }
-                    playBluePowerupSound(sound);
-                    sound_play_haptic_excitement(sound);
-                    game.bluePowerupOverlay = 1.0f;
-                    game.ballPowerupState = -1;
-                    game.gameScore += 500;
-                    if (game.waterPowerupState == 0){
-                        game.powerupScore += 500;
-                    }
-                    // Send multiball animation to controller
-                    inputSendMultiballAnimation(input);
-                } else if (game.ballPowerupState == -1){
-                    // Check if there are no balls left. Then powerup resets and bumpers reset.
-                    if (game.numBalls == 0){
-                        game.ballPowerupState = 0;
-                        bumpers[7].enabled = 1;
-                        bumpers[8].enabled = 1;
-                        bumpers[9].enabled = 1;
-                    }
-                }
-
-                if (game.bumperPowerupState ==0 && !bumpers[4].enabled && !bumpers[5].enabled && !bumpers[6].enabled){
-                    // spawn bumpers
-                    game.bumperPowerupState = -1;
-                    bumpers[10].enabled = 1;
-                    bumpers[11].enabled = 1;
-                    bumpers[12].enabled = 1;
-                    bumpers[13].enabled = 1;
-                    playRedPowerupSound(sound);
-                    sound_play_haptic_excitement(sound);
-                    game.redPowerupOverlay = 1.0f;
-                    game.gameScore += 500;
-                    if (game.waterPowerupState == 0){
-                        game.powerupScore += 500;
-                    }
-                } else if (game.bumperPowerupState == -1){
-                    if (!bumpers[10].enabled && !bumpers[11].enabled && !bumpers[12].enabled && !bumpers[13].enabled){
-                        game.bumperPowerupState = 0;
-                        bumpers[4].enabled = 1;
-                        bumpers[5].enabled = 1;
-                        bumpers[6].enabled = 1;
-                        game.redPowerupOverlay = 1.0f;
-                    }
-                }
+                // Check and handle powerup state machines
+                Powerups_CheckMultiball(&game, bumpers, sound, input);
+                Powerups_CheckBumperPowerup(&game, bumpers, sound);
 
                 if (game.numBalls == 0){
                     if (game.numLives >= 1){
@@ -279,7 +250,7 @@ int main(void){
                         }
                         
                         if (inputCenterPressed(input)){
-                            physics_add_ball(&game,89.5 - ballSize / 2,160,0,-220,0);
+                            Game_SpawnBall(&game, 89.5 - ballSize / 2, 160, 0, -220, 0);
                             // Send ball launched signal to controller
                             inputSendBallLaunched(input);
                             game.ballReadyEventSent = 0;  // Reset for next ball
@@ -295,36 +266,40 @@ int main(void){
                 }
 
                 if (IsMouseButtonPressed(0)){
-                    physics_add_ball(&game,(mouseX) * screenToWorld,(mouseY) * screenToWorld,0,0,1);
+                    Game_SpawnBall(&game, (mouseX) * screenToWorld, (mouseY) * screenToWorld, 0, 0, 1);
                 }
 
                 // Check if any balls have fallen outside the screen
                 // Remove them if they have.
                 // Check if any balls are standing still for too long and remove.
+                // Note: We iterate all maxBalls slots since active balls may be sparse.
+                // Caching game.numBalls isn't beneficial here because we may modify it mid-loop.
                 for (int i = 0; i < maxBalls; i++){
-                    if (balls[i].active == 1){
-                        b2Vec2 pos = b2Body_GetPosition(balls[i].body);
-                        b2Vec2 vel = b2Body_GetLinearVelocity(balls[i].body);
-                        float velLengthSq = vel.x * vel.x + vel.y * vel.y;
-                        if (velLengthSq < 0.01f){
-                            balls[i].killCounter++;
-                        } else {
-                            balls[i].killCounter=0;
-                        }
-                        // Reset kill counter near flippers
-                        if (pos.y > 118){
-                            balls[i].killCounter=0;
-                        }
-                        if (pos.y > 170+ballSize || balls[i].killCounter > 100){
-                            balls[i].active = 0;
-                            b2DestroyBody(balls[i].body);
-                            game.numBalls--;
-                            //Check number of lives and send to score if necessary
-                            if (game.numBalls == 0){
-                                if (game.numLives >= 1){
-                                    game.numLives -= 1;
-                                    inputSetNumBalls(input,game.numLives);
-                                }
+                    if (balls[i].active != 1){
+                        continue; // Skip inactive balls early
+                    }
+                    // Cache position and velocity for this ball - values don't change mid-iteration
+                    b2Vec2 pos = b2Body_GetPosition(balls[i].body);
+                    b2Vec2 vel = b2Body_GetLinearVelocity(balls[i].body);
+                    float velLengthSq = vel.x * vel.x + vel.y * vel.y;
+                    if (velLengthSq < 0.01f){
+                        balls[i].killCounter++;
+                    } else {
+                        balls[i].killCounter=0;
+                    }
+                    // Reset kill counter near flippers
+                    if (pos.y > 118){
+                        balls[i].killCounter=0;
+                    }
+                    if (pos.y > 170+ballSize || balls[i].killCounter > 100){
+                        balls[i].active = 0;
+                        b2DestroyBody(balls[i].body);
+                        game.numBalls--;
+                        //Check number of lives and send to score if necessary
+                        if (game.numBalls == 0){
+                            if (game.numLives >= 1){
+                                game.numLives -= 1;
+                                inputSetNumBalls(input,game.numLives);
                             }
                         }
                     }
@@ -332,12 +307,18 @@ int main(void){
 
                 //Update ball trails
                 for (int i = 0; i < maxBalls; i++){
-                    if (balls[i].active == 1){
-                        b2Vec2 pos = b2Body_GetPosition(balls[i].body);
-                        balls[i].locationHistoryX[balls[i].trailStartIndex] = pos.x;
-                        balls[i].locationHistoryY[balls[i].trailStartIndex] = pos.y;
-                        balls[i].trailStartIndex = (balls[i].trailStartIndex + 1) % 16;
+                    if (balls[i].active != 1){
+                        continue; // Skip inactive balls early
                     }
+                    // Bounds check trailStartIndex before array access
+                    if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= 16) {
+                        TraceLog(LOG_WARNING, "Ball %d trailStartIndex out of bounds: %d, clamping to 0", i, balls[i].trailStartIndex);
+                        balls[i].trailStartIndex = 0;
+                    }
+                    b2Vec2 pos = b2Body_GetPosition(balls[i].body);
+                    balls[i].locationHistoryX[balls[i].trailStartIndex] = pos.x;
+                    balls[i].locationHistoryY[balls[i].trailStartIndex] = pos.y;
+                    balls[i].trailStartIndex = (balls[i].trailStartIndex + 1) % 16;
                 }
 
                 //handler lower bumpers
@@ -379,40 +360,43 @@ int main(void){
 
                 // If water height powerup active, apply buoyancy forces to balls.
                 if (game.waterHeight > 0){
+                    // Cache water Y position - doesn't change during loop iteration
                     float waterY = worldHeight * (1.0f - game.waterHeight);
 
                     for (int i = 0; i < maxBalls; i++){
-                        if (balls[i].active == 1){
-                            b2Vec2 pos = b2Body_GetPosition(balls[i].body);
-                            b2Vec2 vel = b2Body_GetLinearVelocity(balls[i].body);
-                            if (pos.y > waterY){
-                                float distUnderwater = fabs(waterY - pos.y);
-                                float bVely = -200.0f + -(distUnderwater * 40.0f);
-                                b2Vec2 force = {0, bVely};
-                                b2Body_ApplyForceToCenter(balls[i].body, force, true);
-                                // Apply special forces for flipper
-                                float flipperForce = -1000.0f;
-                                if (pos.x <= worldWidth / 2.0f && fabsf(deltaAngularVelocityLeft) > 0.0f){
-                                    b2Vec2 flipForce = {0, flipperForce};
-                                    b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
-                                }
-                                if (pos.x >= worldWidth / 2.0f && fabsf(deltaAngularVelocityRight) > 0.0f){
-                                    b2Vec2 flipForce = {0, flipperForce};
-                                    b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
-                                }
-                                if (balls[i].underwaterState == 0){
-                                    playWaterSplash(sound);
-                                    balls[i].underwaterState = 1;
-
-                                    // Kick the water ripple intensity on splash so the shader waves react
-                                    waterSystem.impactIntensity += 0.6f;
-                                    if (waterSystem.impactIntensity > 1.5f) {
-                                        waterSystem.impactIntensity = 1.5f;
-                                    }
-                                }
-                            } else {
-                                balls[i].underwaterState = 0;
+                        if (balls[i].active != 1){
+                            continue; // Skip inactive balls early
+                        }
+                        // Cache position and velocity for this ball - used multiple times in this iteration
+                        b2Vec2 pos = b2Body_GetPosition(balls[i].body);
+                        b2Vec2 vel = b2Body_GetLinearVelocity(balls[i].body);
+                        if (pos.y > waterY){
+                            float distUnderwater = fabs(waterY - pos.y);
+                            float bVely = -200.0f + -(distUnderwater * 40.0f);
+                            b2Vec2 force = {0, bVely};
+                            b2Body_ApplyForceToCenter(balls[i].body, force, true);
+                            // Apply special forces for flipper
+                            float flipperForce = -1000.0f;
+                            if (pos.x <= worldWidth / 2.0f && fabsf(deltaAngularVelocityLeft) > 0.0f){
+                                b2Vec2 flipForce = {0, flipperForce};
+                                b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
                             }
+                            if (pos.x >= worldWidth / 2.0f && fabsf(deltaAngularVelocityRight) > 0.0f){
+                                b2Vec2 flipForce = {0, flipperForce};
+                                b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
+                            }
+                            if (balls[i].underwaterState == 0){
+                                playWaterSplash(sound);
+                                balls[i].underwaterState = 1;
+
+                                // Kick the water ripple intensity on splash so the shader waves react
+                                waterSystem.impactIntensity += 0.6f;
+                                if (waterSystem.impactIntensity > 1.5f) {
+                                    waterSystem.impactIntensity = 1.5f;
+                                }
+                            }
+                        } else {
+                            balls[i].underwaterState = 0;
                         }
                     }
 
@@ -429,7 +413,9 @@ int main(void){
             TraceLog(LOG_WARNING,
                      "Physics fell behind: accumulatedTime=%lld, clamping",
                      accumulatedTime);
-            accumulatedTime = 0;
+            // Keep some accumulated time to prevent complete physics loss during
+            // temporary lag spikes. This allows partial catch-up next frame.
+            accumulatedTime = timestep * 2;
         }
 
         // If the high-level game state changed this frame, notify the Pico so it can

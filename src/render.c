@@ -40,7 +40,7 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
     DrawTexturePro(res->bgTex,(Rectangle){0,0,res->bgTex.width,res->bgTex.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
 
     if (game->redPowerupOverlay > 0.0f){
-        DrawTexturePro(res->redPowerupOverlay,(Rectangle){0,0,res->bgTex.width,res->bgTex.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,(Color){255,255,255,40.0*game->redPowerupOverlay});
+        DrawTexturePro(res->redPowerupOverlay,(Rectangle){0,0,res->bgTex.width,res->bgTex.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,(Color){255,255,255,(int)(redPowerupOverlayAlpha*game->redPowerupOverlay)});
     }
 
     // render bumpers which belong behind balls.
@@ -65,31 +65,43 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
     }
 
     // Render ball trails
+    // Early exit optimization: skip inactive balls at the start of the loop
     Ball *balls = game->balls;
     for (int i = 0; i < maxBalls; i++){
-        if (balls[i].active == 1){
-            for (int ii = 1; ii <= 16; ii++){
-                int index = (balls[i].trailStartIndex + ii - 1);
-                if (index >= 16){ index -= 16; }
-                float trailSize = ballSize * sqrt(ii/16.0f);
-                Color ballColor = (Color){255,183,0,255};
-                if (balls[i].type == 1){ ballColor = BLUE; }
-                if (game->slowMotion == 1){ ballColor = WHITE; }
-                DrawTexturePro(res->trailTex,(Rectangle){0,0,res->trailTex.width,res->trailTex.height},(Rectangle){balls[i].locationHistoryX[index] * worldToScreen,balls[i].locationHistoryY[index] * worldToScreen,trailSize * worldToScreen,trailSize * worldToScreen},(Vector2){(trailSize / 2.0) * worldToScreen,(trailSize / 2.0) * worldToScreen},0,ballColor);
+        if (balls[i].active != 1){
+            continue; // Skip inactive balls early
+        }
+        // Bounds check trailStartIndex before accessing trail history
+        if (balls[i].trailStartIndex < 0 || balls[i].trailStartIndex >= 16) {
+            TraceLog(LOG_WARNING, "Ball %d trailStartIndex out of bounds: %d, clamping to 0", i, balls[i].trailStartIndex);
+            balls[i].trailStartIndex = 0;
+        }
+        for (int ii = 1; ii <= 16; ii++){
+            int index = (balls[i].trailStartIndex + ii - 1);
+            if (index >= 16){ index -= 16; }
+            // Defensive clamp to prevent out-of-bounds access
+            if (index < 0) index = 0;
+            if (index >= 16) index = 15;
+            float trailSize = ballSize * sqrt(ii/16.0f);
+            Color ballColor = (Color){255,183,0,255};
+            if (balls[i].type == 1){ ballColor = BLUE; }
+            if (game->slowMotion == 1){ ballColor = WHITE; }
+            DrawTexturePro(res->trailTex,(Rectangle){0,0,res->trailTex.width,res->trailTex.height},(Rectangle){balls[i].locationHistoryX[index] * worldToScreen,balls[i].locationHistoryY[index] * worldToScreen,trailSize * worldToScreen,trailSize * worldToScreen},(Vector2){(trailSize / 2.0) * worldToScreen,(trailSize / 2.0) * worldToScreen},0,ballColor);
 
-            }
         }
     }
 
     //render balls
+    // Early exit optimization: skip inactive balls at the start of the loop
     for (int i = 0; i < maxBalls; i++){
-        if (balls[i].active == 1){
-            b2Vec2 pos = b2Body_GetPosition(balls[i].body);
-            Color ballColor = (Color){255,183,0,255};
-            if (balls[i].type == 1){ ballColor = BLUE; }
-            if (game->slowMotion == 1){ ballColor = WHITE; }
-            DrawTexturePro(res->ballTex,(Rectangle){0,0,res->ballTex.width,res->ballTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,ballSize * worldToScreen,ballSize * worldToScreen},(Vector2){(ballSize / 2.0) * worldToScreen,(ballSize / 2.0) * worldToScreen},0,ballColor);
+        if (balls[i].active != 1){
+            continue; // Skip inactive balls early
         }
+        b2Vec2 pos = b2Body_GetPosition(balls[i].body);
+        Color ballColor = (Color){255,183,0,255};
+        if (balls[i].type == 1){ ballColor = BLUE; }
+        if (game->slowMotion == 1){ ballColor = WHITE; }
+        DrawTexturePro(res->ballTex,(Rectangle){0,0,res->ballTex.width,res->ballTex.height},(Rectangle){pos.x * worldToScreen,pos.y * worldToScreen,ballSize * worldToScreen,ballSize * worldToScreen},(Vector2){(ballSize / 2.0) * worldToScreen,(ballSize / 2.0) * worldToScreen},0,ballColor);
     }
 
     // Render bumpers which belong in front of balls
@@ -223,19 +235,19 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
     }
 
     if (game->bluePowerupOverlay > 0.0f){
-        DrawRectangle(0,0,screenWidth,screenHeight,(Color){128,128,255,128*game->bluePowerupOverlay});
+        DrawRectangle(0,0,screenWidth,screenHeight,(Color){128,128,255,(int)(bluePowerupOverlayAlpha*game->bluePowerupOverlay)});
     }
 
     // Render ice powerup when active
     if (iceOverlayAlpha > 0.0f){
         BeginBlendMode(BLEND_ADDITIVE);
-        DrawTexturePro(res->iceOverlay,(Rectangle){0,0,res->iceOverlay.width,res->iceOverlay.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,(Color){255,255,255,128*iceOverlayAlpha});
+        DrawTexturePro(res->iceOverlay,(Rectangle){0,0,res->iceOverlay.width,res->iceOverlay.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,(Color){255,255,255,(int)(icePowerupOverlayAlpha*iceOverlayAlpha)});
         EndBlendMode();
     }
 
     if (game->numBalls == 0 && game->numLives > 0){
-        DrawRectangleRounded((Rectangle){108,600,screenWidth-238,80},0.1,16,(Color){0,0,0,100});
-        DrawRectangleRounded((Rectangle){112,604,screenWidth-242,76},0.1,16,(Color){0,0,0,100});
+        DrawRectangleRounded((Rectangle){ballReadyOverlayX,ballReadyOverlayY,screenWidth-238,ballReadyOverlayHeight},0.1,16,(Color){0,0,0,100});
+        DrawRectangleRounded((Rectangle){ballReadyOverlayX+ballReadyPadding,ballReadyOverlayY+ballReadyPadding,screenWidth-242,ballReadyOverlayHeight-ballReadyPadding},0.1,16,(Color){0,0,0,100});
 
         const int totalBalls = 3;
         int currentBall = totalBalls - game->numLives + 1;
@@ -249,17 +261,17 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
             res->font1,
             ballText,
             (Vector2){
-                screenWidth/2 - MeasureTextEx(res->font1, ballText, 40.0, 1.0).x/2 - 10,
-                610
+                screenWidth/2 - MeasureTextEx(res->font1, ballText, ballReadyTextSize, 1.0).x/2 - 10,
+                ballReadyTextY
             },
-            40,
+            ballReadyTextSize,
             1.0,
             WHITE
         );
-        DrawTextEx(res->font1, "Center Button to Launch!", (Vector2){screenWidth/2 - MeasureTextEx(res->font1,  "Center Button to Launch!", 20.0, 1.0).x/2  - 10,650}, 20, 1.0, WHITE);
+        DrawTextEx(res->font1, "Center Button to Launch!", (Vector2){screenWidth/2 - MeasureTextEx(res->font1,  "Center Button to Launch!", launchInstructionSize, 1.0).x/2  - 10,launchInstructionY}, launchInstructionSize, 1.0, WHITE);
 
-        for (int i = 0; i < 8; i++){
-            DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){screenWidth - 9,(i * 20) + 625+ (5 * sin(((i*100)+millis()-elapsedTimeStart)/200.0f)),20,20},(Vector2){16,16},-90,(Color){0,0,0,100});
+        for (int i = 0; i < arrowAnimCount; i++){
+            DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){screenWidth - 9,(i * arrowAnimSpacing) + arrowAnimBaseY+ (5 * sin(((i*100)+millis()-elapsedTimeStart)/200.0f)),20,20},(Vector2){16,16},-90,(Color){0,0,0,100});
         }
     }
 
