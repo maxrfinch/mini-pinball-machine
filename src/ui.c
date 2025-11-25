@@ -72,6 +72,47 @@ static float roundToTenth(float value) {
     return roundf(value * 10.0f) / 10.0f;
 }
 
+// ============================================================================
+// Mouse Coordinate Transformation
+// ============================================================================
+//
+// Transforms mouse coordinates from physical screen space to virtual canvas space.
+// This is needed because the game renders to a virtual 450x800 canvas which is
+// then scaled to fit the physical screen with letterboxing.
+//
+// The transformation reverses the scaling applied in main.c during rendering:
+//   1. Get physical screen dimensions and calculate scale factor
+//   2. Calculate letterbox offsets
+//   3. Transform mouse position back to virtual canvas coordinates
+//
+// Returns the mouse position in virtual canvas space (0,0 to screenWidth,screenHeight)
+// ============================================================================
+static Vector2 UI_GetVirtualMousePosition(void) {
+    Vector2 mousePos = GetMousePosition();
+    
+    // Get physical screen dimensions
+    int renderW = GetRenderWidth();
+    int renderH = GetRenderHeight();
+    
+    // Calculate the same scale and offset used in main.c rendering
+    float scaleX = (float)renderW / (float)screenWidth;
+    float scaleY = (float)renderH / (float)screenHeight;
+    float scale = (scaleX < scaleY) ? scaleX : scaleY;
+    
+    float drawW = (float)screenWidth * scale;
+    float drawH = (float)screenHeight * scale;
+    
+    float offsetX = (renderW - drawW) * 0.5f;
+    float offsetY = (renderH - drawH) * 0.5f;
+    
+    // Transform mouse position from physical to virtual space
+    Vector2 virtualPos;
+    virtualPos.x = (mousePos.x - offsetX) / scale;
+    virtualPos.y = (mousePos.y - offsetY) / scale;
+    
+    return virtualPos;
+}
+
 // Debug UI toggle - press Tab to show button hitboxes
 static int debugUIEnabled = 0;
 
@@ -247,7 +288,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
 
         // Handle touchscreen button input (transparent overlays)
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 mousePos = GetMousePosition();
+            Vector2 mousePos = UI_GetVirtualMousePosition();
             
             if (CheckCollisionPointRec(mousePos, volMinusRect)) {
                 // Volume down by 10%
@@ -354,6 +395,18 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             // Draw quit button hitbox
             DrawRectangleLinesEx(quitRect, 2, GREEN);
             DrawTextEx(res->font1, "QUIT", (Vector2){quitRect.x + 2, quitRect.y + 2}, 12.0f, 1.0f, GREEN);
+            
+            // Draw mouse cursor position for debugging
+            Vector2 virtualMousePos = UI_GetVirtualMousePosition();
+            char mouseDebugText[64];
+            sprintf(mouseDebugText, "Mouse: %.0f, %.0f", virtualMousePos.x, virtualMousePos.y);
+            DrawTextEx(res->font1, mouseDebugText, (Vector2){10, 10}, 14.0f, 1.0f, YELLOW);
+            
+            // Draw a crosshair at the transformed mouse position
+            DrawLineEx((Vector2){virtualMousePos.x - 10, virtualMousePos.y}, 
+                      (Vector2){virtualMousePos.x + 10, virtualMousePos.y}, 2, YELLOW);
+            DrawLineEx((Vector2){virtualMousePos.x, virtualMousePos.y - 10}, 
+                      (Vector2){virtualMousePos.x, virtualMousePos.y + 10}, 2, YELLOW);
         }
         
     }
