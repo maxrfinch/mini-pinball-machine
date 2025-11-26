@@ -178,25 +178,22 @@ elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
     
     # On Raspberry Pi, add libcamera and libjpeg
     if(IS_RPI)
-        # Find libcamera
-        find_library(LIBCAMERA_LIB NAMES camera PATHS /usr/lib /usr/local/lib)
-        find_library(LIBCAMERA_BASE_LIB NAMES camera-base PATHS /usr/lib /usr/local/lib)
+        # Use pkg-config to locate libcamera
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LIBCAMERA REQUIRED libcamera)
+
+        # Add libcamera libraries from pkg-config
+        list(APPEND LINUX_LIBS ${LIBCAMERA_LIBRARIES})
+
+        # Find libjpeg for image encoding (if available)
         find_library(LIBJPEG_LIB NAMES jpeg PATHS /usr/lib /usr/local/lib)
-        
-        if(LIBCAMERA_LIB AND LIBCAMERA_BASE_LIB)
-            list(APPEND LINUX_LIBS ${LIBCAMERA_LIB} ${LIBCAMERA_BASE_LIB})
-            message(STATUS "Found libcamera: ${LIBCAMERA_LIB}")
-        else()
-            message(WARNING "libcamera not found - camera features will be disabled")
-        endif()
-        
         if(LIBJPEG_LIB)
             list(APPEND LINUX_LIBS ${LIBJPEG_LIB})
         endif()
 
-        # Add libcamera headers from local checkout (../libcamera/libcamera/libcamera.h)
+        # Add libcamera include directories from pkg-config
         target_include_directories(${PROJECT_NAME} PRIVATE
-            ${CMAKE_SOURCE_DIR}/../libcamera
+            ${LIBCAMERA_INCLUDE_DIRS}
         )
     endif()
     
