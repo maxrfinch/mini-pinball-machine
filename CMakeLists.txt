@@ -32,11 +32,6 @@ set(SRC_FILES
     src/camera_wrapper.cpp
 )
 
-# On Raspberry Pi, add the C++ libcamera wrapper
-if(UNIX AND NOT APPLE)
-    list(APPEND SRC_FILES src/camera_libcamera.cpp)
-endif()
-
 # Platform-specific input manager implementation
 if(APPLE)
     list(APPEND SRC_FILES src/inputManagerMac.c)
@@ -183,27 +178,6 @@ elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
         pthread
         dl
     )
-    
-    # On Raspberry Pi, add libcamera and libjpeg
-    if(IS_RPI)
-        # Use pkg-config to locate libcamera (headers + libs)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(LIBCAMERA REQUIRED libcamera)
-
-        # Add libcamera libraries from pkg-config
-        list(APPEND LINUX_LIBS ${LIBCAMERA_LIBRARIES})
-
-        # Propagate libcamera's compiler flags (includes, etc.)
-        target_compile_options(${PROJECT_NAME} PRIVATE
-            ${LIBCAMERA_CFLAGS}
-        )
-
-        # Find libjpeg for image encoding (if available)
-        find_library(LIBJPEG_LIB NAMES jpeg PATHS /usr/lib /usr/local/lib)
-        if(LIBJPEG_LIB)
-            list(APPEND LINUX_LIBS ${LIBJPEG_LIB})
-        endif()
-    endif()
     
     target_link_libraries(${PROJECT_NAME} PRIVATE ${LINUX_LIBS})
 
