@@ -318,6 +318,53 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
         return 0;
     }
     
+    // Create Photos directory using POSIX mkdir
+    mkdir("Resources", 0755);
+    mkdir("Resources/Photos", 0755);
+    
+    // Instant capture: Use the current JPEG frame from the preview buffer
+    // This avoids stopping the preview and launching rpicam-still (saves ~1 second)
+    // Note: Thread safety is handled by the single-threaded game loop design.
+    // Camera_UpdatePreview() and Camera_CapturePhoto() are called from the same thread.
+    if (camera->preview_active && g_camera_internal->jpeg_size > 0) {
+        // Decode JPEG from the preview buffer
+        Image img = LoadImageFromMemory(".jpg", g_camera_internal->jpeg_buffer, 
+                                        (int)g_camera_internal->jpeg_size);
+        if (img.data == NULL) {
+            TraceLog(LOG_ERROR, "CAMERA: Failed to decode JPEG from preview buffer");
+            return 0;
+        }
+        
+        // Crop to center square
+        int cropSize = (img.width < img.height) ? img.width : img.height;
+        int cropX = (img.width - cropSize) / 2;
+        int cropY = (img.height - cropSize) / 2;
+        ImageCrop(&img, (Rectangle){(float)cropX, (float)cropY, (float)cropSize, (float)cropSize});
+        
+        // Resize to 150x150
+        ImageResize(&img, 150, 150);
+        
+        // Save the image (ExportImage auto-detects format from extension)
+        if (!ExportImage(img, filename)) {
+            TraceLog(LOG_ERROR, "CAMERA: Failed to save image to %s", filename);
+            UnloadImage(img);
+            return 0;
+        }
+        
+        UnloadImage(img);
+        
+        if (access(filename, F_OK) != 0) {
+            TraceLog(LOG_ERROR, "CAMERA: Photo file not created: %s", filename);
+            return 0;
+        }
+        
+        TraceLog(LOG_INFO, "CAMERA: Photo saved to %s (instant capture from preview)", filename);
+        return 1;
+    }
+    
+    // Fallback: If preview is not active or no valid frame, use rpicam-still
+    TraceLog(LOG_WARNING, "CAMERA: No preview frame available, falling back to rpicam-still");
+    
     // Stop the preview process temporarily to free the camera for capture
     int was_previewing = camera->preview_active;
     if (was_previewing) {
@@ -332,10 +379,6 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
         }
         usleep(100000);  // Wait 100ms for camera to be fully released
     }
-    
-    // Create Photos directory using POSIX mkdir
-    mkdir("Resources", 0755);
-    mkdir("Resources/Photos", 0755);
     
     // Determine output format from filename extension
     const char *ext = strrchr(filename, '.');
