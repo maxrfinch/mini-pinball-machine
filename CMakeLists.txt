@@ -191,9 +191,10 @@ elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
             list(APPEND LINUX_LIBS ${LIBJPEG_LIB})
         endif()
 
-        # Add libcamera include directories from pkg-config
+        # Add libcamera include directories from pkg-config and common RPi paths
         target_include_directories(${PROJECT_NAME} PRIVATE
             ${LIBCAMERA_INCLUDE_DIRS}
+            /usr/include/aarch64-linux-gnu
         )
     endif()
     
