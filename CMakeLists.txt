@@ -107,8 +107,16 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 # ---------------------------------------------------------------------------
 # Resources: copy data files next to the executable
 # ---------------------------------------------------------------------------
-set(GAME_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/Resources")
-if (EXISTS "${GAME_RESOURCES_DIR}")
+# Prefer lowercase 'resources' (actual folder), fall back to 'Resources'
+if (EXISTS "${CMAKE_SOURCE_DIR}/resources")
+    set(GAME_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/resources")
+elseif (EXISTS "${CMAKE_SOURCE_DIR}/Resources")
+    set(GAME_RESOURCES_DIR "${CMAKE_SOURCE_DIR}/Resources")
+else()
+    set(GAME_RESOURCES_DIR "")
+endif()
+
+if (GAME_RESOURCES_DIR)
     # First, copy the Resources tree as-is
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -178,24 +186,23 @@ elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
     
     # On Raspberry Pi, add libcamera and libjpeg
     if(IS_RPI)
-        # Use pkg-config to locate libcamera
+        # Use pkg-config to locate libcamera (headers + libs)
         find_package(PkgConfig REQUIRED)
         pkg_check_modules(LIBCAMERA REQUIRED libcamera)
 
         # Add libcamera libraries from pkg-config
         list(APPEND LINUX_LIBS ${LIBCAMERA_LIBRARIES})
 
+        # Propagate libcamera's compiler flags (includes, etc.)
+        target_compile_options(${PROJECT_NAME} PRIVATE
+            ${LIBCAMERA_CFLAGS}
+        )
+
         # Find libjpeg for image encoding (if available)
         find_library(LIBJPEG_LIB NAMES jpeg PATHS /usr/lib /usr/local/lib)
         if(LIBJPEG_LIB)
             list(APPEND LINUX_LIBS ${LIBJPEG_LIB})
         endif()
-
-        # Add libcamera include directories from pkg-config and common RPi paths
-        target_include_directories(${PROJECT_NAME} PRIVATE
-            ${LIBCAMERA_INCLUDE_DIRS}
-            /usr/include/aarch64-linux-gnu
-        )
     endif()
     
     target_link_libraries(${PROJECT_NAME} PRIVATE ${LINUX_LIBS})
