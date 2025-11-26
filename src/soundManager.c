@@ -107,7 +107,7 @@ static float haptics_generate_sample(float sampleRate) {
             // ~60 Hz sine, 12.5ms duration, amplitude 0.2
             const float duration = 0.0125f;
             const float freq = 60.0f;
-            const float amp = 0.2f;
+            const float amp = 0.6f;
             
             if (g_haptics.t < duration) {
                 output = amp * sinf(g_haptics.phase);
@@ -122,7 +122,7 @@ static float haptics_generate_sample(float sampleRate) {
             // ~60 Hz square pulse, 20ms duration, amplitude 0.4
             const float duration = 0.020f;
             const float freq = 60.0f;
-            const float amp = 0.4f;
+            const float amp = 0.8f;
             
             if (g_haptics.t < duration) {
                 // Square wave (clipped sine)
@@ -140,7 +140,7 @@ static float haptics_generate_sample(float sampleRate) {
             const float duration = 0.090f;
             const float freq_start = 40.0f;
             const float freq_end = 60.0f;
-            const float peak_amp = 0.4f;
+            const float peak_amp = 1.0f;
             
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;
@@ -161,7 +161,7 @@ static float haptics_generate_sample(float sampleRate) {
             // ~55 Hz sine, 22.5ms duration, amplitude 0.27
             const float duration = 0.0225f;
             const float freq = 55.0f;
-            const float amp = 0.27f;
+            const float amp = 0.67f;
             
             if (g_haptics.t < duration) {
                 output = amp * sinf(g_haptics.phase);
@@ -178,8 +178,8 @@ static float haptics_generate_sample(float sampleRate) {
             const float gap_duration = 0.008f;
             const float pulse2_duration = 0.011f;
             const float freq = 50.0f;
-            const float amp1 = 0.45f;
-            const float amp2 = 0.25f;
+            const float amp1 = 0.85f;
+            const float amp2 = 0.65f;
             
             if (g_haptics.t < pulse1_duration) {
                 // First pulse
@@ -213,21 +213,21 @@ static float haptics_generate_sample(float sampleRate) {
                 // Segment 1: frequency sweep with moderate amplitude
                 float progress = g_haptics.t / seg1_duration;
                 float freq = 40.0f + (80.0f - 40.0f) * progress;
-                float amp = 0.45f;
+                float amp = 0.85f;
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < seg1_duration + seg2_duration) {
                 // Segment 2: sustain at 70Hz
                 float freq = 70.0f;
-                float amp = 0.35f;
+                float amp = 0.75f;
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < seg1_duration + seg2_duration + seg3_duration) {
                 // Segment 3: tail at 50Hz
                 float freq = 50.0f;
-                float amp = 0.25f;
+                float amp = 0.65f;
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
