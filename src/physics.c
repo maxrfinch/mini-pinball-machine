@@ -454,6 +454,14 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     const float bumperSize = 10.0f;
     const float smallBumperSize = 4.0f;
     const float bumperBounciness = 1.8f;
+    
+    // Check if bumpers are already allocated (prevent double-initialization)
+    if (game->bumpers != NULL) {
+        printf("WARNING: physics_init called with already-allocated bumpers. Freeing old allocation.\n");
+        free(game->bumpers);
+        game->bumpers = NULL;
+    }
+    
     Bumper* bumpers = malloc(numBumpers * sizeof(Bumper));
     if (bumpers == NULL) {
         printf("ERROR: Failed to allocate memory for bumpers\n");
