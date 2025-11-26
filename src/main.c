@@ -260,7 +260,12 @@ int main(void){
                         // game over condition
                         if (game.transitionState == 0){
                             game.transitionState = 1;
-                            game.transitionTarget = TRANSITION_GAME_OVER;
+                            // Check if score is in top 3 to determine which game over screen to show
+                            if (isScoreInTopN(scores, game.gameScore, 3)) {
+                                game.transitionTarget = TRANSITION_GAME_OVER_TOP3;
+                            } else {
+                                game.transitionTarget = TRANSITION_GAME_OVER;
+                            }
                             inputSetGameState(input,STATE_GAME_OVER);
                         }
                     }
@@ -461,6 +466,10 @@ int main(void){
         if (game.gameState == 2){
             // Game Over
             UI_DrawGameOver(&game, &resources, menuPinballs, 16, nameString, elapsedTimeStart, shaderSeconds);
+        }
+        if (game.gameState == 3){
+            // Game Over - Top 3
+            UI_DrawGameOverTop3(&game, &resources, menuPinballs, 16, nameString, elapsedTimeStart, shaderSeconds);
         }
         if (game.gameState == 5){
             ClearBackground(WHITE);

@@ -23,6 +23,7 @@ typedef struct {
 ScoreHelper *initScores();
 void submitScore(ScoreHelper *helper, char *name, int score);
 ScoreObject *getRankedScore(ScoreHelper *helper, int rank);
+int isScoreInTopN(ScoreHelper *helper, int score, int n);
 void shutdownScores(ScoreHelper *helper);
 int sqlCallback(void *, int, char **, char **);
 

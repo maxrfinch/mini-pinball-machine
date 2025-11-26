@@ -57,14 +57,16 @@ typedef struct {
 typedef enum {
     TRANSITION_TO_MENU,
     TRANSITION_TO_GAME,
-    TRANSITION_GAME_OVER
+    TRANSITION_GAME_OVER,
+    TRANSITION_GAME_OVER_TOP3
 } TransitionAction;
 
 typedef enum {
     SCENE_RAYLIB_TITLE,   // Initial raylib loading screen
     SCENE_MENU,           // Main menu/attract mode
     SCENE_GAME,           // Active gameplay
-    SCENE_GAME_OVER       // Score entry screen
+    SCENE_GAME_OVER,      // Score entry screen (regular)
+    SCENE_GAME_OVER_TOP3  // Score entry screen (top 3 achievement)
 } SceneId;
 
 typedef enum {

@@ -101,6 +101,31 @@ ScoreObject *getRankedScore(ScoreHelper *helper, int rank){
     }
 }
 
+// Check if a score would be in the top N scores
+int isScoreInTopN(ScoreHelper *helper, int score, int n) {
+    if (helper->initialized != 1 || n <= 0 || n > MAX_TOP_SCORES) {
+        return 0;
+    }
+    
+    // Ensure scores are up to date
+    if (helper->scoresUpdated == 0) {
+        // Force update by calling getRankedScore for rank 1
+        getRankedScore(helper, 1);
+    }
+    
+    // If we have fewer than n scores, the new score automatically qualifies
+    if (helper->numTopScores < n) {
+        return 1;
+    }
+    
+    // Check if score is greater than the nth score
+    if (n <= helper->numTopScores) {
+        return score > helper->scores[n - 1].scoreValue;
+    }
+    
+    return 0;
+}
+
 // Called for each row in the score query
 int sqlCallback(void *helper, int argc, char **argv, char **azColName){
     ScoreHelper *tempHelper = (ScoreHelper*)helper;
