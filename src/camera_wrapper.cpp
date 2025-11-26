@@ -28,6 +28,11 @@ struct CameraSystemInternal {
     size_t preview_buffer_size;
     Image preview_image;
     double last_frame_time;
+    
+    // JPEG frame parsing state (moved here for thread safety)
+    unsigned char jpeg_buffer[64 * 1024];  // 64KB buffer for JPEG frames
+    size_t jpeg_size;
+    int in_frame;
 };
 
 #endif
@@ -42,6 +47,63 @@ static CameraSystemInternal *g_camera_internal = nullptr;
 static int check_camera_available(void) {
     int ret = system("libcamera-hello --list-cameras 2>/dev/null | grep -q 'Available cameras'");
     return (ret == 0) ? 1 : 0;
+}
+
+// Helper to terminate a child process with proper cleanup
+// Waits up to timeout_ms for graceful termination before force killing
+static void terminate_child_process(pid_t pid, int timeout_ms) {
+    if (pid <= 0) return;
+    
+    // First try SIGUSR2 (graceful stop for libcamera)
+    kill(pid, SIGUSR2);
+    
+    // Wait for process to exit with timeout
+    int waited = 0;
+    int status;
+    while (waited < timeout_ms) {
+        pid_t result = waitpid(pid, &status, WNOHANG);
+        if (result == pid) {
+            return;  // Process exited
+        }
+        if (result == -1) {
+            return;  // Error (process doesn't exist)
+        }
+        usleep(10000);  // 10ms
+        waited += 10;
+    }
+    
+    // Try SIGTERM
+    kill(pid, SIGTERM);
+    usleep(50000);  // 50ms grace period
+    
+    // Check again
+    if (waitpid(pid, &status, WNOHANG) == pid) {
+        return;
+    }
+    
+    // Force kill with SIGKILL
+    kill(pid, SIGKILL);
+    waitpid(pid, &status, 0);  // Blocking wait to reap zombie
+}
+
+// Helper to validate filename contains only safe characters
+static int is_safe_filename(const char *filename) {
+    if (!filename || !*filename) return 0;
+    
+    // Check for path traversal
+    if (strstr(filename, "..")) return 0;
+    
+    // Allow alphanumeric, underscore, hyphen, dot, and forward slash
+    for (const char *p = filename; *p; p++) {
+        char c = *p;
+        if (!((c >= 'a' && c <= 'z') || 
+              (c >= 'A' && c <= 'Z') || 
+              (c >= '0' && c <= '9') ||
+              c == '_' || c == '-' || c == '.' || c == '/')) {
+            return 0;
+        }
+    }
+    return 1;
 }
 #endif
 
@@ -84,6 +146,8 @@ int Camera_Init(CameraSystem *camera) {
     g_camera_internal->preview_buffer_size = 0;
     g_camera_internal->preview_image = (Image){0};
     g_camera_internal->last_frame_time = 0;
+    g_camera_internal->jpeg_size = 0;
+    g_camera_internal->in_frame = 0;
     snprintf(g_camera_internal->preview_pipe_path, sizeof(g_camera_internal->preview_pipe_path),
              "/tmp/pinball_camera_preview_%d", getpid());
     
@@ -187,29 +251,39 @@ void Camera_UpdatePreview(CameraSystem *camera) {
         }
     }
     
-    // Read JPEG frame data from pipe
-    static unsigned char jpeg_buffer[64 * 1024];  // 64KB should be enough for a frame
-    static size_t jpeg_size = 0;
-    static int in_frame = 0;
-    
+    // Read JPEG frame data from pipe using per-instance state (thread-safe)
     unsigned char byte;
     while (read(g_camera_internal->preview_pipe_fd, &byte, 1) == 1) {
         // Look for JPEG start marker (0xFF 0xD8)
-        if (!in_frame && jpeg_size > 0 && jpeg_buffer[jpeg_size - 1] == 0xFF && byte == 0xD8) {
-            // Found start of new frame - reset
-            jpeg_size = 1;
-            jpeg_buffer[0] = 0xFF;
-            in_frame = 1;
+        if (!g_camera_internal->in_frame && 
+            g_camera_internal->jpeg_size > 0 && 
+            g_camera_internal->jpeg_buffer[g_camera_internal->jpeg_size - 1] == 0xFF && 
+            byte == 0xD8) {
+            // Found start of new frame - store both marker bytes
+            g_camera_internal->jpeg_buffer[0] = 0xFF;
+            g_camera_internal->jpeg_buffer[1] = 0xD8;
+            g_camera_internal->jpeg_size = 2;
+            g_camera_internal->in_frame = 1;
+            continue;  // Don't add 0xD8 again below
         }
         
-        if (jpeg_size < sizeof(jpeg_buffer)) {
-            jpeg_buffer[jpeg_size++] = byte;
+        // Check for buffer overflow - reset frame parsing if buffer full
+        if (g_camera_internal->jpeg_size >= sizeof(g_camera_internal->jpeg_buffer)) {
+            g_camera_internal->jpeg_size = 0;
+            g_camera_internal->in_frame = 0;
+            continue;
         }
+        
+        g_camera_internal->jpeg_buffer[g_camera_internal->jpeg_size++] = byte;
         
         // Look for JPEG end marker (0xFF 0xD9)
-        if (in_frame && jpeg_size >= 2 && jpeg_buffer[jpeg_size - 2] == 0xFF && byte == 0xD9) {
+        if (g_camera_internal->in_frame && 
+            g_camera_internal->jpeg_size >= 2 && 
+            g_camera_internal->jpeg_buffer[g_camera_internal->jpeg_size - 2] == 0xFF && 
+            byte == 0xD9) {
             // Complete frame received - decode it
-            Image img = LoadImageFromMemory(".jpg", jpeg_buffer, jpeg_size);
+            Image img = LoadImageFromMemory(".jpg", g_camera_internal->jpeg_buffer, 
+                                           (int)g_camera_internal->jpeg_size);
             if (img.data != NULL) {
                 // Crop to square (center crop)
                 int cropSize = (img.width < img.height) ? img.width : img.height;
@@ -231,8 +305,8 @@ void Camera_UpdatePreview(CameraSystem *camera) {
             }
             
             // Reset for next frame
-            jpeg_size = 0;
-            in_frame = 0;
+            g_camera_internal->jpeg_size = 0;
+            g_camera_internal->in_frame = 0;
         }
     }
 #endif
@@ -244,22 +318,25 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
 #if defined(PLATFORM_RPI)
     if (!g_camera_internal) return 0;
     
+    // Validate filename for safety
+    if (!is_safe_filename(filename)) {
+        TraceLog(LOG_ERROR, "CAMERA: Invalid filename: %s", filename);
+        return 0;
+    }
+    
     // Stop the preview process temporarily to free the camera for capture
     int was_previewing = camera->preview_active;
     if (was_previewing) {
-        // Stop preview process
+        // Stop preview process with proper cleanup
         if (g_camera_internal->preview_pid > 0) {
-            kill(g_camera_internal->preview_pid, SIGUSR2);  // Signal to stop
-            usleep(100000);  // Wait 100ms for process to stop
-            kill(g_camera_internal->preview_pid, SIGTERM);  // Force stop if needed
-            waitpid(g_camera_internal->preview_pid, NULL, WNOHANG);
+            terminate_child_process(g_camera_internal->preview_pid, 200);
             g_camera_internal->preview_pid = -1;
         }
         if (g_camera_internal->preview_pipe_fd >= 0) {
             close(g_camera_internal->preview_pipe_fd);
             g_camera_internal->preview_pipe_fd = -1;
         }
-        usleep(200000);  // Wait 200ms for camera to be fully released
+        usleep(100000);  // Wait 100ms for camera to be fully released
     }
     
     // Create Photos directory using POSIX mkdir
@@ -270,29 +347,40 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
     const char *ext = strrchr(filename, '.');
     int is_png = (ext && strcasecmp(ext, ".png") == 0);
     
-    // Capture using libcamera-still
-    // Use a temporary JPEG file, then convert to PNG if needed
+    // Create secure temporary file for JPEG capture
     char temp_file[512];
-    char cmd[1024];
+    int temp_fd = -1;
     
     if (is_png) {
-        // Capture to temp JPEG first, then convert
-        snprintf(temp_file, sizeof(temp_file), "/tmp/pinball_capture_%d.jpg", getpid());
-        snprintf(cmd, sizeof(cmd),
-                 "libcamera-still --immediate --nopreview --timeout 500 "
-                 "--width 640 --height 480 "
-                 "-e jpg "
-                 "-o '%s' 2>/dev/null",
-                 temp_file);
-    } else {
-        // Direct JPEG output
-        snprintf(cmd, sizeof(cmd),
-                 "libcamera-still --immediate --nopreview --timeout 500 "
-                 "--width 640 --height 480 "
-                 "-e jpg "
-                 "-o '%s' 2>/dev/null",
-                 filename);
+        // Use mkstemp for secure temp file creation
+        snprintf(temp_file, sizeof(temp_file), "/tmp/pinball_capture_XXXXXX");
+        temp_fd = mkstemp(temp_file);
+        if (temp_fd == -1) {
+            TraceLog(LOG_ERROR, "CAMERA: Failed to create temp file: %s", strerror(errno));
+            if (was_previewing) {
+                Camera_StartPreview(camera);
+            }
+            return 0;
+        }
+        close(temp_fd);  // Close immediately, we just need the unique name
+        
+        // Append .jpg extension
+        char temp_file_jpg[520];
+        snprintf(temp_file_jpg, sizeof(temp_file_jpg), "%s.jpg", temp_file);
+        rename(temp_file, temp_file_jpg);
+        strncpy(temp_file, temp_file_jpg, sizeof(temp_file) - 1);
+        temp_file[sizeof(temp_file) - 1] = '\0';
     }
+    
+    // Build command - temp_file is safe (from mkstemp), filename is validated
+    char cmd[1024];
+    const char *output_file = is_png ? temp_file : filename;
+    snprintf(cmd, sizeof(cmd),
+             "libcamera-still --immediate --nopreview --timeout 500 "
+             "--width 640 --height 480 "
+             "-e jpg "
+             "-o %s 2>/dev/null",
+             output_file);
     
     TraceLog(LOG_DEBUG, "CAMERA: Running capture command: %s", cmd);
     int ret = system(cmd);
@@ -364,12 +452,9 @@ void Camera_StopPreview(CameraSystem *camera) {
     
 #if defined(PLATFORM_RPI)
     if (camera->preview_active && g_camera_internal) {
-        // Stop preview process
+        // Stop preview process with proper cleanup
         if (g_camera_internal->preview_pid > 0) {
-            kill(g_camera_internal->preview_pid, SIGUSR2);  // Signal to stop
-            usleep(50000);  // Wait 50ms
-            kill(g_camera_internal->preview_pid, SIGTERM);  // Force stop
-            waitpid(g_camera_internal->preview_pid, NULL, WNOHANG);
+            terminate_child_process(g_camera_internal->preview_pid, 150);
             g_camera_internal->preview_pid = -1;
         }
         
@@ -381,6 +466,10 @@ void Camera_StopPreview(CameraSystem *camera) {
         
         // Remove pipe file
         unlink(g_camera_internal->preview_pipe_path);
+        
+        // Reset JPEG parsing state
+        g_camera_internal->jpeg_size = 0;
+        g_camera_internal->in_frame = 0;
         
         // Unload preview texture
         if (camera->preview_tex.id != 0) {
