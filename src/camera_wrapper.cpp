@@ -9,14 +9,12 @@
 #include <errno.h>
 
 #if defined(PLATFORM_RPI)
-#include "camera_libcamera.hpp"
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/wait.h>
 
-// Internal C++ instance (opaque to C code)
+// Internal state for camera system (opaque to C code)
 struct CameraSystemInternal {
-    LibcameraWrapper *wrapper;
     unsigned char *frame_buffer;
     size_t frame_size;
     
@@ -126,9 +124,6 @@ int Camera_Init(CameraSystem *camera) {
     
     // Clean up any existing instance
     if (g_camera_internal != nullptr) {
-        if (g_camera_internal->wrapper) {
-            delete g_camera_internal->wrapper;
-        }
         if (g_camera_internal->preview_buffer) {
             free(g_camera_internal->preview_buffer);
         }
@@ -137,7 +132,6 @@ int Camera_Init(CameraSystem *camera) {
     }
     
     g_camera_internal = new CameraSystemInternal();
-    g_camera_internal->wrapper = new LibcameraWrapper();
     g_camera_internal->frame_buffer = nullptr;
     g_camera_internal->frame_size = 0;
     g_camera_internal->preview_pid = -1;
@@ -150,11 +144,6 @@ int Camera_Init(CameraSystem *camera) {
     g_camera_internal->in_frame = 0;
     snprintf(g_camera_internal->preview_pipe_path, sizeof(g_camera_internal->preview_pipe_path),
              "/tmp/pinball_camera_preview_%d", getpid());
-    
-    if (!g_camera_internal->wrapper->init()) {
-        TraceLog(LOG_WARNING, "CAMERA: Failed to initialize libcamera wrapper, using command fallback");
-        // Continue anyway - we can still use command-line tools
-    }
     
     camera->initialized = 1;
     
@@ -489,10 +478,6 @@ void Camera_StopPreview(CameraSystem *camera) {
             UnloadTexture(camera->preview_tex);
             camera->preview_tex = (Texture2D){0};
         }
-        
-        if (g_camera_internal->wrapper) {
-            g_camera_internal->wrapper->stopPreview();
-        }
     }
     camera->preview_active = 0;
     TraceLog(LOG_INFO, "CAMERA: Preview stopped");
@@ -507,10 +492,6 @@ void Camera_Shutdown(CameraSystem *camera) {
     Camera_StopPreview(camera);
     
     if (camera->initialized && g_camera_internal) {
-        if (g_camera_internal->wrapper) {
-            g_camera_internal->wrapper->shutdown();
-            delete g_camera_internal->wrapper;
-        }
         if (g_camera_internal->frame_buffer) {
             free(g_camera_internal->frame_buffer);
         }
