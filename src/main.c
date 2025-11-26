@@ -409,8 +409,8 @@ int main(void){
 
                 }
             }
-            if (game.gameState == 2){
-                // Game over - delegate to scoreboard update
+            if (game.gameState == 2 || game.gameState == 3){
+                // Game over (both regular and top 3) - delegate to scoreboard update
                 Scoreboard_Update(&game, input, scores, nameString);
             }
         }
@@ -439,6 +439,10 @@ int main(void){
                     break;
                 case 2:
                     // Game over / scoreboard state
+                    inputSetGameState(input, STATE_GAME_OVER);
+                    break;
+                case 3:
+                    // Game over top 3 / scoreboard state
                     inputSetGameState(input, STATE_GAME_OVER);
                     break;
                 default:
