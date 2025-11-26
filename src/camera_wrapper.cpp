@@ -269,6 +269,7 @@ void Camera_UpdatePreview(CameraSystem *camera) {
         
         // Check for buffer overflow - reset frame parsing if buffer full
         if (g_camera_internal->jpeg_size >= sizeof(g_camera_internal->jpeg_buffer)) {
+            TraceLog(LOG_WARNING, "CAMERA: JPEG frame buffer overflow, dropping frame");
             g_camera_internal->jpeg_size = 0;
             g_camera_internal->in_frame = 0;
             continue;
@@ -364,10 +365,17 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
         }
         close(temp_fd);  // Close immediately, we just need the unique name
         
-        // Append .jpg extension
+        // Append .jpg extension - need to rename the file
         char temp_file_jpg[520];
         snprintf(temp_file_jpg, sizeof(temp_file_jpg), "%s.jpg", temp_file);
-        rename(temp_file, temp_file_jpg);
+        if (rename(temp_file, temp_file_jpg) != 0) {
+            TraceLog(LOG_ERROR, "CAMERA: Failed to rename temp file: %s", strerror(errno));
+            unlink(temp_file);  // Clean up original temp file
+            if (was_previewing) {
+                Camera_StartPreview(camera);
+            }
+            return 0;
+        }
         strncpy(temp_file, temp_file_jpg, sizeof(temp_file) - 1);
         temp_file[sizeof(temp_file) - 1] = '\0';
     }
