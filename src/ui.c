@@ -578,6 +578,25 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
         for (int rank = 1; rank <= 3; rank++) {
             ScoreObject *score = getRankedScore(scores, rank);
             if (score != NULL && score->scoreName != NULL) {
+                // Validate scoreName doesn't contain path traversal or dangerous characters
+                // (names should only contain alphanumeric chars from the name entry screen)
+                int validName = 1;
+                for (const char *p = score->scoreName; *p && validName; p++) {
+                    char c = *p;
+                    // Allow only alphanumeric, space, underscore, hyphen
+                    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+                          (c >= '0' && c <= '9') || c == ' ' || c == '_' || c == '-')) {
+                        validName = 0;
+                    }
+                }
+                if (strstr(score->scoreName, "..") != NULL) {
+                    validName = 0;  // Reject path traversal attempts
+                }
+                
+                if (!validName) {
+                    continue;  // Skip this score if name is invalid
+                }
+                
                 // Construct filename: Resources/Photos/<NAME>_<SCORE>.png
                 char photoPath[256];
                 snprintf(photoPath, sizeof(photoPath), "Resources/Photos/%s_%d.png", 
@@ -594,7 +613,11 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                     
                     // Check if file exists before loading
                     if (access(photoPath, F_OK) == 0) {
-                        cachedTop3Photos[cacheIndex] = LoadTexture(photoPath);
+                        Texture2D loadedTex = LoadTexture(photoPath);
+                        // Verify texture loaded successfully
+                        if (loadedTex.id != 0) {
+                            cachedTop3Photos[cacheIndex] = loadedTex;
+                        }
                     }
                     
                     // Update cached path

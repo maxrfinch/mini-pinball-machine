@@ -324,6 +324,8 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
     
     // Instant capture: Use the current JPEG frame from the preview buffer
     // This avoids stopping the preview and launching rpicam-still (saves ~1 second)
+    // Note: Thread safety is handled by the single-threaded game loop design.
+    // Camera_UpdatePreview() and Camera_CapturePhoto() are called from the same thread.
     if (camera->preview_active && g_camera_internal->jpeg_size > 0) {
         // Decode JPEG from the preview buffer
         Image img = LoadImageFromMemory(".jpg", g_camera_internal->jpeg_buffer, 
