@@ -517,7 +517,7 @@ int main(void){
         }
         if (game.gameState == 3){
             // Game Over - Top 3
-            UI_DrawGameOverTop3(&game, &resources, menuPinballs, 16, nameString, elapsedTimeStart, shaderSeconds);
+            UI_DrawGameOverTop3(&game, &resources, menuPinballs, 16, nameString, scores, elapsedTimeStart, shaderSeconds);
         }
         if (game.gameState == 5){
             ClearBackground(WHITE);

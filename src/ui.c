@@ -5,8 +5,10 @@
 #include "raylib.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <sys/time.h>
+#include <unistd.h>
 
 // ============================================================================
 // UI Coordinate System
@@ -485,10 +487,15 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
 // Note: This function is intentionally duplicated from UI_DrawGameOver to allow
 // independent customization of the top 3 game over screen. The user can modify
 // this function to create a distinct visual experience for top 3 achievements.
+
+// Static cache for top 3 player photos to avoid reloading every frame
+static Texture2D cachedTop3Photos[3] = {{0}, {0}, {0}};
+static char cachedTop3PhotoPaths[3][256] = {"", "", ""};
+
 void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                          const MenuPinball *menuPinballs, int numMenuPinballs,
-                         const char *nameString, long long elapsedTimeStart,
-                         float shaderSeconds) {
+                         const char *nameString, ScoreHelper *scores,
+                         long long elapsedTimeStart, float shaderSeconds) {
     
     ClearBackground((Color){255,183,0,255});
     float timeFactor = (millis_ui() - elapsedTimeStart) / 1000.0f;
@@ -560,6 +567,60 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
         const char *placeholderText = "NO CAMERA";
         int textWidth = MeasureText(placeholderText, 20);
         DrawText(placeholderText, previewX + (previewSize - textWidth) / 2, previewY + previewSize / 2 - 10, 20, DARKGRAY);
+    }
+
+    // Draw top 3 player photos from score database
+    // Photo positions (centers): 1st=92x,370y  2nd=225x,370y  3rd=357x,370y (100x100 px each)
+    if (scores != NULL) {
+        int photoSize = 100;
+        int photoCenters[3][2] = {{92, 370}, {225, 370}, {357, 370}};
+        
+        for (int rank = 1; rank <= 3; rank++) {
+            ScoreObject *score = getRankedScore(scores, rank);
+            if (score != NULL && score->scoreName != NULL) {
+                // Construct filename: Resources/Photos/<NAME>_<SCORE>.png
+                char photoPath[256];
+                snprintf(photoPath, sizeof(photoPath), "Resources/Photos/%s_%d.png", 
+                         score->scoreName, score->scoreValue);
+                
+                // Check if we need to load/reload the texture
+                int cacheIndex = rank - 1;
+                if (strcmp(cachedTop3PhotoPaths[cacheIndex], photoPath) != 0) {
+                    // Path changed, unload old texture and try loading new one
+                    if (cachedTop3Photos[cacheIndex].id != 0) {
+                        UnloadTexture(cachedTop3Photos[cacheIndex]);
+                        cachedTop3Photos[cacheIndex] = (Texture2D){0};
+                    }
+                    
+                    // Check if file exists before loading
+                    if (access(photoPath, F_OK) == 0) {
+                        cachedTop3Photos[cacheIndex] = LoadTexture(photoPath);
+                    }
+                    
+                    // Update cached path
+                    strncpy(cachedTop3PhotoPaths[cacheIndex], photoPath, sizeof(cachedTop3PhotoPaths[cacheIndex]) - 1);
+                    cachedTop3PhotoPaths[cacheIndex][sizeof(cachedTop3PhotoPaths[cacheIndex]) - 1] = '\0';
+                }
+                
+                // Draw photo if texture is valid
+                int photoX = photoCenters[cacheIndex][0] - photoSize / 2;
+                int photoY = photoCenters[cacheIndex][1] - photoSize / 2;
+                
+                if (cachedTop3Photos[cacheIndex].id != 0) {
+                    // Draw 2px white border
+                    DrawRectangle(photoX - 2, photoY - 2, photoSize + 4, photoSize + 4, WHITE);
+                    
+                    // Draw the photo
+                    DrawTexturePro(cachedTop3Photos[cacheIndex],
+                                  (Rectangle){0, 0, (float)cachedTop3Photos[cacheIndex].width, (float)cachedTop3Photos[cacheIndex].height},
+                                  (Rectangle){(float)photoX, (float)photoY, (float)photoSize, (float)photoSize},
+                                  (Vector2){0, 0},
+                                  0,
+                                  WHITE);
+                }
+                // If photo doesn't exist, just skip (no placeholder shown)
+            }
+        }
     }
 
     char tempString[128];
