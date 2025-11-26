@@ -122,10 +122,10 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_FLIPPER_HIT: {
-            // Thumpy hit: ~140 Hz, ~28 ms, strong initial peak that decays quickly
-            const float duration = 0.028f;
-            const float freq = 140.0f;
-            const float baseAmp = 0.55f;
+            // Thumpy hit: slightly lower freq, a bit more weight, ~32 ms total
+            const float duration = 0.032f;
+            const float freq = 120.0f;
+            const float baseAmp = 0.65f;
 
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;   // 0..1
@@ -142,11 +142,11 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_LAUNCH: {
-            // Sweep from 40Hz to 60Hz over 90ms, amplitude ramps up then down
+            // Sweep from 40Hz to 65Hz over 90ms, amplitude ramps up then down
             const float duration = 0.090f;
             const float freq_start = 30.0f;
-            const float freq_end = 60.0f;
-            const float peak_amp = 0.6f;
+            const float freq_end = 65.0f;
+            const float peak_amp = 0.75f;
             
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;
@@ -164,12 +164,15 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_BUMPER_LIGHT: {
-            // ~55 Hz sine, 22.5ms duration, amplitude 0.27
-            const float duration = 0.0225f;
-            const float freq = 40.0f;
-            const float amp = 0.27f;
+            // Light bumper tap: ~70 Hz sine, 20ms, with simple decay envelope
+            const float duration = 0.020f;
+            const float freq = 70.0f;
+            const float baseAmp = 0.30f;
             
             if (g_haptics.t < duration) {
+                float progress = g_haptics.t / duration;   // 0..1
+                float env = 1.0f - progress;               // simple decay
+                float amp = baseAmp * env;
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else {
@@ -179,29 +182,31 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_BUMPER_SOLID: {
-            // Double knock: slightly higher freq with softened square, reduced buzz
-            const float pulse1_duration = 0.026f;
-            const float gap_duration   = 0.007f;
-            const float pulse2_duration = 0.012f;
-            const float freq = 110.0f;      // more tactile for limited power
-            const float amp1 = 0.55f;
-            const float amp2 = 0.35f;
+            // Double knock: two short decaying sine pulses for a solid, non-buzzy hit
+            const float pulse1_duration = 0.024f;
+            const float gap_duration   = 0.006f;
+            const float pulse2_duration = 0.016f;
+            const float freq = 80.0f;       // lower freq for more cabinet thump
+            const float amp1 = 0.65f;
+            const float amp2 = 0.40f;
 
             if (g_haptics.t < pulse1_duration) {
-                // First pulse
-                float sine = sinf(g_haptics.phase);
-                // Soft square: compress, but don't slam to ±1
-                float shaped = (sine > 0.0f ? 0.8f : -0.8f);
-                output = amp1 * shaped;
+                // First pulse: strong knock with fast decay
+                float progress = g_haptics.t / pulse1_duration;   // 0..1
+                float env = 1.0f - progress * progress;           // quadratic decay
+                float amp = amp1 * env;
+                output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < pulse1_duration + gap_duration) {
                 // Gap (silence)
                 output = 0.0f;
             } else if (g_haptics.t < pulse1_duration + gap_duration + pulse2_duration) {
-                // Second pulse
-                float sine = sinf(g_haptics.phase);
-                float shaped = (sine > 0.0f ? 0.8f : -0.8f);
-                output = amp2 * shaped;
+                // Second pulse: slightly softer follow-up knock
+                float localT = g_haptics.t - (pulse1_duration + gap_duration);
+                float progress = localT / pulse2_duration;        // 0..1
+                float env = 1.0f - progress * progress;
+                float amp = amp2 * env;
+                output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else {
                 g_haptics.active = 0;
