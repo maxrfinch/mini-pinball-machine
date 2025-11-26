@@ -156,7 +156,7 @@ static float haptics_generate_sample(float sampleRate) {
             const float duration = 0.095f;
             const float freq_start = 45.0f;
             const float freq_end = 90.0f;
-            const float peak_amp = 0.70f;
+            const float peak_amp = 0.80f;
             
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;
@@ -175,9 +175,9 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_BUMPER_LIGHT: {
             // Light bumper: ~150 Hz, ~20ms, decaying sine tap
-            const float duration = 0.020f;
-            const float freq = 150.0f;
-            const float baseAmp = 0.32f;
+            const float duration = 0.040f;
+            const float freq = 120.0f;
+            const float baseAmp = 0.52f;
             
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;   // 0..1
@@ -193,10 +193,10 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_BUMPER_SOLID: {
             // Double knock: sine-based pulses with envelopes to avoid buzz
-            const float pulse1_duration = 0.022f;
+            const float pulse1_duration = 0.052f;
             const float gap_duration   = 0.006f;
             const float pulse2_duration = 0.016f;
-            const float freq = 130.0f;      // more tactile for limited power
+            const float freq = 100.0f;      // more tactile for limited power
             const float baseAmp1 = 0.60f;
             const float baseAmp2 = 0.45f;
 
