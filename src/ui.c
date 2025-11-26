@@ -209,8 +209,8 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
     if (game->menuState == 0) {
         // High scores - show either top 10 or top 3
         if (showTopThree) {
-            DrawTextEx(res->font1, "Top 3", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "Top 3", 36.0, 1.0).x/2, 329}, 36.0, 1.0, WHITE);
-            float y = 362;
+            DrawTextEx(res->font1, "Top 3", (Vector2){screenWidth/2 - MeasureTextEx(res->font1, "Top 3", 36.0, 1.0).x/2, 429}, 36.0, 1.0, WHITE);
+            float y = 472;
             char tempString[128];
             for (int i = 1; i <= 3; i++) {
                 ScoreObject *score = getRankedScore(scores, i);

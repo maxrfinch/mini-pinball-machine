@@ -49,13 +49,13 @@ void Menu_Update(GameStruct *game,
             game->transitionState = 1;
             game->transitionTarget = TRANSITION_TO_GAME;
             playClick(sound);
-            sound_play_haptic_bumper_light((ball->game)->sound);
+            //sound_play_haptic_bumper_light(sound);
             inputSendGameStart(input);
         }
     }
     if (inputLeftPressed(input)) {
         playClick(sound);
-        sound_play_haptic_bumper_light((ball->game)->sound);
+        //sound_play_haptic_bumper_light(sound);
         game->menuState--;
         if (game->menuState < 0) {
             game->menuState = 2;  // Wrap to controls
@@ -67,7 +67,7 @@ void Menu_Update(GameStruct *game,
     }
     if (inputRightPressed(input)) {
         playClick(sound);
-        sound_play_haptic_bumper_light((ball->game)->sound);
+        //sound_play_haptic_bumper_light(sound);
         game->menuState++;
         if (game->menuState > 2) {
             game->menuState = 0;  // Wrap to high scores

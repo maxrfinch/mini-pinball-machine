@@ -16,7 +16,7 @@ const float flipperActiveAngleLeft = -43.0f;  // -33.0f - 10.0f
 const float flipperActiveAngleRight = 223.0f; // 213.0f + 10.0f
 
 // Ball constants
-const int maxBalls = 256;
+const int maxBalls = 200;
 const float ballSize = 5.0f;
 
 // Bumper constants
