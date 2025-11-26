@@ -564,19 +564,19 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
 
     char tempString[128];
     sprintf(tempString,"%ld",game->gameScore);
-    DrawTextEx(res->font2, "Score:", (Vector2){screenWidth/2 - MeasureTextEx(res->font2, "Score:", 60, 1.0).x/2,275}, 60, 1.0, WHITE);
-    DrawTextEx(res->font2, tempString, (Vector2){screenWidth/2 - MeasureTextEx(res->font2, tempString, 60, 1.0).x/2,332}, 60, 1.0, WHITE);
+    DrawTextEx(res->font2, "Score:", (Vector2){screenWidth/2 - MeasureTextEx(res->font2, "Score:", 60, 1.0).x/2,444.5}, 60, 1.0, WHITE);
+    DrawTextEx(res->font2, tempString, (Vector2){screenWidth/2 - MeasureTextEx(res->font2, tempString, 60, 1.0).x/2,501.5}, 60, 1.0, WHITE);
 
     for (int i =0; i < 5; i++){
         sprintf(tempString,"%c",nameString[i]);
         float textWidth = MeasureTextEx(res->font2, tempString, 60, 1.0).x;
         if (nameString[i] == 32){
-            DrawTextEx(res->font2, "-", (Vector2){54 + (i * 62) - textWidth / 2,510}, 60, 1.0, DARKGRAY);
+            DrawTextEx(res->font2, "-", (Vector2){54 + (i * 62) - textWidth / 2,657}, 60, 1.0, DARKGRAY);
         } else {
-            DrawTextEx(res->font2, tempString, (Vector2){54 + (i * 62) - textWidth / 2,510}, 60, 1.0, WHITE);
+            DrawTextEx(res->font2, tempString, (Vector2){54 + (i * 62) - textWidth / 2,657}, 60, 1.0, WHITE);
         }
     }
-    DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){54 + (game->nameSelectIndex * 62),595+ (5 * sin((millis_ui()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
+    DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){54 + (game->nameSelectIndex * 62),742+ (5 * sin((millis_ui()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
 }
 
 void UI_DrawTransition(const GameStruct *game, float shaderSeconds) {
