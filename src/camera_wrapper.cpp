@@ -45,7 +45,7 @@ static CameraSystemInternal *g_camera_internal = nullptr;
 
 // Helper to check if camera is available
 static int check_camera_available(void) {
-    int ret = system("libcamera-hello --list-cameras 2>/dev/null | grep -q 'Available cameras'");
+    int ret = system("rpicam-hello --list-cameras 2>/dev/null | grep -q 'Available cameras'");
     return (ret == 0) ? 1 : 0;
 }
 
@@ -118,7 +118,7 @@ int Camera_Init(CameraSystem *camera) {
     camera->zoom_factor = 1.0f;
     
 #if defined(PLATFORM_RPI)
-    // Check if camera is available using libcamera-hello
+    // Check if camera is available using rpicam-hello
     if (!check_camera_available()) {
         TraceLog(LOG_WARNING, "CAMERA: No camera detected");
         return 0;
@@ -186,7 +186,7 @@ int Camera_StartPreview(CameraSystem *camera) {
         return 0;
     }
     
-    // Start libcamera-vid to capture MJPEG frames to the pipe
+    // Start rpicam-vid to capture MJPEG frames to the pipe
     pid_t pid = fork();
     if (pid == -1) {
         TraceLog(LOG_ERROR, "CAMERA: Failed to fork for preview: %s", strerror(errno));
@@ -195,10 +195,10 @@ int Camera_StartPreview(CameraSystem *camera) {
     }
     
     if (pid == 0) {
-        // Child process - exec libcamera-vid
+        // Child process - exec rpicam-vid
         // Output MJPEG frames at 15fps, 320x240 (we'll crop/scale)
         // Use --signal to allow stopping with SIGUSR2
-        execlp("libcamera-vid", "libcamera-vid",
+        execlp("rpicam-vid", "rpicam-vid",
                "-t", "0",                    // Run indefinitely
                "--width", "320",
                "--height", "240",
@@ -220,7 +220,7 @@ int Camera_StartPreview(CameraSystem *camera) {
     g_camera_internal->preview_pipe_fd = open(g_camera_internal->preview_pipe_path, flags);
     if (g_camera_internal->preview_pipe_fd == -1) {
         TraceLog(LOG_WARNING, "CAMERA: Failed to open preview pipe (will retry): %s", strerror(errno));
-        // Don't fail - the pipe will be available when libcamera-vid starts writing
+        // Don't fail - the pipe will be available when rpicam-vid starts writing
     }
     
     // Allocate preview buffer (enough for one JPEG frame)
@@ -389,7 +389,7 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
     char cmd[1024];
     const char *output_file = is_png ? temp_file : filename;
     snprintf(cmd, sizeof(cmd),
-             "libcamera-still --immediate --nopreview --timeout 500 "
+             "rpicam-still --immediate --nopreview --timeout 500 "
              "--width 640 --height 480 "
              "-e jpg "
              "-o %s 2>/dev/null",
