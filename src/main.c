@@ -273,6 +273,19 @@ int main(void){
                     inputSetScore(input,game.gameScore);
                     game.oldGameScore = game.gameScore;
                 }
+
+                if (game. oldGameScore != game.gameScore) {
+                    inputSetScore(input, game.gameScore);
+                    game.oldGameScore = game.gameScore;
+                    
+                    // Pre-warm camera if score enters top 3 and camera not already active
+                    if (! game.camera.preview_active && game.camera.initialized) {
+                        if (isScoreInTopN(scores, game.gameScore, 3)) {
+                            Camera_StartPreview(&game.camera);
+                            TraceLog(LOG_INFO, "CAMERA: Pre-warming preview (score entered top 3)");
+                        }
+                    }
+                }
                 
                 // Check and handle powerup state machines
                 Powerups_CheckMultiball(&game, bumpers, sound, input);
