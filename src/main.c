@@ -272,14 +272,6 @@ int main(void){
                 if (game. oldGameScore != game.gameScore) {
                     inputSetScore(input, game.gameScore);
                     game.oldGameScore = game.gameScore;
-                    
-                    // Pre-warm camera if score enters top 3 and camera not already active
-                    if (! game.camera.preview_active && game.camera.initialized) {
-                        if (isScoreInTopN(scores, game.gameScore, 3)) {
-                            Camera_StartPreview(&game.camera);
-                            TraceLog(LOG_INFO, "CAMERA: Pre-warming preview (score entered top 3)");
-                        }
-                    }
                 }
                 
                 // Check and handle powerup state machines
@@ -532,8 +524,13 @@ int main(void){
         BeginDrawing();
         ClearBackground(BLACK);   // letterbox bars color
 
-        int renderW = GetScreenWidth();
-        int renderH = GetScreenHeight();
+        #if defined(PLATFORM_RPI)
+            int renderW = GetRenderWidth();
+            int renderH = GetRenderHeight();
+        #else
+            int renderW = GetScreenWidth();
+            int renderH = GetScreenHeight();
+        #endif
 
         
 
@@ -548,24 +545,6 @@ int main(void){
         // Center on screen (letterboxing)
         float offsetX = (renderW - drawW) * 0.5f;
         float offsetY = (renderH - drawH) * 0.5f;
-
-        #if defined(PLATFORM_RPI)
-            static int printOnce = 0;
-            if (printOnce == 0) {
-                FILE *debugFile = fopen("/home/maxfinch/render_debug.txt", "w");
-                if (debugFile != NULL) {
-                    fprintf(debugFile, "=== RENDER DEBUG ===\n");
-                    fprintf(debugFile, "Virtual canvas: %dx%d\n", screenWidth, screenHeight);
-                    fprintf(debugFile, "Physical screen: %dx%d\n", renderW, renderH);
-                    fprintf(debugFile, "Scale: %.4f (scaleX=%.4f, scaleY=%.4f)\n", scale, scaleX, scaleY);
-                    fprintf(debugFile, "DrawSize: %.2fx%.2f\n", drawW, drawH);
-                    fprintf(debugFile, "Offset: (%.2f, %.2f)\n", offsetX, offsetY);
-                    fprintf(debugFile, "====================\n");
-                    fclose(debugFile);
-                }
-                printOnce = 1;
-            }
-        #endif
 
         // Draw the render texture to screen.
         // Note: src.height is NEGATIVE to flip the texture vertically (raylib quirk).
