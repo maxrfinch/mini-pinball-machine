@@ -40,7 +40,37 @@ void AddWaterImpulse(float x, float impulse) {
     }
 }
 
+void redirect_logs_to_file(void) {
+    
+    // Get home directory
+    const char *home = getenv("HOME");
+    if (!home) home = "/home/pi";  // Fallback
+    
+    char log_path[256];
+    snprintf(log_path, sizeof(log_path), "%s/Desktop/pinball_log.txt", home);
+    
+    // Open log file (create if doesn't exist, append if it does)
+    int log_fd = open(log_path, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (log_fd == -1) {
+        perror("Failed to open log file");
+        return;
+    }
+    
+    // Redirect stdout and stderr to the log file
+    dup2(log_fd, STDOUT_FILENO);
+    dup2(log_fd, STDERR_FILENO);
+    close(log_fd);
+    
+    // Make output unbuffered so logs appear immediately
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+    
+    printf("=== Pinball Machine Log Started ===\n");
+    fflush(stdout);
+}
+
 int main(void){
+    redirect_logs_to_file();
 
     // Initialize a struct encoding data about the game.
     GameStruct game;
