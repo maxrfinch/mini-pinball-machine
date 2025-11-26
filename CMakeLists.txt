@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.15)
 
-project(pinball C)
+project(pinball C CXX)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ---------------------------------------------------------------------------
 # Source files
@@ -27,7 +29,13 @@ set(SRC_FILES
     src/ui.c
     src/util.c
     src/water.c
+    src/camera_wrapper.cpp
 )
+
+# On Raspberry Pi, add the C++ libcamera wrapper
+if(UNIX AND NOT APPLE)
+    list(APPEND SRC_FILES src/camera_libcamera.cpp)
+endif()
 
 # Platform-specific input manager implementation
 if(APPLE)
@@ -149,22 +157,45 @@ elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
     add_definitions(-DPLATFORM_LINUX)
 
     # Detect if we're on Raspberry Pi
+    set(IS_RPI FALSE)
     if(EXISTS "/proc/device-tree/model")
         file(READ "/proc/device-tree/model" PI_MODEL)
         if(PI_MODEL MATCHES "Raspberry Pi")
             add_definitions(-DPLATFORM_RPI)
+            set(IS_RPI TRUE)
             message(STATUS "Detected Raspberry Pi - enabling Pi-specific features")
         endif()
     endif()
 
     # Standard desktop build: raylib uses GLFW/X11 or Wayland underneath.
-    target_link_libraries(${PROJECT_NAME} PRIVATE
+    set(LINUX_LIBS
         ${RAYLIB_LIB}
         ${BOX2D_LIB}
         m
         pthread
         dl
     )
+    
+    # On Raspberry Pi, add libcamera and libjpeg
+    if(IS_RPI)
+        # Find libcamera
+        find_library(LIBCAMERA_LIB NAMES camera PATHS /usr/lib /usr/local/lib)
+        find_library(LIBCAMERA_BASE_LIB NAMES camera-base PATHS /usr/lib /usr/local/lib)
+        find_library(LIBJPEG_LIB NAMES jpeg PATHS /usr/lib /usr/local/lib)
+        
+        if(LIBCAMERA_LIB AND LIBCAMERA_BASE_LIB)
+            list(APPEND LINUX_LIBS ${LIBCAMERA_LIB} ${LIBCAMERA_BASE_LIB})
+            message(STATUS "Found libcamera: ${LIBCAMERA_LIB}")
+        else()
+            message(WARNING "libcamera not found - camera features will be disabled")
+        endif()
+        
+        if(LIBJPEG_LIB)
+            list(APPEND LINUX_LIBS ${LIBJPEG_LIB})
+        endif()
+    endif()
+    
+    target_link_libraries(${PROJECT_NAME} PRIVATE ${LINUX_LIBS})
 
 else()
     message(FATAL_ERROR "Unknown platform!")

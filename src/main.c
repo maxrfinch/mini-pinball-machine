@@ -146,6 +146,9 @@ int main(void){
     
     // Initialize menu
     Menu_Init(&game, menuPinballs, 32);
+    
+    // Initialize camera system
+    Camera_Init(&game.camera);
 
     inputSetGameState(input,STATE_MENU);
     TraceLog(LOG_INFO, "START");
@@ -541,6 +544,9 @@ int main(void){
     inputShutdown(input);
     shutdownSound(sound);
     physics_shutdown(&game);
+    
+    // Shutdown camera system
+    Camera_Shutdown(&game.camera);
     
     // Unload all resources
     Resources_Unload(&resources);

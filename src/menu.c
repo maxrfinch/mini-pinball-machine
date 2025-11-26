@@ -2,7 +2,9 @@
 #include "constants.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "soundManager.h"
+#include "camera.h"
 
 void Menu_Init(GameStruct *game, MenuPinball *menuPinballs, int numMenuPinballs) {
     game->menuState = 0;
@@ -104,6 +106,35 @@ void Scoreboard_Update(GameStruct *game,
             playClick(game->sound);
             if (game->nameSelectIndex == 5) {
                 // Name selection done
+                
+                // If in Top-3 Game Over scene with camera, capture photo
+                if (game->gameState == 3 && game->camera.initialized) {
+                    // Trigger NeoPixel camera flash
+                    inputSendCameraFlash(input);
+                    
+                    // Wait for flash (200ms)
+                    #if defined(PLATFORM_RPI)
+                    usleep(200000);  // 200ms
+                    #endif
+                    
+                    // Capture photo
+                    char photoFilename[256];
+                    snprintf(photoFilename, sizeof(photoFilename), 
+                             "Resources/Photos/%s_%ld.png", nameString, game->gameScore);
+                    
+                    if (Camera_CapturePhoto(&game->camera, photoFilename)) {
+                        printf("Photo captured: %s\n", photoFilename);
+                    } else {
+                        printf("Failed to capture photo\n");
+                    }
+                    
+                    // Stop camera preview
+                    Camera_StopPreview(&game->camera);
+                    
+                    // Restore normal LED mode
+                    inputSendCameraIdle(input);
+                }
+                
                 // Submit score and start transition to menu.
                 game->nameSelectDone = 1;
                 game->transitionState = 1;

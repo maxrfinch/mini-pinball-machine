@@ -107,6 +107,16 @@ void Game_Update(GameStruct *game,
                 game->currentScene = SCENE_GAME_OVER_TOP3;
                 game->nameSelectIndex = 0;
                 game->nameSelectDone = 0;
+                
+                // Start camera preview for Top-3 Game Over
+                if (game->camera.initialized) {
+                    Camera_StartPreview(&game->camera);
+                    
+                    // Send NeoPixel camera preview command
+                    if (game->input) {
+                        inputSendCameraPreview(game->input);
+                    }
+                }
                 break;
         }
         game->transitionDelay++;
