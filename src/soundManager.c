@@ -104,12 +104,15 @@ static float haptics_generate_sample(float sampleRate) {
     
     switch (g_haptics.type) {
         case HAPTIC_FLIPPER_EMPTY: {
-            // ~60 Hz sine, 12.5ms duration, amplitude 0.2
-            const float duration = 0.0125f;
-            const float freq = 40.0f;
-            const float amp = 0.2f;
-            
+            // Light but noticeable tap: ~120 Hz, 22 ms, small decay envelope
+            const float duration = 0.022f;
+            const float freq = 120.0f;
+            const float baseAmp = 0.30f;
+
             if (g_haptics.t < duration) {
+                float progress = g_haptics.t / duration;           // 0..1
+                float env = 1.0f - progress;                       // simple decay
+                float amp = baseAmp * env;
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else {
@@ -119,15 +122,18 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_FLIPPER_HIT: {
-            // ~60 Hz square pulse, 20ms duration, amplitude 0.4
-            const float duration = 0.020f;
-            const float freq = 40.0f;
-            const float amp = 0.6f;
-            
+            // Thumpy hit: ~140 Hz, ~28 ms, strong initial peak that decays quickly
+            const float duration = 0.028f;
+            const float freq = 140.0f;
+            const float baseAmp = 0.55f;
+
             if (g_haptics.t < duration) {
-                // Square wave (clipped sine)
-                float sine = sinf(g_haptics.phase);
-                output = amp * (sine > 0.0f ? 1.0f : -1.0f);
+                float progress = g_haptics.t / duration;   // 0..1
+                // Fast decay so it feels like a knock, not a buzz
+                float env = 1.0f - progress * progress;    // quadratic decay
+                float amp = baseAmp * env;
+
+                output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else {
                 g_haptics.active = 0;
@@ -173,18 +179,20 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_BUMPER_SOLID: {
-            // ~50 Hz square, dual pulse: 27.5ms @ 0.45, then 8ms gap, then 11ms @ 0.25
-            const float pulse1_duration = 0.0275f;
-            const float gap_duration = 0.008f;
-            const float pulse2_duration = 0.011f;
-            const float freq = 40.0f;
-            const float amp1 = 0.65f;
-            const float amp2 = 0.45f;
-            
+            // Double knock: slightly higher freq with softened square, reduced buzz
+            const float pulse1_duration = 0.026f;
+            const float gap_duration   = 0.007f;
+            const float pulse2_duration = 0.012f;
+            const float freq = 110.0f;      // more tactile for limited power
+            const float amp1 = 0.55f;
+            const float amp2 = 0.35f;
+
             if (g_haptics.t < pulse1_duration) {
                 // First pulse
                 float sine = sinf(g_haptics.phase);
-                output = amp1 * (sine > 0.0f ? 1.0f : -1.0f);
+                // Soft square: compress, but don't slam to ±1
+                float shaped = (sine > 0.0f ? 0.8f : -0.8f);
+                output = amp1 * shaped;
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < pulse1_duration + gap_duration) {
                 // Gap (silence)
@@ -192,7 +200,8 @@ static float haptics_generate_sample(float sampleRate) {
             } else if (g_haptics.t < pulse1_duration + gap_duration + pulse2_duration) {
                 // Second pulse
                 float sine = sinf(g_haptics.phase);
-                output = amp2 * (sine > 0.0f ? 1.0f : -1.0f);
+                float shaped = (sine > 0.0f ? 0.8f : -0.8f);
+                output = amp2 * shaped;
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else {
                 g_haptics.active = 0;
