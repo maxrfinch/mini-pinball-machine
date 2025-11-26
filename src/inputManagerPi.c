@@ -171,7 +171,10 @@ InputManager* inputInit(){
 }
 
 void inputShutdown(InputManager* input){
-    serialClose(input->fd);
+    if (input != NULL) {
+        serialClose(input->fd);
+        free(input);
+    }
 }
 
 // Parse button event from KB2040 (e.g., "EVT BUTTON LEFT DOWN")

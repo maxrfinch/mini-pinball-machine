@@ -115,6 +115,7 @@ struct GameStructData {
     b2WorldId world;
     int numBalls;
     Ball *balls;
+    Bumper *bumpers;
     int active;
     int gameState;  // Legacy: 0=menu, 1=game, 2=gameover, 5=title
     SceneId currentScene;

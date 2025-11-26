@@ -2,6 +2,9 @@
 #define HEADER_SCORES
 #include "sqlite3.h"
 
+// Maximum number of top scores to track
+#define MAX_TOP_SCORES 10
+
 typedef struct {
     char *scoreName;
     int scoreValue;

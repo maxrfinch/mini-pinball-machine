@@ -45,6 +45,7 @@ int main(void){
     // Initialize a struct encoding data about the game.
     GameStruct game;
     game.gameState = 0;
+    game.bumpers = NULL;  // Initialize to NULL before physics_init
 
 
     SetConfigFlags(FLAG_VSYNC_HINT);
