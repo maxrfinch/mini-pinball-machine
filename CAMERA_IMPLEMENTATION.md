@@ -77,9 +77,32 @@ src/
 └── camera_wrapper.cpp       # C-to-C++ bridge
 ```
 
-## Future Improvements
-- Implement actual frame buffer processing in libcamera wrapper
+## Current Implementation Status
+
+### Working Features
+- Camera initialization and detection
+- Photo capture using libcamera-still command
+- NeoPixel LED coordination
+- Platform detection and graceful fallback
+- Error handling
+
+### Known Limitations
+- **Live Preview**: Not yet implemented. The C++ libcamera API requires:
+  - Event loop integration for request handling
+  - Frame buffer mapping and memory access
+  - Format conversion and texture updates
+  - Currently shows placeholder text instead of live feed
+
+- **Workaround**: Photo capture uses `libcamera-still` external command
+  - Reliable and tested
+  - Captures 150x150 square image directly
+  - Should be replaced with native C++ API calls in future
+
+### Future Improvements
+- Complete libcamera C++ API integration for live preview
+- Replace external command with native frame capture
 - Add JPEG encoding for captured frames
 - Optimize preview update rate
 - Add zoom/crop configuration options
 - Implement CAMERA_PREVIEW effect in firmware if needed
+- Add proper event loop integration for async capture

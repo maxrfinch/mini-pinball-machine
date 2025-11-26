@@ -17,6 +17,11 @@ struct CameraSystemInternal {
 
 // C API Implementation
 
+#if defined(PLATFORM_RPI)
+// Storage for internal camera instance
+static CameraSystemInternal *g_camera_internal = nullptr;
+#endif
+
 int Camera_Init(CameraSystem *camera) {
     if (camera == NULL) return 0;
     
@@ -28,20 +33,26 @@ int Camera_Init(CameraSystem *camera) {
     camera->zoom_factor = 1.0f;
     
 #if defined(PLATFORM_RPI)
-    CameraSystemInternal *internal = new CameraSystemInternal();
-    internal->wrapper = new LibcameraWrapper();
-    internal->frame_buffer = nullptr;
-    internal->frame_size = 0;
+    // Clean up any existing instance
+    if (g_camera_internal != nullptr) {
+        delete g_camera_internal->wrapper;
+        delete g_camera_internal;
+        g_camera_internal = nullptr;
+    }
     
-    if (!internal->wrapper->init()) {
+    g_camera_internal = new CameraSystemInternal();
+    g_camera_internal->wrapper = new LibcameraWrapper();
+    g_camera_internal->frame_buffer = nullptr;
+    g_camera_internal->frame_size = 0;
+    
+    if (!g_camera_internal->wrapper->init()) {
         TraceLog(LOG_WARNING, "CAMERA: Failed to initialize libcamera");
-        delete internal->wrapper;
-        delete internal;
+        delete g_camera_internal->wrapper;
+        delete g_camera_internal;
+        g_camera_internal = nullptr;
         return 0;
     }
     
-    // Store internal pointer in unused texture ID field (hack but works)
-    camera->preview_tex.id = (unsigned int)(uintptr_t)internal;
     camera->initialized = 1;
     
     TraceLog(LOG_INFO, "CAMERA: Initialized successfully via libcamera");
@@ -56,10 +67,9 @@ int Camera_StartPreview(CameraSystem *camera) {
     if (camera == NULL || !camera->initialized) return 0;
     
 #if defined(PLATFORM_RPI)
-    CameraSystemInternal *internal = (CameraSystemInternal*)(uintptr_t)camera->preview_tex.id;
-    if (!internal || !internal->wrapper) return 0;
+    if (!g_camera_internal || !g_camera_internal->wrapper) return 0;
     
-    if (!internal->wrapper->startPreview()) {
+    if (!g_camera_internal->wrapper->startPreview()) {
         TraceLog(LOG_WARNING, "CAMERA: Failed to start preview");
         return 0;
     }
@@ -76,18 +86,11 @@ void Camera_UpdatePreview(CameraSystem *camera) {
     if (camera == NULL || !camera->preview_active) return;
     
 #if defined(PLATFORM_RPI)
-    CameraSystemInternal *internal = (CameraSystemInternal*)(uintptr_t)camera->preview_tex.id;
-    if (!internal || !internal->wrapper) return;
+    if (!g_camera_internal || !g_camera_internal->wrapper) return;
     
-    // Capture a frame
-    unsigned char *buffer = nullptr;
-    size_t size = 0;
-    
-    if (internal->wrapper->captureFrame(&buffer, &size) && buffer && size > 0) {
-        // Update texture from buffer
-        // For now, we'll skip this as the libcamera implementation needs more work
-        // In production, would decode JPEG and update texture
-    }
+    // Note: Frame capture not yet implemented in libcamera wrapper
+    // This is a placeholder for future implementation
+    // Would capture frame and update texture here
 #endif
 }
 
@@ -95,13 +98,28 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
     if (camera == NULL || !camera->initialized || filename == NULL) return 0;
     
 #if defined(PLATFORM_RPI)
-    CameraSystemInternal *internal = (CameraSystemInternal*)(uintptr_t)camera->preview_tex.id;
-    if (!internal || !internal->wrapper) return 0;
+    if (!g_camera_internal || !g_camera_internal->wrapper) return 0;
     
-    // Ensure Photos directory exists
-    system("mkdir -p Resources/Photos");
+    // Create Photos directory using POSIX mkdir
+    #include <sys/stat.h>
+    #include <sys/types.h>
+    mkdir("Resources", 0755);
+    mkdir("Resources/Photos", 0755);
     
-    if (!internal->wrapper->captureToFile(filename)) {
+    // WORKAROUND: Since the C++ libcamera API implementation is incomplete,
+    // use libcamera-still command as a temporary solution
+    // This captures a 150x150 square image directly
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd),
+             "libcamera-still --immediate --nopreview --timeout 1 "
+             "--width 150 --height 150 "
+             "--roi 0.125,0.125,0.75,0.75 "
+             "-o %s 2>/dev/null",
+             filename);
+    
+    int ret = system(cmd);
+    
+    if (ret != 0 || access(filename, F_OK) != 0) {
         TraceLog(LOG_ERROR, "CAMERA: Failed to capture photo to %s", filename);
         return 0;
     }
@@ -118,9 +136,8 @@ void Camera_StopPreview(CameraSystem *camera) {
     
 #if defined(PLATFORM_RPI)
     if (camera->initialized && camera->preview_active) {
-        CameraSystemInternal *internal = (CameraSystemInternal*)(uintptr_t)camera->preview_tex.id;
-        if (internal && internal->wrapper) {
-            internal->wrapper->stopPreview();
+        if (g_camera_internal && g_camera_internal->wrapper) {
+            g_camera_internal->wrapper->stopPreview();
         }
     }
     camera->preview_active = 0;
@@ -132,22 +149,19 @@ void Camera_Shutdown(CameraSystem *camera) {
     if (camera == NULL) return;
     
 #if defined(PLATFORM_RPI)
-    if (camera->initialized) {
-        CameraSystemInternal *internal = (CameraSystemInternal*)(uintptr_t)camera->preview_tex.id;
-        if (internal) {
-            if (internal->wrapper) {
-                internal->wrapper->shutdown();
-                delete internal->wrapper;
-            }
-            if (internal->frame_buffer) {
-                free(internal->frame_buffer);
-            }
-            delete internal;
+    if (camera->initialized && g_camera_internal) {
+        if (g_camera_internal->wrapper) {
+            g_camera_internal->wrapper->shutdown();
+            delete g_camera_internal->wrapper;
         }
+        if (g_camera_internal->frame_buffer) {
+            free(g_camera_internal->frame_buffer);
+        }
+        delete g_camera_internal;
+        g_camera_internal = nullptr;
     }
     
     camera->initialized = 0;
-    camera->preview_tex.id = 0;
     TraceLog(LOG_INFO, "CAMERA: Shutdown complete");
 #endif
 }

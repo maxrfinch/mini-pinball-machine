@@ -537,7 +537,7 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
     DrawRectangle(previewX, previewY, previewSize, previewSize, BLACK);
     
     // Draw camera preview if available
-    if (game->camera.preview_active && game->camera.preview_tex.id != 0) {
+    if (game->camera.preview_active) {
         // Update camera preview
         Camera_UpdatePreview((CameraSystem*)&game->camera);
         
@@ -549,6 +549,11 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                           (Vector2){0, 0},
                           0,
                           WHITE);
+        } else {
+            // Preview active but no texture yet
+            const char *placeholderText = "LOADING...";
+            int textWidth = MeasureText(placeholderText, 20);
+            DrawText(placeholderText, previewX + (previewSize - textWidth) / 2, previewY + previewSize / 2 - 10, 20, GRAY);
         }
     } else {
         // Show placeholder text when camera not available

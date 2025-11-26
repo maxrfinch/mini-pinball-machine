@@ -117,10 +117,22 @@ void Scoreboard_Update(GameStruct *game,
                     usleep(200000);  // 200ms
                     #endif
                     
-                    // Capture photo
+                    // Capture photo - sanitize nameString for filename
+                    char sanitizedName[6];
+                    for (int i = 0; i < 5; i++) {
+                        char c = nameString[i];
+                        // Replace spaces and non-alphanumeric with underscore
+                        if (c == 32 || c < 65 || c > 90) {
+                            sanitizedName[i] = '_';
+                        } else {
+                            sanitizedName[i] = c;
+                        }
+                    }
+                    sanitizedName[5] = '\0';
+                    
                     char photoFilename[256];
                     snprintf(photoFilename, sizeof(photoFilename), 
-                             "Resources/Photos/%s_%ld.png", nameString, game->gameScore);
+                             "Resources/Photos/%s_%ld.png", sanitizedName, game->gameScore);
                     
                     if (Camera_CapturePhoto(&game->camera, photoFilename)) {
                         printf("Photo captured: %s\n", photoFilename);

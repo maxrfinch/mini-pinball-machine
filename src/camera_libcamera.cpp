@@ -106,64 +106,20 @@ bool LibcameraWrapper::captureFrame(unsigned char **buffer, size_t *size) {
         return false;
     }
     
-    // Ensure camera is configured
-    if (!config_ && !configureCamera()) {
-        return false;
-    }
+    // TODO: Full implementation needed
+    // This skeleton shows the structure but doesn't actually capture frames yet.
+    // Full implementation requires:
+    // 1. Proper request/completion handling with event loop
+    // 2. Frame buffer mapping and memory access
+    // 3. Format conversion (RGB/YUV to target format)
+    // 4. JPEG encoding if needed
     
-    // Create frame buffer allocator
-    libcamera::FrameBufferAllocator allocator(camera_);
-    
-    libcamera::Stream *stream = config_->at(0).stream();
-    if (allocator.allocate(stream) < 0) {
-        std::cerr << "CAMERA: Failed to allocate buffers" << std::endl;
-        return false;
-    }
-    
-    // Create and queue requests
-    std::vector<std::unique_ptr<libcamera::Request>> requests;
-    
-    for (const std::unique_ptr<libcamera::FrameBuffer> &buffer : allocator.buffers(stream)) {
-        std::unique_ptr<libcamera::Request> request = camera_->createRequest();
-        if (!request) {
-            std::cerr << "CAMERA: Failed to create request" << std::endl;
-            return false;
-        }
-        
-        if (request->addBuffer(stream, buffer.get()) < 0) {
-            std::cerr << "CAMERA: Failed to add buffer to request" << std::endl;
-            return false;
-        }
-        
-        requests.push_back(std::move(request));
-    }
-    
-    // Start camera
-    if (camera_->start() != 0) {
-        std::cerr << "CAMERA: Failed to start camera" << std::endl;
-        return false;
-    }
-    
-    // Queue first request
-    if (!requests.empty() && camera_->queueRequest(requests[0].get()) < 0) {
-        std::cerr << "CAMERA: Failed to queue request" << std::endl;
-        camera_->stop();
-        return false;
-    }
-    
-    // Wait for completion (simplified for now - in production use eventfd)
-    // For now, we'll use a simple approach
-    
-    // Stop camera
-    camera_->stop();
-    
-    // Process the captured frame
-    // This is a simplified version - actual implementation would need proper request handling
+    std::cerr << "CAMERA: captureFrame() not yet fully implemented" << std::endl;
     
     *buffer = nullptr;
     *size = 0;
     
-    return true;
+    return false;  // Changed to false to indicate not implemented
 }
 
 bool LibcameraWrapper::captureToFile(const char *filename) {
@@ -171,19 +127,20 @@ bool LibcameraWrapper::captureToFile(const char *filename) {
         return false;
     }
     
-    unsigned char *buffer = nullptr;
-    size_t size = 0;
+    // TODO: Full implementation needed
+    // For a working implementation, this would:
+    // 1. Configure camera for still capture
+    // 2. Capture a frame using proper request handling
+    // 3. Convert/encode the frame data
+    // 4. Write to file
+    //
+    // For now, use libcamera-still as external command as a workaround
+    // (see camera_wrapper.cpp comment about using system commands)
     
-    if (!captureFrame(&buffer, &size)) {
-        return false;
-    }
+    std::cerr << "CAMERA: captureToFile() not yet fully implemented" << std::endl;
+    std::cerr << "CAMERA: Consider using libcamera-still external command" << std::endl;
     
-    // For now, return success
-    // Actual frame processing would happen here
-    
-    std::cout << "CAMERA: Photo captured to " << filename << std::endl;
-    
-    return true;
+    return false;  // Changed to false to indicate not implemented
 }
 
 void LibcameraWrapper::stopPreview() {
