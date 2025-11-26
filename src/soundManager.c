@@ -114,10 +114,10 @@ static float haptics_generate_sample(float sampleRate) {
     
     switch (g_haptics.type) {
         case HAPTIC_FLIPPER_EMPTY: {
-            // Light but noticeable tap: ~120 Hz, 22 ms, small decay envelope
-            const float duration = 0.022f;
+            // Light but noticeable tap: ~120 Hz, ~25 ms, small decay envelope (slightly stronger)
+            const float duration = 0.025f;
             const float freq = 120.0f;
-            const float baseAmp = 0.30f;
+            const float baseAmp = 0.46f;
 
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;           // 0..1
@@ -132,10 +132,10 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_FLIPPER_HIT: {
-            // Thumpy hit: ~130 Hz, ~30 ms, stronger initial peak that decays quickly
-            const float duration = 0.030f;
+            // Thumpy hit: ~130 Hz, ~32 ms, stronger peak to approach launch feel (~80%)
+            const float duration = 0.032f;
             const float freq = 130.0f;
-            const float baseAmp = 0.65f;
+            const float baseAmp = 0.85f;
 
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;   // 0..1
