@@ -102,6 +102,12 @@ void Game_Update(GameStruct *game,
                 game->nameSelectIndex = 0;
                 game->nameSelectDone = 0;
                 break;
+            case TRANSITION_GAME_OVER_TOP3:
+                game->gameState = 3;  // New game state for top 3 game over
+                game->currentScene = SCENE_GAME_OVER_TOP3;
+                game->nameSelectIndex = 0;
+                game->nameSelectDone = 0;
+                break;
         }
         game->transitionDelay++;
         if (game->transitionDelay > 10) {

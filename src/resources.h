@@ -28,6 +28,8 @@ typedef struct Resources {
     Texture2D menuOverlayTopScores;
     Texture2D gameOverOverlay1;
     Texture2D gameOverOverlay2;
+    Texture2D gameOverOverlay1Top3;
+    Texture2D gameOverOverlay2Top3;
     Texture2D arrowRight;
     Texture2D menuControls;
     Texture2D transitionTex;

@@ -440,7 +440,7 @@ void updateSound(SoundManager *sound, GameStruct *game){
             StopMusicStream(sound->gameMusic);
         }
         UpdateMusicStream(sound->menuMusic);
-    } else if (game->gameState == 1 || game->gameState == 2){
+    } else if (game->gameState == 1 || game->gameState == 2 || game->gameState == 3){
         if (!IsMusicPlayingCompat(sound->gameMusic)){
             PlayMusicStream(sound->gameMusic);
             StopMusicStream(sound->menuMusic);

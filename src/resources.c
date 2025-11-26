@@ -30,6 +30,8 @@ void Resources_Init(Resources *res) {
     res->menuOverlayTopScores = LoadTexture("Resources/Textures/menuOverlayTopScores.png");
     res->gameOverOverlay1 = LoadTexture("Resources/Textures/gameOverOverlay1.png");
     res->gameOverOverlay2 = LoadTexture("Resources/Textures/gameOverOverlay2.png");
+    res->gameOverOverlay1Top3 = LoadTexture("Resources/Textures/gameOverOverlay1Top3.png");
+    res->gameOverOverlay2Top3 = LoadTexture("Resources/Textures/gameOverOverlay2Top3.png");
     res->arrowRight = LoadTexture("Resources/Textures/arrowRight.png");
     res->menuControls = LoadTexture("Resources/Textures/menuControls.png");
     res->transitionTex = LoadTexture("Resources/Textures/transition.png");
@@ -134,6 +136,8 @@ void Resources_Unload(Resources *res) {
     UnloadTexture(res->menuOverlayTopScores);
     UnloadTexture(res->gameOverOverlay1);
     UnloadTexture(res->gameOverOverlay2);
+    UnloadTexture(res->gameOverOverlay1Top3);
+    UnloadTexture(res->gameOverOverlay2Top3);
     UnloadTexture(res->arrowRight);
     UnloadTexture(res->menuControls);
     UnloadTexture(res->transitionTex);

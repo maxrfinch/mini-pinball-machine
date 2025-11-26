@@ -22,6 +22,12 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
                      const char *nameString, long long elapsedTimeStart,
                      float shaderSeconds);
 
+// Draws score / high score screen overlays (top 3 game over screen)
+void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
+                         const MenuPinball *menuPinballs, int numMenuPinballs,
+                         const char *nameString, long long elapsedTimeStart,
+                         float shaderSeconds);
+
 // Draws transition overlays (screen wipes)
 void UI_DrawTransition(const GameStruct *game, float shaderSeconds);
 

@@ -482,6 +482,67 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
     DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){54 + (game->nameSelectIndex * 62),595+ (5 * sin((millis_ui()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
 }
 
+// Note: This function is intentionally duplicated from UI_DrawGameOver to allow
+// independent customization of the top 3 game over screen. The user can modify
+// this function to create a distinct visual experience for top 3 achievements.
+void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
+                         const MenuPinball *menuPinballs, int numMenuPinballs,
+                         const char *nameString, long long elapsedTimeStart,
+                         float shaderSeconds) {
+    
+    ClearBackground((Color){255,183,0,255});
+    float timeFactor = (millis_ui() - elapsedTimeStart) / 1000.0f;
+    float xOffset = sin(timeFactor) * 50.0f;
+    float yOffset = cos(timeFactor) * 50.0f;
+    float angle = sin(timeFactor * 2) * 20 + cos(timeFactor / 3) * 25;
+    float width = screenWidth * 3;
+    float height = screenHeight * 3;
+
+    bool useSwirl = IsShaderValid(res->swirlShader);
+#if defined(PLATFORM_RPI)
+    // On Raspberry Pi with DRM/GLES, swirl shader can be problematic; disable if needed.
+    useSwirl = false;
+#endif
+
+    if (useSwirl) {
+        BeginShaderMode(res->swirlShader);
+    }
+
+    DrawTexturePro(res->bgMenu,
+                   (Rectangle){0,0,res->bgMenu.width,res->bgMenu.height},
+                   (Rectangle){xOffset + screenWidth/2,yOffset + screenWidth/2,width,height},
+                   (Vector2){width/2,height/2},
+                   angle,
+                   WHITE);
+
+    if (useSwirl) {
+        EndShaderMode();
+    }
+
+    for (int i = 0; i < numMenuPinballs; i++){
+        DrawTexturePro(res->ballTex,(Rectangle){0,0,res->ballTex.width,res->ballTex.height},(Rectangle){menuPinballs[i].px,menuPinballs[i].py,30,30},(Vector2){0,0},0,(Color){0,0,0,50});
+    }
+
+    DrawTexturePro(res->gameOverOverlay1Top3,(Rectangle){0,0,res->gameOverOverlay1Top3.width,res->gameOverOverlay1Top3.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
+    DrawTexturePro(res->gameOverOverlay2Top3,(Rectangle){0,0,res->gameOverOverlay2Top3.width,res->gameOverOverlay2Top3.height},(Rectangle){0,12 + sin((millis_ui() - elapsedTimeStart) / 1000.0f)*5.0f,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
+
+    char tempString[128];
+    sprintf(tempString,"%ld",game->gameScore);
+    DrawTextEx(res->font2, "Score:", (Vector2){screenWidth/2 - MeasureTextEx(res->font2, "Score:", 60, 1.0).x/2,275}, 60, 1.0, WHITE);
+    DrawTextEx(res->font2, tempString, (Vector2){screenWidth/2 - MeasureTextEx(res->font2, tempString, 60, 1.0).x/2,332}, 60, 1.0, WHITE);
+
+    for (int i =0; i < 5; i++){
+        sprintf(tempString,"%c",nameString[i]);
+        float textWidth = MeasureTextEx(res->font2, tempString, 60, 1.0).x;
+        if (nameString[i] == 32){
+            DrawTextEx(res->font2, "-", (Vector2){54 + (i * 62) - textWidth / 2,510}, 60, 1.0, DARKGRAY);
+        } else {
+            DrawTextEx(res->font2, tempString, (Vector2){54 + (i * 62) - textWidth / 2,510}, 60, 1.0, WHITE);
+        }
+    }
+    DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){54 + (game->nameSelectIndex * 62),595+ (5 * sin((millis_ui()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
+}
+
 void UI_DrawTransition(const GameStruct *game, float shaderSeconds) {
     if (game->transitionState > 0){
         float transitionAmount = ((game->transitionAlpha / 255.0f));
