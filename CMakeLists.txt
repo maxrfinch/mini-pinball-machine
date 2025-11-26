@@ -193,6 +193,11 @@ elseif(UNIX) # Linux / Raspberry Pi with desktop/GLFW
         if(LIBJPEG_LIB)
             list(APPEND LINUX_LIBS ${LIBJPEG_LIB})
         endif()
+
+        # Add libcamera headers from local checkout (../libcamera/libcamera/libcamera.h)
+        target_include_directories(${PROJECT_NAME} PRIVATE
+            ${CMAKE_SOURCE_DIR}/../libcamera
+        )
     endif()
     
     target_link_libraries(${PROJECT_NAME} PRIVATE ${LINUX_LIBS})
