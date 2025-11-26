@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <box2d/box2d.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "constants.h"
 #include "physicsDebugDraw.h"
 #include "inputManager.h"
