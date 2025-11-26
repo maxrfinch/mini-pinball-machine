@@ -455,6 +455,10 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     const float smallBumperSize = 4.0f;
     const float bumperBounciness = 1.8f;
     Bumper* bumpers = malloc(numBumpers * sizeof(Bumper));
+    if (bumpers == NULL) {
+        printf("ERROR: Failed to allocate memory for bumpers\n");
+        return;
+    }
 
     // Lower slingshot segments
     b2Segment leftBouncer, rightBouncer;
@@ -712,6 +716,9 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     debugState.bumpers = bumpers;
     debugState.numBumpers = numBumpers;
 
+    // Store bumpers in GameStruct for cleanup in physics_shutdown
+    game->bumpers = bumpers;
+
     // Return bumpers and flipper bodies to caller
     *out_bumpers = bumpers;
     *out_leftFlipperBody = &leftFlipperBodyStatic;
@@ -768,12 +775,19 @@ void physics_step(GameStruct *game, float dt) {
 /*
  * physics_shutdown
  *  - Frees the Box2D world owned by this GameStruct.
+ *  - Frees the bumpers array allocated in physics_init.
  *  - Does not free GameStruct itself or any rendering data.
  */
 void physics_shutdown(GameStruct *game) {
     if (B2_IS_NON_NULL(game->world)) {
         b2DestroyWorld(game->world);
         game->world = b2_nullWorldId;
+    }
+    
+    // Free bumpers array allocated in physics_init
+    if (game->bumpers != NULL) {
+        free(game->bumpers);
+        game->bumpers = NULL;
     }
 }
 
