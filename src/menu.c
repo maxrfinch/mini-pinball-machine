@@ -109,11 +109,11 @@ void Scoreboard_Update(GameStruct *game,
                 
                 // If in Top-3 Game Over scene with camera, capture photo
                 if (game->gameState == 3 && game->camera.initialized) {
+                    #if defined(PLATFORM_RPI)
                     // Trigger NeoPixel camera flash
                     inputSendCameraFlash(input);
                     
                     // Wait for flash (200ms)
-                    #if defined(PLATFORM_RPI)
                     usleep(200000);  // 200ms
                     #endif
                     

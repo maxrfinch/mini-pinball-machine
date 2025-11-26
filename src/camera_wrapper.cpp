@@ -2,6 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #if defined(PLATFORM_RPI)
 #include "camera_libcamera.hpp"
@@ -101,8 +104,6 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
     if (!g_camera_internal || !g_camera_internal->wrapper) return 0;
     
     // Create Photos directory using POSIX mkdir
-    #include <sys/stat.h>
-    #include <sys/types.h>
     mkdir("Resources", 0755);
     mkdir("Resources/Photos", 0755);
     

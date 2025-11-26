@@ -119,7 +119,7 @@ bool LibcameraWrapper::captureFrame(unsigned char **buffer, size_t *size) {
     *buffer = nullptr;
     *size = 0;
     
-    return false;  // Changed to false to indicate not implemented
+    return false;  // Not yet implemented
 }
 
 bool LibcameraWrapper::captureToFile(const char *filename) {
@@ -140,7 +140,7 @@ bool LibcameraWrapper::captureToFile(const char *filename) {
     std::cerr << "CAMERA: captureToFile() not yet fully implemented" << std::endl;
     std::cerr << "CAMERA: Consider using libcamera-still external command" << std::endl;
     
-    return false;  // Changed to false to indicate not implemented
+    return false;  // Not yet implemented
 }
 
 void LibcameraWrapper::stopPreview() {
