@@ -114,10 +114,10 @@ static float haptics_generate_sample(float sampleRate) {
     
     switch (g_haptics.type) {
         case HAPTIC_FLIPPER_EMPTY: {
-            // Light but noticeable tap: ~120 Hz, ~25 ms, small decay envelope (slightly stronger)
-            const float duration = 0.025f;
+            // Light but noticeable tap: ~120 Hz, ~50 ms, small decay envelope (slightly stronger)
+            const float duration = 0.050f;
             const float freq = 120.0f;
-            const float baseAmp = 0.46f;
+            const float baseAmp = 1.0f;
 
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;           // 0..1
@@ -132,10 +132,10 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_FLIPPER_HIT: {
-            // Thumpy hit: ~130 Hz, ~32 ms, stronger peak to approach launch feel (~80%)
-            const float duration = 0.032f;
+            // Thumpy hit: ~130 Hz, ~64 ms, stronger peak to approach launch feel (~100%)
+            const float duration = 0.064f;
             const float freq = 130.0f;
-            const float baseAmp = 0.85f;
+            const float baseAmp = 1.0f;
 
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;   // 0..1
@@ -152,11 +152,11 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_LAUNCH: {
-            // Sweep from 45Hz to 90Hz over 95ms, amplitude ramps up then down
-            const float duration = 0.095f;
+            // Sweep from 45Hz to 90Hz over 190ms, amplitude ramps up then down
+            const float duration = 0.190f;
             const float freq_start = 45.0f;
             const float freq_end = 90.0f;
-            const float peak_amp = 0.80f;
+            const float peak_amp = 1.0f;
             
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;
@@ -174,10 +174,10 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_BUMPER_LIGHT: {
-            // Light bumper: ~150 Hz, ~20ms, decaying sine tap
-            const float duration = 0.040f;
+            // Light bumper: ~150 Hz, ~40ms, decaying sine tap
+            const float duration = 0.080f;
             const float freq = 120.0f;
-            const float baseAmp = 0.52f;
+            const float baseAmp = 1.0f;
             
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;   // 0..1
@@ -193,12 +193,12 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_BUMPER_SOLID: {
             // Double knock: sine-based pulses with envelopes to avoid buzz
-            const float pulse1_duration = 0.052f;
-            const float gap_duration   = 0.006f;
-            const float pulse2_duration = 0.016f;
+            const float pulse1_duration = 0.104f;
+            const float gap_duration   = 0.012f;
+            const float pulse2_duration = 0.032f;
             const float freq = 100.0f;      // more tactile for limited power
-            const float baseAmp1 = 0.60f;
-            const float baseAmp2 = 0.45f;
+            const float baseAmp1 = 1.0f;
+            const float baseAmp2 = 1.0f;
 
             if (g_haptics.t < pulse1_duration) {
                 // First pulse with fast decay envelope
@@ -225,33 +225,33 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_EXCITEMENT: {
-            // Rising energy buzz: ~210ms total
-            // Segment 1: 40->80Hz sweep, 150ms, amp 0.45
-            // Segment 2: 70Hz sustain, 40ms, amp 0.35
-            // Segment 3: 50Hz tail, 20ms, amp 0.25
-            const float seg1_duration = 0.150f;
-            const float seg2_duration = 0.040f;
-            const float seg3_duration = 0.020f;
+            // Rising energy buzz: ~420ms total
+            // Segment 1: 40->80Hz sweep, 300ms, amp 1.0
+            // Segment 2: 70Hz sustain, 80ms, amp 1.0
+            // Segment 3: 50Hz tail, 40ms, amp 1.0
+            const float seg1_duration = 0.300f;
+            const float seg2_duration = 0.080f;
+            const float seg3_duration = 0.040f;
             
             if (g_haptics.t < seg1_duration) {
-                // Segment 1: frequency sweep with moderate amplitude
+                // Segment 1: frequency sweep with maximum amplitude
                 float progress = g_haptics.t / seg1_duration;
                 float freq = 40.0f + (80.0f - 40.0f) * progress;
-                float amp = 0.45f;
+                float amp = 1.0f;
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < seg1_duration + seg2_duration) {
                 // Segment 2: sustain at 70Hz
                 float freq = 70.0f;
-                float amp = 0.35f;
+                float amp = 1.0f;
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < seg1_duration + seg2_duration + seg3_duration) {
                 // Segment 3: tail at 50Hz
                 float freq = 50.0f;
-                float amp = 0.25f;
+                float amp = 1.0f;
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
