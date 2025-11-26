@@ -226,6 +226,10 @@ int Camera_StartPreview(CameraSystem *camera) {
     // Allocate preview buffer (enough for one JPEG frame)
     g_camera_internal->preview_buffer_size = 320 * 240 * 3;  // RGB buffer size
     g_camera_internal->preview_buffer = (unsigned char*)malloc(g_camera_internal->preview_buffer_size);
+    if (g_camera_internal->preview_buffer == NULL) {
+        TraceLog(LOG_WARNING, "CAMERA: Failed to allocate preview buffer");
+        // Non-fatal - preview can still work without this buffer
+    }
     
     camera->preview_active = 1;
     g_camera_internal->last_frame_time = GetTime();
@@ -349,12 +353,13 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
     int is_png = (ext && strcasecmp(ext, ".png") == 0);
     
     // Create secure temporary file for JPEG capture
-    char temp_file[512];
+    // Buffer needs space for /tmp/pinball_capture_XXXXXX.jpg (31 chars + null)
+    char temp_file[64] = {0};
     int temp_fd = -1;
     
     if (is_png) {
         // Use mkstemp for secure temp file creation
-        snprintf(temp_file, sizeof(temp_file), "/tmp/pinball_capture_XXXXXX");
+        strncpy(temp_file, "/tmp/pinball_capture_XXXXXX", sizeof(temp_file) - 5);  // Reserve space for .jpg
         temp_fd = mkstemp(temp_file);
         if (temp_fd == -1) {
             TraceLog(LOG_ERROR, "CAMERA: Failed to create temp file: %s", strerror(errno));
@@ -365,8 +370,8 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
         }
         close(temp_fd);  // Close immediately, we just need the unique name
         
-        // Append .jpg extension - need to rename the file
-        char temp_file_jpg[520];
+        // Append .jpg extension to original path directly
+        char temp_file_jpg[64];
         snprintf(temp_file_jpg, sizeof(temp_file_jpg), "%s.jpg", temp_file);
         if (rename(temp_file, temp_file_jpg) != 0) {
             TraceLog(LOG_ERROR, "CAMERA: Failed to rename temp file: %s", strerror(errno));
