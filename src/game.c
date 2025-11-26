@@ -93,6 +93,10 @@ void Game_Update(GameStruct *game,
                 Game_StartGame(game, bumpers);
                 break;
             case TRANSITION_TO_MENU:
+                // Ensure camera is stopped when leaving game over scenes
+                if (game->camera.preview_active) {
+                    Camera_StopPreview(&game->camera);
+                }
                 game->gameState = 0;
                 game->currentScene = SCENE_MENU;
                 break;

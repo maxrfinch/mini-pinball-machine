@@ -135,6 +135,12 @@ void Scoreboard_Update(GameStruct *game,
                     inputSendCameraIdle(input);
                 }
                 
+                // Ensure camera is stopped (cleanup even if not Top-3)
+                if (game->camera.preview_active) {
+                    Camera_StopPreview(&game->camera);
+                    inputSendCameraIdle(input);
+                }
+                
                 // Submit score and start transition to menu.
                 game->nameSelectDone = 1;
                 game->transitionState = 1;

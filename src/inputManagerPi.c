@@ -413,7 +413,8 @@ void inputSendMultiballAnimation(InputManager *input){
 
 void inputSendCameraPreview(InputManager *input){
     // Trigger camera preview NeoPixel mode
-    sprintf(tempString,"CMD NEO EFFECT CAMERA_PREVIEW\n");
+    // Note: CAMERA_PREVIEW is not defined in firmware, using NONE for minimal distraction
+    sprintf(tempString,"CMD NEO EFFECT NONE\n");
     sendCommand(input->fd, tempString);
 }
 
