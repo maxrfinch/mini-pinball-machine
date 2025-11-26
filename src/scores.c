@@ -44,6 +44,22 @@ void shutdownScores(ScoreHelper *helper){
         sqlite3_close(helper->db);
         helper->initialized = 0;
     }
+    
+    // Free allocated score name strings
+    if (helper->scores != NULL) {
+        for (int i = 0; i < 10; i++) {
+            if (helper->scores[i].scoreName != NULL) {
+                free(helper->scores[i].scoreName);
+                helper->scores[i].scoreName = NULL;
+            }
+        }
+        // Free the scores array itself
+        free(helper->scores);
+        helper->scores = NULL;
+    }
+    
+    // Free the helper structure itself
+    free(helper);
 }
 void submitScore(ScoreHelper *helper, char *name, int score){
     if (helper->initialized == 1){

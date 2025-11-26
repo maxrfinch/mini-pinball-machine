@@ -11,7 +11,9 @@ void inputUpdate(InputManager* input){
     return;
 }
 void inputShutdown(InputManager* input){
-    return;
+    if (input != NULL) {
+        free(input);
+    }
 }
 
 int inputLeft(InputManager* input){

@@ -693,6 +693,9 @@ void shutdownSound(SoundManager *sound){
     free(sound->flipper);
     free(sound->waterSplash);
     
+    // Free the sound manager structure itself
+    free(sound);
+    
     // Close audio device
     CloseAudioDevice();
 }
