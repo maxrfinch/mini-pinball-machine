@@ -457,14 +457,14 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     
     // Check if bumpers are already allocated (prevent double-initialization)
     if (game->bumpers != NULL) {
-        printf("WARNING: physics_init called with already-allocated bumpers. Freeing old allocation.\n");
+        TraceLog(LOG_WARNING, "physics_init called with already-allocated bumpers. Freeing old allocation.");
         free(game->bumpers);
         game->bumpers = NULL;
     }
     
     Bumper* bumpers = malloc(numBumpers * sizeof(Bumper));
     if (bumpers == NULL) {
-        printf("ERROR: Failed to allocate memory for bumpers\n");
+        TraceLog(LOG_ERROR, "Failed to allocate memory for bumpers");
         return;
     }
 
