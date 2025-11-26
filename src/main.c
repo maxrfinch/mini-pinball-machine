@@ -269,11 +269,6 @@ int main(void){
 
                 physics_step(&game, effectiveTimestep);
 
-                if (game.oldGameScore != game.gameScore){
-                    inputSetScore(input,game.gameScore);
-                    game.oldGameScore = game.gameScore;
-                }
-
                 if (game. oldGameScore != game.gameScore) {
                     inputSetScore(input, game.gameScore);
                     game.oldGameScore = game.gameScore;
