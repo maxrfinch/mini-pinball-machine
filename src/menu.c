@@ -2,6 +2,7 @@
 #include "constants.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "soundManager.h"
 
 void Menu_Init(GameStruct *game, MenuPinball *menuPinballs, int numMenuPinballs) {
     game->menuState = 0;
@@ -48,11 +49,13 @@ void Menu_Update(GameStruct *game,
             game->transitionState = 1;
             game->transitionTarget = TRANSITION_TO_GAME;
             playClick(sound);
+            sound_play_haptic_bumper_light((ball->game)->sound);
             inputSendGameStart(input);
         }
     }
     if (inputLeftPressed(input)) {
         playClick(sound);
+        sound_play_haptic_bumper_light((ball->game)->sound);
         game->menuState--;
         if (game->menuState < 0) {
             game->menuState = 2;  // Wrap to controls
@@ -64,6 +67,7 @@ void Menu_Update(GameStruct *game,
     }
     if (inputRightPressed(input)) {
         playClick(sound);
+        sound_play_haptic_bumper_light((ball->game)->sound);
         game->menuState++;
         if (game->menuState > 2) {
             game->menuState = 0;  // Wrap to high scores
