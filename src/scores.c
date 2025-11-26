@@ -8,7 +8,7 @@ ScoreHelper *initScores(){
     ScoreHelper *helper = malloc(sizeof(ScoreHelper));
     helper->scoresUpdated = 0;
     helper->numTopScores = 0;
-    helper->scores = malloc(sizeof(ScoreObject) * 10);
+    helper->scores = malloc(sizeof(ScoreObject) * MAX_TOP_SCORES);
     helper->initialized = 0;
 
     int rc = sqlite3_open("Resources/scores.db", &helper->db);
@@ -22,12 +22,12 @@ ScoreHelper *initScores(){
         rc = sqlite3_exec(helper->db, sql, NULL, NULL, NULL);
 
         // Blank scores with null score objects.
-        for (int i = 0; i < 10; i++){
+        for (int i = 0; i < MAX_TOP_SCORES; i++){
             helper->scores[i].scoreName = (char*) malloc(12*sizeof(char));
             helper->scores[i].scoreValue = 0;
         }
-        // As a test, show top 10 scores
-        for (int i = 1; i <= 10; i++){
+        // As a test, show top MAX_TOP_SCORES scores
+        for (int i = 1; i <= MAX_TOP_SCORES; i++){
             ScoreObject *score = getRankedScore(helper,i);
             if (score != NULL){
                 printf("%d %s = %d\n",i,score->scoreName,score->scoreValue);
@@ -47,7 +47,7 @@ void shutdownScores(ScoreHelper *helper){
     
     // Free allocated score name strings
     if (helper->scores != NULL) {
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < MAX_TOP_SCORES; i++) {
             if (helper->scores[i].scoreName != NULL) {
                 free(helper->scores[i].scoreName);
                 helper->scores[i].scoreName = NULL;
@@ -109,7 +109,7 @@ int sqlCallback(void *helper, int argc, char **argv, char **azColName){
     char *scoreName = argv[1];
     char *scoreValue = argv[2];
     printf("%d %s %s \n",rowIdInt, scoreName, scoreValue);
-    if (rowIdInt >= 0 && rowIdInt < 10){
+    if (rowIdInt >= 0 && rowIdInt < MAX_TOP_SCORES){
         strcpy(tempHelper->scores[rowIdInt].scoreName, scoreName);
         int j = 0;
         while (tempHelper->scores[rowIdInt].scoreName[j]) {

@@ -465,6 +465,10 @@ void physics_init(GameStruct *game, Bumper **out_bumpers, b2BodyId **out_leftFli
     Bumper* bumpers = malloc(numBumpers * sizeof(Bumper));
     if (bumpers == NULL) {
         TraceLog(LOG_ERROR, "Failed to allocate memory for bumpers");
+        // Set output parameters to safe values on error
+        *out_bumpers = NULL;
+        *out_leftFlipperBody = NULL;
+        *out_rightFlipperBody = NULL;
         return;
     }
 
