@@ -7,6 +7,7 @@
 #include <math.h>
 #include <box2d/box2d.h>
 #include "inputManager.h"
+#include "camera.h"
 
 typedef struct GameStructData GameStruct;
 
@@ -170,6 +171,9 @@ struct GameStructData {
 
     // System menu action flags
     int quitRequested;               // 1 if quit to desktop was requested
+    
+    // Camera system for Top-3 Game Over photo capture
+    CameraSystem camera;             // Camera system instance
 
 };
 

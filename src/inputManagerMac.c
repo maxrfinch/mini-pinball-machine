@@ -91,3 +91,18 @@ void inputSendMultiballAnimation(InputManager *input){
     // Stub for Mac - no hardware controller
     (void)input;
 }
+
+void inputSendCameraPreview(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendCameraFlash(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendCameraIdle(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}

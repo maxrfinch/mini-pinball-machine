@@ -93,6 +93,10 @@ void Game_Update(GameStruct *game,
                 Game_StartGame(game, bumpers);
                 break;
             case TRANSITION_TO_MENU:
+                // Ensure camera is stopped when leaving game over scenes
+                if (game->camera.preview_active) {
+                    Camera_StopPreview(&game->camera);
+                }
                 game->gameState = 0;
                 game->currentScene = SCENE_MENU;
                 break;
@@ -107,6 +111,16 @@ void Game_Update(GameStruct *game,
                 game->currentScene = SCENE_GAME_OVER_TOP3;
                 game->nameSelectIndex = 0;
                 game->nameSelectDone = 0;
+                
+                // Start camera preview for Top-3 Game Over
+                if (game->camera.initialized) {
+                    Camera_StartPreview(&game->camera);
+                    
+                    // Send NeoPixel camera preview command
+                    if (game->input) {
+                        inputSendCameraPreview(game->input);
+                    }
+                }
                 break;
         }
         game->transitionDelay++;

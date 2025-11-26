@@ -526,6 +526,42 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
     DrawTexturePro(res->gameOverOverlay1Top3,(Rectangle){0,0,res->gameOverOverlay1Top3.width,res->gameOverOverlay1Top3.height},(Rectangle){0,0,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
     DrawTexturePro(res->gameOverOverlay2Top3,(Rectangle){0,0,res->gameOverOverlay2Top3.width,res->gameOverOverlay2Top3.height},(Rectangle){0,12 + sin((millis_ui() - elapsedTimeStart) / 1000.0f)*5.0f,screenWidth,screenHeight},(Vector2){0,0},0,WHITE);
 
+    // Draw camera preview box (150x150 at center X, Y=325)
+    // Position: centered horizontally, vertical center at Y=325
+    int previewSize = 150;
+    int previewX = (screenWidth - previewSize) / 2;
+    int previewY = 325 - (previewSize / 2);  // Center at Y=325
+    
+    // Draw preview background/border
+    DrawRectangle(previewX - 2, previewY - 2, previewSize + 4, previewSize + 4, WHITE);
+    DrawRectangle(previewX, previewY, previewSize, previewSize, BLACK);
+    
+    // Draw camera preview if available
+    if (game->camera.preview_active) {
+        // Update camera preview
+        Camera_UpdatePreview((CameraSystem*)&game->camera);
+        
+        // Draw preview texture if loaded
+        if (game->camera.preview_tex.id != 0) {
+            DrawTexturePro(game->camera.preview_tex,
+                          (Rectangle){0, 0, game->camera.preview_tex.width, game->camera.preview_tex.height},
+                          (Rectangle){previewX, previewY, previewSize, previewSize},
+                          (Vector2){0, 0},
+                          0,
+                          WHITE);
+        } else {
+            // Preview active but no texture yet
+            const char *placeholderText = "LOADING...";
+            int textWidth = MeasureText(placeholderText, 20);
+            DrawText(placeholderText, previewX + (previewSize - textWidth) / 2, previewY + previewSize / 2 - 10, 20, GRAY);
+        }
+    } else {
+        // Show placeholder text when camera not available
+        const char *placeholderText = "NO CAMERA";
+        int textWidth = MeasureText(placeholderText, 20);
+        DrawText(placeholderText, previewX + (previewSize - textWidth) / 2, previewY + previewSize / 2 - 10, 20, DARKGRAY);
+    }
+
     char tempString[128];
     sprintf(tempString,"%ld",game->gameScore);
     DrawTextEx(res->font2, "Score:", (Vector2){screenWidth/2 - MeasureTextEx(res->font2, "Score:", 60, 1.0).x/2,275}, 60, 1.0, WHITE);

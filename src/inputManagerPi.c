@@ -410,3 +410,22 @@ void inputSendMultiballAnimation(InputManager *input){
     sprintf(tempString,"CMD DISPLAY MULTIBALL\n");
     sendCommand(input->fd, tempString);
 }
+
+void inputSendCameraPreview(InputManager *input){
+    // Trigger camera preview NeoPixel mode
+    // Note: CAMERA_PREVIEW is not defined in firmware, using NONE for minimal distraction
+    sprintf(tempString,"CMD NEO EFFECT NONE\n");
+    sendCommand(input->fd, tempString);
+}
+
+void inputSendCameraFlash(InputManager *input){
+    // Trigger camera flash NeoPixel effect
+    sprintf(tempString,"CMD NEO EFFECT CAMERA_FLASH\n");
+    sendCommand(input->fd, tempString);
+}
+
+void inputSendCameraIdle(InputManager *input){
+    // Return to idle/attract mode after camera
+    sprintf(tempString,"CMD NEO EFFECT ATTRACT\n");
+    sendCommand(input->fd, tempString);
+}

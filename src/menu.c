@@ -2,7 +2,9 @@
 #include "constants.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "soundManager.h"
+#include "camera.h"
 
 void Menu_Init(GameStruct *game, MenuPinball *menuPinballs, int numMenuPinballs) {
     game->menuState = 0;
@@ -104,6 +106,53 @@ void Scoreboard_Update(GameStruct *game,
             playClick(game->sound);
             if (game->nameSelectIndex == 5) {
                 // Name selection done
+                
+                // If in Top-3 Game Over scene with camera, capture photo
+                if (game->gameState == 3 && game->camera.initialized) {
+                    #if defined(PLATFORM_RPI)
+                    // Trigger NeoPixel camera flash
+                    inputSendCameraFlash(input);
+                    
+                    // Wait for flash (200ms)
+                    usleep(200000);  // 200ms
+                    #endif
+                    
+                    // Capture photo - sanitize nameString for filename
+                    char sanitizedName[6];
+                    for (int i = 0; i < 5; i++) {
+                        char c = nameString[i];
+                        // Replace spaces and non-alphanumeric with underscore
+                        if (c == 32 || c < 65 || c > 90) {
+                            sanitizedName[i] = '_';
+                        } else {
+                            sanitizedName[i] = c;
+                        }
+                    }
+                    sanitizedName[5] = '\0';
+                    
+                    char photoFilename[256];
+                    snprintf(photoFilename, sizeof(photoFilename), 
+                             "Resources/Photos/%s_%ld.png", sanitizedName, game->gameScore);
+                    
+                    if (Camera_CapturePhoto(&game->camera, photoFilename)) {
+                        printf("Photo captured: %s\n", photoFilename);
+                    } else {
+                        printf("Failed to capture photo\n");
+                    }
+                    
+                    // Stop camera preview
+                    Camera_StopPreview(&game->camera);
+                    
+                    // Restore normal LED mode
+                    inputSendCameraIdle(input);
+                }
+                
+                // Ensure camera is stopped (cleanup even if not Top-3)
+                if (game->camera.preview_active) {
+                    Camera_StopPreview(&game->camera);
+                    inputSendCameraIdle(input);
+                }
+                
                 // Submit score and start transition to menu.
                 game->nameSelectDone = 1;
                 game->transitionState = 1;

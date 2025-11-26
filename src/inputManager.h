@@ -55,4 +55,9 @@ void inputSendBallLaunched(InputManager *input);
 void inputSendBallSavedAnimation(InputManager *input);
 void inputSendMultiballAnimation(InputManager *input);
 
+// Camera NeoPixel commands
+void inputSendCameraPreview(InputManager *input);
+void inputSendCameraFlash(InputManager *input);
+void inputSendCameraIdle(InputManager *input);
+
 #endif
