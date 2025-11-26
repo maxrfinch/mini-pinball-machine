@@ -216,6 +216,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                 (ball->game)->powerupScore += 50;
             }
             playUpperBouncerSound((ball->game)->sound);
+            sound_play_haptic_bumper_light((ball->game)->sound);
             return true;
         } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION) {
             // Slow-motion bumper: single-use powerup with cooldown
@@ -229,6 +230,7 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                     (ball->game)->powerupScore += 1000;
                 }
                 playSlowdownSound((ball->game)->sound);
+                sound_play_haptic_bumper_light((ball->game)->sound);
                 
                 // Mark powerup as unavailable and start explosion effect
                 (ball->game)->slowMoPowerupAvailable = 0;
