@@ -482,6 +482,9 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
     DrawTexturePro(res->arrowRight,(Rectangle){0,0,res->arrowRight.width,res->arrowRight.height},(Rectangle){54 + (game->nameSelectIndex * 62),595+ (5 * sin((millis_ui()-elapsedTimeStart)/200.0f)),32,32},(Vector2){16,16},-90,WHITE);
 }
 
+// Note: This function is intentionally duplicated from UI_DrawGameOver to allow
+// independent customization of the top 3 game over screen. The user can modify
+// this function to create a distinct visual experience for top 3 achievements.
 void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                          const MenuPinball *menuPinballs, int numMenuPinballs,
                          const char *nameString, long long elapsedTimeStart,
