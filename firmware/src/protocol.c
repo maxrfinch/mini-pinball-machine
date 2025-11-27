@@ -71,6 +71,11 @@ static void parse_command(const char* cmd) {
     if (strcmp(cmd, "CMD DEBUG") != 0) {
         debug_mode_exit();
     }
+
+    // CMD BOOTSEL - Reset into USB bootloader mode
+    else if (strcmp(cmd, "CMD BOOTSEL") == 0) {
+        reset_usb_boot(0, 0);
+    }
     
     // ===== DISPLAY COMMANDS =====
     if (strncmp(cmd, "CMD DISPLAY SCORE ", 18) == 0) {
