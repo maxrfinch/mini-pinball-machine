@@ -79,11 +79,49 @@ static float roundToTenth(float value) {
 // Mouse Input Helper
 // ============================================================================
 //
-// Returns raw mouse coordinates without any scaling or transformation.
-// The mouse should work with untransformed coordinates.
+// Transforms mouse coordinates from physical screen space to virtual canvas
+// space. This is necessary because:
+// 1. The game renders to a virtual 450×800 RenderTexture canvas
+// 2. That texture is scaled and letterboxed to fit the physical screen
+// 3. GetMousePosition() returns coordinates in physical screen space
+// 4. UI buttons are calculated in virtual canvas space (450×800)
+//
+// The transformation uses the same platform-specific logic and calculations
+// as main.c (lines 535-555) to ensure exact coordinate alignment.
 // ============================================================================
 static Vector2 UI_GetMousePosition(void) {
-    return GetMousePosition();
+    Vector2 mousePos = GetMousePosition();
+    
+    // Get render dimensions matching main.c logic (lines 535-541)
+    #if defined(PLATFORM_RPI)
+        int renderW = GetRenderWidth();
+        int renderH = GetRenderHeight();
+    #else
+        int renderW = GetScreenWidth();
+        int renderH = GetScreenHeight();
+    #endif
+    
+    // Calculate the same scale and offset used in main.c rendering (lines 546-555)
+    float scaleX = (float)renderW / (float)screenWidth;
+    float scaleY = (float)renderH / (float)screenHeight;
+    float scale = (scaleX < scaleY) ? scaleX : scaleY;
+    
+    if (scale <= 0.0f) {
+        return mousePos; // Safety check
+    }
+    
+    float drawW = (float)screenWidth * scale;
+    float drawH = (float)screenHeight * scale;
+    
+    float offsetX = (renderW - drawW) * 0.5f;
+    float offsetY = (renderH - drawH) * 0.5f;
+    
+    // Transform mouse from screen space to virtual canvas space
+    Vector2 virtualPos;
+    virtualPos.x = (mousePos.x - offsetX) / scale;
+    virtualPos.y = (mousePos.y - offsetY) / scale;
+    
+    return virtualPos;
 }
 
 // Debug UI toggle - press Tab to show button hitboxes
