@@ -302,7 +302,7 @@ SoundManager *initSound(){
     }
     
     // Initialize game volume to 80%
-    sound->gameVolume = 0.8f;
+    sound->gameVolume = 0.3f;
     
     // Initialize round-robin indices for polyphonic playback
     sound->redPowerupIndex = 0;
