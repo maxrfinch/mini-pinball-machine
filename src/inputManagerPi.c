@@ -352,7 +352,7 @@ void inputSetGameState(InputManager* input, InputGameState state){
             sprintf(batchCmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
             sprintf(batchCmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
             sprintf(batchCmd3, "CMD DISP_EFFECT NONE\n");
-            sendCommand2(input->fd, batchCmd1, batchCmd2, batchCmd3);
+            sendCommand3(input->fd, batchCmd1, batchCmd2, batchCmd3);
             break;
         }
         case STATE_GAME_OVER: {
