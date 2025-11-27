@@ -118,7 +118,8 @@ void Powerups_CheckMultiball(GameStruct *game, Bumper *bumpers, SoundManager *so
         game->bluePowerupOverlay = 1.0f;
         game->ballPowerupState = -1;
         game->gameScore += 500;
-        if (game->waterPowerupState == 0){
+        // Rule 4: Pause Water point accumulation during Slow-Mo
+        if (game->waterPowerupState == 0 && game->slowMotion == 0){
             game->powerupScore += 500;
         }
         // Send multiball animation to controller
@@ -146,7 +147,8 @@ void Powerups_CheckBumperPowerup(GameStruct *game, Bumper *bumpers, SoundManager
         sound_play_haptic_excitement(sound);
         game->redPowerupOverlay = 1.0f;
         game->gameScore += 500;
-        if (game->waterPowerupState == 0){
+        // Rule 4: Pause Water point accumulation during Slow-Mo
+        if (game->waterPowerupState == 0 && game->slowMotion == 0){
             game->powerupScore += 500;
         }
     } else if (game->bumperPowerupState == -1){

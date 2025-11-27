@@ -212,7 +212,8 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             // Standard bumpers: apply bounce effect, score, sound, and allow elastic collision
             bumper->bounceEffect = 10.0f;
             (ball->game)->gameScore += 50;
-            if ((ball->game)->waterPowerupState == 0) {
+            // Rule 4: Pause Water point accumulation during Slow-Mo
+            if ((ball->game)->waterPowerupState == 0 && (ball->game)->slowMotion == 0) {
                 (ball->game)->powerupScore += 50;
             }
             playUpperBouncerSound((ball->game)->sound);
@@ -220,8 +221,9 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             return true;
         } else if (bumper->type == BUMPER_TYPE_SLOW_MOTION) {
             // Slow-motion bumper: single-use powerup with cooldown
-            // Only trigger if powerup is available
-            if ((ball->game)->slowMoPowerupAvailable == 1) {
+            // Rule 1: Slow-Mo cannot be activated during Water powerup
+            // Only trigger if powerup is available AND Water is not active
+            if ((ball->game)->slowMoPowerupAvailable == 1 && (ball->game)->waterPowerupState == 0) {
                 // Trigger slow motion effect
                 (ball->game)->slowMotion = 1;
                 (ball->game)->slowMotionCounter = 1200;
@@ -238,6 +240,12 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
                 
                 // Show bounce effect only when powerup is triggered
                 bumper->bounceEffect = 20.0f;
+            } else if ((ball->game)->waterPowerupState > 0) {
+                // Rule 3: If Slow-Mo bumper is hit during Water powerup, award 1000 points
+                (ball->game)->gameScore += 1000;
+                bumper->bounceEffect = 10.0f;
+                playBounce((ball->game)->sound);
+                sound_play_haptic_bumper_light((ball->game)->sound);
             }
             // Disable elastic collision regardless of availability
             return false; // Disable contact to prevent elastic collision
@@ -247,7 +255,8 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             // In Chipmunk this returned cpFalse to prevent elastic bounce
             if (bumper->enabled == 1) {
                 (ball->game)->gameScore += 50;
-                if ((ball->game)->waterPowerupState == 0) {
+                // Rule 4: Pause Water point accumulation during Slow-Mo
+                if ((ball->game)->waterPowerupState == 0 && (ball->game)->slowMotion == 0) {
                     (ball->game)->powerupScore += 50;
                 }
                 bumper->enabled = 0;
@@ -259,7 +268,8 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             if (bumper->enabled == 1) {
                 bumper->bounceEffect = 10.0f;
                 (ball->game)->gameScore += 250;
-                if ((ball->game)->waterPowerupState == 0) {
+                // Rule 4: Pause Water point accumulation during Slow-Mo
+                if ((ball->game)->waterPowerupState == 0 && (ball->game)->slowMotion == 0) {
                     (ball->game)->powerupScore += 250;
                 }
                 bumper->enabled = 0;
@@ -273,7 +283,8 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
             // Fallback: simple one-shot scoring bumper without elastic bounce
             // In Chipmunk this returned cpFalse to prevent elastic bounce
             (ball->game)->gameScore += 25;
-            if ((ball->game)->waterPowerupState == 0) {
+            // Rule 4: Pause Water point accumulation during Slow-Mo
+            if ((ball->game)->waterPowerupState == 0 && (ball->game)->slowMotion == 0) {
                 (ball->game)->powerupScore += 25;
             }
             bumper->enabled = 0;
@@ -288,7 +299,8 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         // Left lower slingshot
         leftLowerBumperAnim = 1.0f;
         (ball->game)->gameScore += 25;
-        if ((ball->game)->waterPowerupState == 0) {
+        // Rule 4: Pause Water point accumulation during Slow-Mo
+        if ((ball->game)->waterPowerupState == 0 && (ball->game)->slowMotion == 0) {
             (ball->game)->powerupScore += 25;
         }
         playBounce2((ball->game)->sound);
@@ -298,7 +310,8 @@ static bool PreSolveCallback(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold*
         // Right lower slingshot
         rightLowerBumperAnim = 1.0f;
         (ball->game)->gameScore += 25;
-        if ((ball->game)->waterPowerupState == 0) {
+        // Rule 4: Pause Water point accumulation during Slow-Mo
+        if ((ball->game)->waterPowerupState == 0 && (ball->game)->slowMotion == 0) {
             (ball->game)->powerupScore += 25;
         }
         playBounce2((ball->game)->sound);

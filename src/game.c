@@ -179,7 +179,8 @@ void Game_Update(GameStruct *game,
     }
     
     // If the powerup is full, dispense water powerup
-    if (game->powerupScoreDisplay >= powerupTargetScore) {
+    // Rule 2: If Slow-Mo is active, Water powerup will not activate
+    if (game->powerupScoreDisplay >= powerupTargetScore && game->slowMotion == 0) {
         game->powerupScore = 0;
         game->waterHeightTarget = 0.5f;
         game->waterHeightTimer = 400.0f;
