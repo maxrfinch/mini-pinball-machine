@@ -284,19 +284,19 @@ void neopixel_set_charge_effect(uint8_t charge_percent) {
     // Orange color for charge indication
     Color orange = {255, 100, 0};
     
-    // Right side: boards 1+2 (LEDs 0-15) light up from bottom to top
-    // Board 1 is right rear (LEDs 0-7), Board 2 is right front (LEDs 8-15)
-    // Bottom = rear, so we start from LED 0 going up
+    // Right side: boards 1+2 (LEDs 0-15) light up from front to back
+    // Board 2 is right front (LEDs 8-15), Board 1 is right rear (LEDs 0-7)
+    // Front = LED 15, back = LED 0, so we start from LED 15 going down
     for (uint8_t i = 0; i < num_leds && i < 16; i++) {
-        neopixel_set_led(i, orange);
+        neopixel_set_led(15 - i, orange);
     }
     
-    // Left side: boards 4+5 (LEDs 24-39) light up from bottom to top
-    // Board 5 is left rear (LEDs 32-39), Board 4 is left front (LEDs 24-31)
-    // Both are reversed, so physical bottom is LED 39 going down to LED 24
-    // We light from LED 39 down (bottom to top in physical space)
+    // Left side: boards 4+5 (LEDs 24-39) light up from front to back
+    // Board 4 is left front (LEDs 24-31), Board 5 is left rear (LEDs 32-39)
+    // Both are reversed, so physical front is LED 24 going up to LED 39 (back)
+    // We light from LED 24 up (front to back in physical space)
     for (uint8_t i = 0; i < num_leds && i < 16; i++) {
-        neopixel_set_led(39 - i, orange);
+        neopixel_set_led(24 + i, orange);
     }
     
     // Update the LED display
