@@ -175,6 +175,7 @@ InputManager* inputInit(){
     input->leftKeyPressed = 0;
     input->rightKeyPressed = 0;
     input->centerKeyPressed = 0;
+    input->centerKeyHeld = 0;
     memset(receiveBuffer, 0, sizeof(receiveBuffer));
     receiveBufferPos = 0;
     
@@ -235,10 +236,22 @@ static void parseButtonEvent(InputManager* input, const char* line) {
         return; // Unknown button
     }
     
-    // Parse state
+    // Parse state (DOWN, UP, or HELD)
     int pressed = 0;
-    if (strncmp(rest, "DOWN", 4) == 0 || strncmp(rest, "HELD", 4) == 0) {
+    int isHeld = 0;
+    if (strncmp(rest, "DOWN", 4) == 0) {
         pressed = 1;
+        // Reset held state on new press
+        if (button == 1) {  // Center button
+            input->centerKeyHeld = 0;
+        }
+    } else if (strncmp(rest, "HELD", 4) == 0) {
+        pressed = 1;
+        isHeld = 1;
+        // Track center button held state
+        if (button == 1) {  // Center button
+            input->centerKeyHeld = 1;
+        }
     } else if (strncmp(rest, "UP", 2) == 0) {
         pressed = 0;
     } else {
@@ -253,8 +266,8 @@ static void parseButtonEvent(InputManager* input, const char* line) {
         input->keyState &= ~bitMask;
     }
     
-    fprintf(stderr, "DBG Pi parsed button event: button=%d pressed=%d keyState=0x%02x\n", 
-            button, pressed, input->keyState);
+    fprintf(stderr, "DBG Pi parsed button event: button=%d pressed=%d held=%d keyState=0x%02x\n", 
+            button, pressed, isHeld, input->keyState);
 }
 
 void inputUpdate(InputManager* input){
@@ -333,6 +346,10 @@ int inputCenterPressed(InputManager* input){
         input->centerKeyPressed = 0;
     }
     return 0;
+}
+
+int inputCenterHeld(InputManager* input){
+    return input->centerKeyHeld;
 }
 
 // Send game state - Pi-centric architecture: Pi manages state, sends explicit effect commands
