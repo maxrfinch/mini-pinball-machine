@@ -415,7 +415,8 @@ int main(void){
                     }
                 }
 
-                if (IsMouseButtonPressed(0)){
+                // Only allow debug ball spawn when physics debug drawing is enabled
+                if (debugDrawEnabled && IsMouseButtonPressed(0)){
                     Game_SpawnBall(&game, (mouseX) * screenToWorld, (mouseY) * screenToWorld, 0, 0, 1);
                 }
 
