@@ -11,17 +11,16 @@ The game features two primary power-ups that have special interaction rules:
 ## Interaction Rules
 
 ### Rule 1: Mutual Exclusivity - Water Blocks Slow-Mo
-If the player activates the Water power-up, any active Slow-Mo effects are deactivated, and Slow-Mo cannot be activated during the Water power-up.
+If the Water power-up is active, Slow-Mo cannot be activated.
 
 **Implementation:**
-- When Water activates (`powerupScoreDisplay >= powerupTargetScore`), the system checks if Slow-Mo is active and prevents Water activation
-- When hitting the Slow-Mo bumper, the system checks if Water is active (`waterPowerupState > 0`) and prevents Slow-Mo activation
+- When hitting the Slow-Mo bumper, the system checks if Water is active (`waterPowerupState > 0`) and prevents Slow-Mo activation if so
 
 ### Rule 2: Mutual Exclusivity - Slow-Mo Blocks Water
-If the player activates Slow-Mo, the Water power-up will not activate.
+If Slow-Mo is active, the Water power-up will not activate.
 
 **Implementation:**
-- Water power-up activation in `game.c` now checks `slowMotion == 0` before triggering
+- Water power-up activation in `game.c` checks `slowMotion == 0` and only allows Water activation if Slow-Mo is inactive
 
 ### Rule 3: Bonus Points During Water
 If the Slow-Mo bumper is hit during an active Water power-up, award 1000 bonus points to the player.

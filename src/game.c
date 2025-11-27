@@ -187,14 +187,6 @@ void Game_Update(GameStruct *game,
         game->waterPowerupState = 1;
         playWater(sound);
         
-        // Rule 1: Water activation deactivates any active Slow-Mo effects
-        // (This is redundant since we check slowMotion == 0 above, but kept for clarity)
-        if (game->slowMotion == 1) {
-            game->slowMotion = 0;
-            game->slowMotionCounter = 0;
-            playSpeedupSound(sound);
-        }
-        
         game->gameScore += 1000;
         if (game->waterPowerupState == 0) {
             game->powerupScore += 1000;
