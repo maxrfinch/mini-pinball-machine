@@ -525,8 +525,21 @@ void inputSendChargeStatus(InputManager *input, int charge_percent){
     // Clamp charge percentage to 0-100
     if (charge_percent < 0) charge_percent = 0;
     if (charge_percent > 100) charge_percent = 100;
-    sprintf(tempString,"CMD CHARGE %d\n", charge_percent);
-    sendCommand(input->fd, tempString);
+    
+    // When charging starts (charge_percent > 0), stop BALL_LAUNCH effect
+    // When charging ends (charge_percent == 0), just clear the charge bar
+    if (charge_percent > 0) {
+        // First command: stop the ball launch animation so charge bar is visible
+        sprintf(batchCmd1, "CMD NEO EFFECT NONE\n");
+        // Second command: set the charge bar
+        sprintf(batchCmd2, "CMD CHARGE %d\n", charge_percent);
+        sendCommand2(input->fd, batchCmd1, batchCmd2);
+    } else {
+        // Charge is 0, just send the charge command (clears the bar)
+        sprintf(tempString, "CMD CHARGE %d\n", charge_percent);
+        sendCommand(input->fd, tempString);
+        // Note: BALL_LAUNCH effect will be restored by inputSendBallReady() when next ball is ready
+    }
 }
 
 void inputSendHapticStrength(InputManager *input, int strength_percent){
