@@ -248,7 +248,7 @@ static int draw_char(int x, uint8_t y_phys, char c) {
 }
 
 void display_set_score(uint32_t score) {
-    // Save the score for memory
+    // Save the score for later restoration
     last_score = score;
     
     // Clear score area: physical rows 0-4 → framebuffer rows 7,0,1,2,3
@@ -281,7 +281,7 @@ void display_set_score(uint32_t score) {
 
 void display_set_balls(uint8_t balls)
 {
-    // Save the ball count for memory
+    // Save the ball count for later restoration
     last_balls = balls;
     
     // Layout:
