@@ -614,6 +614,8 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                     }
                 }
                 sanitizedName[nameLen] = '\0';
+                // Check if we need to load/reload the texture
+                int cacheIndex = rank - 1;
                 
                 // Construct filename: Resources/Photos/<SANITIZED_NAME>_<SCORE>.png
                 char photoPath[256];
@@ -639,8 +641,6 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                     printf("DEBUG: Photo file NOT FOUND: %s\n", photoPath);
                 }
                 
-                // Check if we need to load/reload the texture
-                int cacheIndex = rank - 1;
                 if (strcmp(cachedTop3PhotoPaths[cacheIndex], photoPath) != 0) {
                     // Path changed, unload old texture and try loading new one
                     if (cachedTop3Photos[cacheIndex].id != 0) {
