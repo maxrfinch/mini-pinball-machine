@@ -61,4 +61,11 @@ void inputSendCameraPreview(InputManager *input);
 void inputSendCameraFlash(InputManager *input);
 void inputSendCameraIdle(InputManager *input);
 
+// Water powerup NeoPixel/matrix effect
+void inputSendWaterEffectStart(InputManager *input);
+void inputSendWaterEffectEnd(InputManager *input);
+
+// In-game neo effect (when ball is in play)
+void inputSendInGameEffect(InputManager *input);
+
 #endif

@@ -187,6 +187,9 @@ void Game_Update(GameStruct *game,
         game->waterPowerupState = 1;
         playWater(sound);
         
+        // Start water neo and matrix effect
+        inputSendWaterEffectStart(input);
+        
         game->gameScore += 1000;
         if (game->waterPowerupState == 0) {
             game->powerupScore += 1000;

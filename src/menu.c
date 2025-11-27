@@ -94,6 +94,7 @@ void Scoreboard_Update(GameStruct *game,
             if (game->nameSelectIndex > 5) {
                 game->nameSelectIndex = 0;
             }
+            game->centerHeldCounter = 0;
         }
         if (inputLeftPressed(input)) {
             playClick(game->sound);
@@ -101,8 +102,29 @@ void Scoreboard_Update(GameStruct *game,
             if (game->nameSelectIndex < 0) {
                 game->nameSelectIndex = 5;
             }
+            game->centerHeldCounter = 0;
         }
+        
+        // Check for center button - both pressed and held states
+        int shouldCycleLetter = 0;
+        
         if (inputCenterPressed(input)) {
+            // Initial press - always cycle
+            shouldCycleLetter = 1;
+            game->centerHeldCounter = 0;
+        } else if (inputCenter(input) && game->nameSelectIndex < 5) {
+            // Held down (only for letter positions, not confirm)
+            game->centerHeldCounter++;
+            // After initial delay (15 frames ~250ms), cycle every 8 frames (~133ms)
+            if (game->centerHeldCounter > 15 && (game->centerHeldCounter % 8) == 0) {
+                shouldCycleLetter = 1;
+            }
+        } else {
+            // Released
+            game->centerHeldCounter = 0;
+        }
+        
+        if (shouldCycleLetter) {
             playClick(game->sound);
             if (game->nameSelectIndex == 5) {
                 // Name selection done

@@ -175,6 +175,9 @@ struct GameStructData {
     // Camera system for Top-3 Game Over photo capture
     CameraSystem camera;             // Camera system instance
 
+    // Name entry held button state
+    int centerHeldCounter;           // Counter for fast letter cycling when center held
+
 };
 
 #endif
