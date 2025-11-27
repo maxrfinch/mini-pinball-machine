@@ -130,6 +130,10 @@ static Vector2 UI_GetVirtualMousePosition(void) {
 // Debug UI toggle - press Tab to show button hitboxes
 static int debugUIEnabled = 0;
 
+// Static cache for top 3 player photos to avoid reloading every frame
+static Texture2D cachedTop3Photos[3] = {{0}, {0}, {0}};
+static char cachedTop3PhotoPaths[3][256] = {"", "", ""};
+
 void UI_DrawMenu(GameStruct *game, const Resources *res,
                  const MenuPinball *menuPinballs, int numMenuPinballs,
                  ScoreHelper *scores, long long elapsedTimeStart,
@@ -579,10 +583,6 @@ void UI_DrawGameOver(const GameStruct *game, const Resources *res,
 // Note: This function is intentionally duplicated from UI_DrawGameOver to allow
 // independent customization of the top 3 game over screen. The user can modify
 // this function to create a distinct visual experience for top 3 achievements.
-
-// Static cache for top 3 player photos to avoid reloading every frame
-static Texture2D cachedTop3Photos[3] = {{0}, {0}, {0}};
-static char cachedTop3PhotoPaths[3][256] = {"", "", ""};
 
 void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                          const MenuPinball *menuPinballs, int numMenuPinballs,
