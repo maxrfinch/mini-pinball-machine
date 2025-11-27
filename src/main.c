@@ -464,18 +464,6 @@ int main(void){
                                 b2Vec2 flipForce = {0, flipperForce};
                                 b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
                             }
-                            if (balls[i].underwaterState == 0){
-                                playWaterSplash(sound);
-                                balls[i].underwaterState = 1;
-
-                                // Kick the water ripple intensity on splash so the shader waves react
-                                waterSystem.impactIntensity += 0.6f;
-                                if (waterSystem.impactIntensity > 1.5f) {
-                                    waterSystem.impactIntensity = 1.5f;
-                                }
-                            }
-                        } else {
-                            balls[i].underwaterState = 0;
                         }
                     }
 
