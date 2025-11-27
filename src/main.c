@@ -307,8 +307,12 @@ int main(void){
                         }
                         
                         // Charge-up mechanic for ball launch
+                        // Charge duration constant (adjustable for gameplay balance)
+                        const float LAUNCH_CHARGE_TIME = 1.5f;
+                        const float QUICK_TAP_THRESHOLD = 0.1f;  // Quick tap if held less than 100ms
+                        
                         if (inputCenter(input)){
-                            // Center button is held - charge up
+                            // Center button is held - start/continue charging
                             if (game.launchCharging == 0){
                                 // Just started charging
                                 game.launchCharging = 1;
@@ -316,29 +320,45 @@ int main(void){
                                 game.launchChargeAmount = 0.0f;
                             }
                             
-                            // Update charge amount (charge over 1.5 seconds)
-                            const float chargeTime = 1.5f;
+                            // Update charge time
                             game.launchChargeTime += timeStep;
-                            game.launchChargeAmount = game.launchChargeTime / chargeTime;
-                            if (game.launchChargeAmount > 1.0f){
-                                game.launchChargeAmount = 1.0f;
+                            
+                            // Only start showing charge after quick tap threshold
+                            if (game.launchChargeTime > QUICK_TAP_THRESHOLD) {
+                                // Calculate charge amount (starts from 0 after threshold)
+                                float chargeProgress = (game.launchChargeTime - QUICK_TAP_THRESHOLD) / LAUNCH_CHARGE_TIME;
+                                game.launchChargeAmount = chargeProgress;
+                                if (game.launchChargeAmount > 1.0f){
+                                    game.launchChargeAmount = 1.0f;
+                                }
+                                
+                                // Throttle charge updates - only send when percentage changes by 5%
+                                int chargePercent = (int)(game.launchChargeAmount * 100.0f);
+                                static int lastSentChargePercent = -1;
+                                if (chargePercent != lastSentChargePercent && 
+                                    (lastSentChargePercent < 0 || abs(chargePercent - lastSentChargePercent) >= 5 || chargePercent == 100)) {
+                                    inputSendChargeStatus(input, chargePercent);
+                                    // Send haptic strength update (stub for future firmware haptic hardware)
+                                    inputSendHapticStrength(input, chargePercent);
+                                    lastSentChargePercent = chargePercent;
+                                }
                             }
-                            
-                            // Send charge status to firmware every frame
-                            int chargePercent = (int)(game.launchChargeAmount * 100.0f);
-                            inputSendChargeStatus(input, chargePercent);
-                            
-                            // Send haptic strength update (stub for future firmware haptic hardware)
-                            inputSendHapticStrength(input, chargePercent);
                         } else {
                             // Center button released - launch ball if was charging
                             if (game.launchCharging == 1){
-                                // Calculate launch velocity based on charge
-                                // Minimum velocity: -220 (no charge)
-                                // Maximum velocity: -400 (full charge)
-                                float minVel = -220.0f;
-                                float maxVel = -400.0f;
-                                float launchVel = minVel + (maxVel - minVel) * game.launchChargeAmount;
+                                float launchVel;
+                                
+                                if (game.launchChargeTime < QUICK_TAP_THRESHOLD) {
+                                    // Quick tap - launch at full force
+                                    launchVel = -400.0f;
+                                } else {
+                                    // Held for charging - calculate velocity based on charge
+                                    // Minimum velocity: -220 (no charge)
+                                    // Maximum velocity: -400 (full charge)
+                                    float minVel = -220.0f;
+                                    float maxVel = -400.0f;
+                                    launchVel = minVel + (maxVel - minVel) * game.launchChargeAmount;
+                                }
                                 
                                 Game_SpawnBall(&game, 89.5 - ballSize / 2, 160, 0, launchVel, 0);
                                 
