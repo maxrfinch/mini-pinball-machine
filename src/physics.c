@@ -793,13 +793,6 @@ void physics_step(GameStruct *game, float dt) {
                 game->balls[i].underwaterState = isUnderwater;
             }
         }
-    } else {
-        // Reset underwater state when powerup is inactive
-        for (int i = 0; i < maxBalls; i++) {
-            if (game->balls[i].active) {
-                game->balls[i].underwaterState = 0;
-            }
-        }
     }
     
     //TraceLog(LOG_INFO, "[PHYSICS] done");
