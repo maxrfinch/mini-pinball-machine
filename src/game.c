@@ -13,6 +13,18 @@ void Game_Init(GameStruct *game, Bumper *bumpers) {
     game->transitionAlpha = 0;
     game->transitionTarget = TRANSITION_TO_MENU;
     game->ballReadyEventSent = 0;
+    
+    // Initialize water/powerup state to prevent menu activation
+    game->powerupScore = 0;
+    game->powerupScoreDisplay = 0;
+    game->waterHeight = 0.0f;
+    game->waterHeightTarget = 0.0f;
+    game->waterPowerupState = 0;
+    game->waterHeightTimer = 0.0f;
+    game->bumperPowerupState = 0;
+    game->ballPowerupState = 0;
+    game->slowMotion = 0;
+    game->slowMotionCounter = 0;
 }
 
 void Game_StartGame(GameStruct *game, Bumper *bumpers) {
@@ -180,7 +192,8 @@ void Game_Update(GameStruct *game,
     
     // If the powerup is full, dispense water powerup
     // Rule 2: If Slow-Mo is active, Water powerup will not activate
-    if (game->powerupScoreDisplay >= powerupTargetScore && game->slowMotion == 0) {
+    // Only activate water powerup during gameplay (gameState == 1)
+    if (game->gameState == 1 && game->powerupScoreDisplay >= powerupTargetScore && game->slowMotion == 0) {
         game->powerupScore = 0;
         game->waterHeightTarget = 0.5f;
         game->waterHeightTimer = 400.0f;
