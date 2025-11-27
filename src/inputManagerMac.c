@@ -16,6 +16,11 @@ void inputShutdown(InputManager* input){
     }
 }
 
+void inputShutdownEffects(InputManager* input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
 int inputLeft(InputManager* input){
     return IsKeyDown(KEY_LEFT) || GetGamepadAxisMovement(0, 4) > -0.75;
 }
