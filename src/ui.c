@@ -99,8 +99,14 @@ static Vector2 UI_GetVirtualMousePosition(void) {
     }
     
     // Get physical screen dimensions
-    int renderW = GetRenderWidth();
-    int renderH = GetRenderHeight();
+    // Use platform-specific functions to match the rendering logic in main.c
+    #if defined(PLATFORM_RPI)
+        int renderW = GetRenderWidth();
+        int renderH = GetRenderHeight();
+    #else
+        int renderW = GetScreenWidth();
+        int renderH = GetScreenHeight();
+    #endif
     
     // Calculate the same scale and offset used in main.c rendering
     float scaleX = (float)renderW / (float)screenWidth;
