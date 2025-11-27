@@ -230,6 +230,98 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
                 }
                 y += (27.0 * 1.5) + 5;  // Larger spacing for top 3
             }
+            
+            // Display photos for top 3 players
+            // Photo positions (centers): 1st=92x,370y  2nd=225x,370y  3rd=357x,370y (100x100 px each)
+            if (scores != NULL) {
+                int photoSize = 100;
+                int photoCenters[3][2] = {{92, 370}, {225, 370}, {357, 370}};
+                
+                for (int rank = 1; rank <= 3; rank++) {
+                    ScoreObject *score = getRankedScore(scores, rank);
+                    if (score != NULL && score->scoreName != NULL) {
+                        // Validate scoreName doesn't contain path traversal or dangerous characters
+                        int validName = 1;
+                        for (const char *p = score->scoreName; *p && validName; p++) {
+                            char c = *p;
+                            // Allow only alphanumeric, space, underscore, hyphen
+                            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+                                  (c >= '0' && c <= '9') || c == ' ' || c == '_' || c == '-')) {
+                                validName = 0;
+                            }
+                        }
+                        if (strstr(score->scoreName, "..") != NULL) {
+                            validName = 0;  // Reject path traversal attempts
+                        }
+                        
+                        if (!validName) {
+                            continue;  // Skip this score if name is invalid
+                        }
+                        
+                        // Sanitize name for filename (matching capture code in menu.c)
+                        char sanitizedName[64];
+                        int nameLen = strlen(score->scoreName);
+                        if (nameLen >= (int)sizeof(sanitizedName)) nameLen = sizeof(sanitizedName) - 1;
+                        
+                        for (int j = 0; j < nameLen; j++) {
+                            char c = score->scoreName[j];
+                            // Replace spaces and non-uppercase (not A-Z) with underscore
+                            if (c == ' ' || c < 'A' || c > 'Z') {
+                                sanitizedName[j] = '_';
+                            } else {
+                                sanitizedName[j] = c;
+                            }
+                        }
+                        sanitizedName[nameLen] = '\0';
+                        
+                        // Check if we need to load/reload the texture
+                        int cacheIndex = rank - 1;
+                        
+                        // Construct filename: Resources/Photos/<SANITIZED_NAME>_<SCORE>.png
+                        char photoPath[256];
+                        snprintf(photoPath, sizeof(photoPath), "Resources/Photos/%s_%d.png", 
+                                 sanitizedName, score->scoreValue);
+                        
+                        if (strcmp(cachedTop3PhotoPaths[cacheIndex], photoPath) != 0) {
+                            // Path changed, unload old texture and try loading new one
+                            if (cachedTop3Photos[cacheIndex].id != 0) {
+                                UnloadTexture(cachedTop3Photos[cacheIndex]);
+                                cachedTop3Photos[cacheIndex] = (Texture2D){0};
+                            }
+                            
+                            // Check if file exists before loading
+                            if (access(photoPath, F_OK) == 0) {
+                                Texture2D loadedTex = LoadTexture(photoPath);
+                                // Verify texture loaded successfully
+                                if (loadedTex.id != 0) {
+                                    cachedTop3Photos[cacheIndex] = loadedTex;
+                                }
+                            }
+                            
+                            // Update cached path
+                            strncpy(cachedTop3PhotoPaths[cacheIndex], photoPath, sizeof(cachedTop3PhotoPaths[cacheIndex]) - 1);
+                            cachedTop3PhotoPaths[cacheIndex][sizeof(cachedTop3PhotoPaths[cacheIndex]) - 1] = '\0';
+                        }
+                        
+                        // Draw photo if texture is valid
+                        int photoX = photoCenters[cacheIndex][0] - photoSize / 2;
+                        int photoY = photoCenters[cacheIndex][1] - photoSize / 2;
+                        
+                        if (cachedTop3Photos[cacheIndex].id != 0) {
+                            // Draw 2px white border
+                            DrawRectangle(photoX - 2, photoY - 2, photoSize + 4, photoSize + 4, WHITE);
+                            
+                            // Draw the photo
+                            DrawTexturePro(cachedTop3Photos[cacheIndex],
+                                          (Rectangle){0, 0, (float)cachedTop3Photos[cacheIndex].width, (float)cachedTop3Photos[cacheIndex].height},
+                                          (Rectangle){(float)photoX, (float)photoY, (float)photoSize, (float)photoSize},
+                                          (Vector2){0, 0},
+                                          0,
+                                          WHITE);
+                        }
+                    }
+                }
+            }
         } else {
             // Existing top 10 rendering code
             DrawTextEx(res->font1, "Top Scores", (Vector2){153,329}, 36.0, 1.0, WHITE);
