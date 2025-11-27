@@ -364,15 +364,15 @@ int main(void){
                         int ballType = balls[i].type;  // Preserve ball type
                         balls[i].active = 0;
                         b2DestroyBody(balls[i].body);
+                        game.numBalls--;
                         
                         // Check if this is a stuck ball (not one that fell off screen)
                         if (balls[i].killCounter > 100) {
                             // Respawn stuck ball from shooter
-                            // Note: Game_SpawnBall increments numBalls, so net change is 0
+                            // Game_SpawnBall increments numBalls, so net change is 0
                             Game_SpawnBall(&game, 89.5 - ballSize / 2, 160, 0, -220, ballType);
                         } else {
-                            // Ball fell off screen normally - decrement ball count
-                            game.numBalls--;
+                            // Ball fell off screen normally - check for game over
                             if (game.numBalls == 0 && game.numLives >= 1){
                                 game.numLives -= 1;
                                 inputSetNumBalls(input,game.numLives);
