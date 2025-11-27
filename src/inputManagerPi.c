@@ -351,7 +351,7 @@ void inputSetGameState(InputManager* input, InputGameState state){
             // Ball launch effect with center button pulse
             sprintf(batchCmd1, "CMD NEO EFFECT BALL_LAUNCH\n");
             sprintf(batchCmd2, "CMD BUTTON EFFECT CENTER CENTER_HIT_PULSE\n");
-            sprintf(batchCmd3, "CMD DISPLAY EFFECT NONE\n");
+            sprintf(batchCmd3, "CMD DISP_EFFECT NONE\n");
             sendCommand2(input->fd, batchCmd1, batchCmd2);
             break;
         }
