@@ -619,6 +619,25 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                 char photoPath[256];
                 snprintf(photoPath, sizeof(photoPath), "Resources/Photos/%s_%d.png", 
                          sanitizedName, score->scoreValue);
+
+                // DEBUG: Print what we're looking for
+                printf("DEBUG: Rank %d - Looking for photo: %s\n", rank, photoPath);
+                printf("DEBUG: Original name: '%s', Sanitized: '%s', Score: %d\n", 
+                    score->scoreName, sanitizedName, score->scoreValue);
+
+                // Check if file exists before loading
+                if (access(photoPath, F_OK) == 0) {
+                    printf("DEBUG: Photo file EXISTS: %s\n", photoPath);
+                    Texture2D loadedTex = LoadTexture(photoPath);
+                    if (loadedTex.id != 0) {
+                        printf("DEBUG: Texture loaded successfully!  ID: %d\n", loadedTex.id);
+                        cachedTop3Photos[cacheIndex] = loadedTex;
+                    } else {
+                        printf("DEBUG: Texture load FAILED (id=0)\n");
+                    }
+                } else {
+                    printf("DEBUG: Photo file NOT FOUND: %s\n", photoPath);
+                }
                 
                 // Check if we need to load/reload the texture
                 int cacheIndex = rank - 1;
