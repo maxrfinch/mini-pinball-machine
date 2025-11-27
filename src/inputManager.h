@@ -7,6 +7,7 @@ typedef struct {
     int leftKeyPressed;
     int rightKeyPressed;
     int centerKeyPressed;
+    int centerKeyHeld;      // 1 if HELD event received since last DOWN
 } InputManager;
 
 typedef enum {
@@ -39,6 +40,7 @@ int inputCenter(InputManager* input);
 int inputLeftPressed(InputManager* input);
 int inputRightPressed(InputManager* input);
 int inputCenterPressed(InputManager* input);
+int inputCenterHeld(InputManager* input);   // Returns 1 if center HELD event received
 void inputSetGameState(InputManager* input, InputGameState state);
 void inputSetScore(InputManager *input, long score);
 void inputSetNumBalls(InputManager *input, int numBalls);
@@ -70,5 +72,9 @@ void inputSendIcedUpEffect(InputManager *input);
 void inputSendHighScoreEffect(InputManager *input);
 void inputSendGameOverCurtainEffect(InputManager *input);
 void inputSendMenuEffect(InputManager *input);
+
+// Charge mechanic functions
+void inputSendChargeStatus(InputManager *input, int charge_percent);
+void inputSendHapticStrength(InputManager *input, int strength_percent);
 
 #endif

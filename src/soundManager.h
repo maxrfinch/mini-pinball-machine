@@ -30,6 +30,8 @@ void sound_play_haptic_launch(SoundManager *sound);          // Ball launch even
 void sound_play_haptic_bumper_light(SoundManager *sound);    // Light/glancing bumper hit
 void sound_play_haptic_bumper_solid(SoundManager *sound);    // Solid bumper/slingshot hit
 void sound_play_haptic_excitement(SoundManager *sound);      // Big event (multiball, jackpot, etc.)
+void sound_play_haptic_charge(SoundManager *sound, float intensity);  // Charge-up effect (0.0 to 1.0)
+void sound_stop_haptic_charge(SoundManager *sound);          // Stop charge effect
 
 // Volume control functions (affects game audio only, not haptics)
 float sound_getGameVolume(SoundManager *sound);              // Get current game volume (0.0 to 1.0)

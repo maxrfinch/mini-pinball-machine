@@ -53,6 +53,11 @@ void Game_StartGame(GameStruct *game, Bumper *bumpers) {
     game->slowMoCooldownBaselineLives = game->numLives;
     game->slowMoExplosionEffect = 0.0f;
     
+    // Initialize launch charge state
+    game->launchCharging = 0;
+    game->launchChargeAmount = 0.0f;
+    game->launchChargeTime = 0.0f;
+    
     inputSetScore(game->input, 0);
     inputSetGameState(game->input, STATE_GAME);
     inputSetNumBalls(game->input, game->numLives);

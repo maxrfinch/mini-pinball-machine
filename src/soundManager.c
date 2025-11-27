@@ -90,7 +90,8 @@ typedef enum {
     HAPTIC_LAUNCH,
     HAPTIC_BUMPER_LIGHT,
     HAPTIC_BUMPER_SOLID,
-    HAPTIC_EXCITEMENT
+    HAPTIC_EXCITEMENT,
+    HAPTIC_CHARGE
 } HapticEffectType;
 
 typedef struct {
@@ -98,6 +99,7 @@ typedef struct {
     int active;
     float t;          // Elapsed time in seconds
     float phase;      // Oscillator phase for waveform generation
+    float chargeIntensity;  // 0.0 to 1.0 for charge effect
 } HapticState;
 
 static HapticState g_haptics = {0};
@@ -258,6 +260,29 @@ static float haptics_generate_sample(float sampleRate) {
             } else {
                 g_haptics.active = 0;
             }
+            break;
+        }
+        
+        case HAPTIC_CHARGE: {
+            // Continuous charging rumble that grows in intensity
+            // Frequency increases with charge (40Hz -> 80Hz)
+            // Amplitude increases with charge (0.2 -> 1.0)
+            float intensity = g_haptics.chargeIntensity;
+            if (intensity < 0.0f) intensity = 0.0f;
+            if (intensity > 1.0f) intensity = 1.0f;
+            
+            // Base frequency that rises with charge
+            float freq = 40.0f + 40.0f * intensity;  // 40Hz to 80Hz
+            
+            // Amplitude grows with charge, with slight pulsing
+            float baseAmp = 0.2f + 0.8f * intensity;  // 0.2 to 1.0
+            float pulse = 1.0f + 0.1f * sinf(g_haptics.t * 8.0f * PI);  // Subtle pulsing
+            float amp = baseAmp * pulse;
+            
+            output = amp * sinf(g_haptics.phase);
+            g_haptics.phase += 2.0f * PI * freq * dt;
+            
+            // Charge effect runs continuously until stopped
             break;
         }
         
@@ -598,6 +623,31 @@ void sound_play_haptic_bumper_solid(SoundManager *sound) {
 void sound_play_haptic_excitement(SoundManager *sound) {
     (void)sound;  // Unused - haptics use global state
     haptics_trigger(HAPTIC_EXCITEMENT);
+}
+
+void sound_play_haptic_charge(SoundManager *sound, float intensity) {
+    (void)sound;  // Unused - haptics use global state
+    // Clamp intensity to valid range
+    if (intensity < 0.0f) intensity = 0.0f;
+    if (intensity > 1.0f) intensity = 1.0f;
+    
+    g_haptics.chargeIntensity = intensity;
+    
+    // Only trigger if not already running charge effect
+    if (g_haptics.type != HAPTIC_CHARGE || !g_haptics.active) {
+        g_haptics.type = HAPTIC_CHARGE;
+        g_haptics.active = 1;
+        g_haptics.t = 0.0f;
+        g_haptics.phase = 0.0f;
+    }
+}
+
+void sound_stop_haptic_charge(SoundManager *sound) {
+    (void)sound;  // Unused - haptics use global state
+    if (g_haptics.type == HAPTIC_CHARGE) {
+        g_haptics.active = 0;
+        g_haptics.chargeIntensity = 0.0f;
+    }
 }
 
 // ============================================================================

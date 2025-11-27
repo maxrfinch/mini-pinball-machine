@@ -36,4 +36,7 @@ void neopixel_update_effect(void);
 // Get board configuration
 const LedBoard* neopixel_get_board(uint8_t board_id);
 
+// Set charge effect on side LEDs
+void neopixel_set_charge_effect(uint8_t charge_percent);
+
 #endif // NEOPIXEL_H
