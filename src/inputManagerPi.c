@@ -359,7 +359,7 @@ void inputSetGameState(InputManager* input, InputGameState state){
             // Game over state: pink pulse and fade
             sprintf(batchCmd1, "CMD NEO EFFECT PINK_PULSE\n");
             sprintf(batchCmd2, "CMD BUTTON EFFECT ALL GAME_OVER_FADE\n");
-            sendCommand2(input->fd, batchCmd1, batchCmd2;
+            sendCommand2(input->fd, batchCmd1, batchCmd2);
             break;
         }
     }
