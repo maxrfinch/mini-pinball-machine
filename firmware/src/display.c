@@ -34,6 +34,10 @@ static const uint8_t display_addrs[NUM_DISPLAYS] = {
 // Framebuffer (32x8 = 256 pixels)
 static uint8_t framebuffer[DISPLAY_WIDTH][DISPLAY_HEIGHT];
 
+// State memory for score and ball count
+static uint32_t last_score = 0;
+static uint8_t last_balls = 0;
+
 // Animation state
 static DisplayAnimation current_animation = DISPLAY_ANIM_NONE;
 static uint32_t animation_start_time = 0;
@@ -244,6 +248,9 @@ static int draw_char(int x, uint8_t y_phys, char c) {
 }
 
 void display_set_score(uint32_t score) {
+    // Save the score for later restoration
+    last_score = score;
+    
     // Clear score area: physical rows 0-4 → framebuffer rows 7,0,1,2,3
     for (int x = 0; x < DISPLAY_WIDTH; x++) {
         framebuffer[x][7] = 0; // physical row 0
@@ -274,6 +281,9 @@ void display_set_score(uint32_t score) {
 
 void display_set_balls(uint8_t balls)
 {
+    // Save the ball count for later restoration
+    last_balls = balls;
+    
     // Layout:
     //   Score: physical rows 0–4
     //   Row 5: empty separator
@@ -303,6 +313,12 @@ void display_set_balls(uint8_t balls)
             }
         }
     }
+}
+
+// Helper function to restore score and ball count after animations
+static void display_restore_state(void) {
+    display_set_score(last_score);
+    display_set_balls(last_balls);
 }
 
 // ** TEST FUNCTION **
@@ -451,7 +467,7 @@ void display_update_animation(void) {
             uint32_t total_duration = 2000;
             if (elapsed_ms > total_duration) {
                 current_animation = DISPLAY_ANIM_NONE;
-                display_clear();
+                display_restore_state();
                 break;
             }
             
@@ -479,7 +495,7 @@ void display_update_animation(void) {
             uint32_t total_duration = 4000;
             if (elapsed_ms > total_duration) {
                 current_animation = DISPLAY_ANIM_NONE;
-                display_clear();
+                display_restore_state();
                 break;
             }
 
@@ -549,7 +565,7 @@ void display_update_animation(void) {
             uint32_t total_duration = 6000;
             if (elapsed_ms > total_duration) {
                 current_animation = DISPLAY_ANIM_NONE;
-                display_clear();
+                display_restore_state();
                 break;
             }
 
@@ -611,7 +627,7 @@ void display_update_animation(void) {
             uint32_t total_duration = 2500;
             if (elapsed_ms > total_duration) {
                 current_animation = DISPLAY_ANIM_NONE;
-                display_clear();
+                display_restore_state();
                 break;
             }
 
@@ -690,7 +706,7 @@ void display_update_animation(void) {
             uint32_t total_duration = 1500;
             if (elapsed_ms > total_duration) {
                 current_animation = DISPLAY_ANIM_NONE;
-                display_clear();
+                display_restore_state();
                 break;
             }
 
@@ -770,9 +786,10 @@ void display_update_animation(void) {
             uint32_t loop_duration = 4000;
             uint32_t loop_time = elapsed_ms % loop_duration;
             
-            // Placeholder: simulate score "12345"
-            const char* score_text = "12345";
-            int num_digits = 5;
+            // Convert last_score to string for display
+            char score_text[12];
+            snprintf(score_text, sizeof(score_text), "%lu", (unsigned long)last_score);
+            int num_digits = (int)strlen(score_text);
             
             // Each digit gets 500ms to appear and strobe
             int digit_time = 500;
