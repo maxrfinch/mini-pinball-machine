@@ -90,7 +90,22 @@ static float roundToTenth(float value) {
 // Returns the mouse position in virtual canvas space (0,0 to screenWidth,screenHeight)
 // ============================================================================
 static Vector2 UI_GetVirtualMousePosition(void) {
+#if defined(PLATFORM_RPI)
+    // On Pi, GetMousePosition() returns screen coords, but we render to full screen
+    // so we need to scale the mouse position to render space first
+    Vector2 screenMousePos = GetMousePosition();
+    Vector2 mousePos;
+    int screenW = GetScreenWidth();
+    int screenH = GetScreenHeight();
+    if (screenW > 0 && screenH > 0) {
+        mousePos.x = screenMousePos.x * ((float)GetRenderWidth() / (float)screenW);
+        mousePos.y = screenMousePos.y * ((float)GetRenderHeight() / (float)screenH);
+    } else {
+        mousePos = screenMousePos;
+    }
+#else
     Vector2 mousePos = GetMousePosition();
+#endif
     
     // Validate screen dimensions to prevent division by zero
     if (screenWidth <= 0 || screenHeight <= 0) {
