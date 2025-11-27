@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "pico/stdlib.h"
+#include "pico/bootrom.h"
 #include "protocol.h"
 #include "neopixel.h"
 #include "buttons.h"
