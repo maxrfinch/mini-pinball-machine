@@ -61,4 +61,8 @@ void inputSendCameraPreview(InputManager *input);
 void inputSendCameraFlash(InputManager *input);
 void inputSendCameraIdle(InputManager *input);
 
+// Water powerup NeoPixel/matrix effect
+void inputSendWaterEffectStart(InputManager *input);
+void inputSendWaterEffectEnd(InputManager *input);
+
 #endif

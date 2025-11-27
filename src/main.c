@@ -182,6 +182,9 @@ int main(void){
     
     // Initialize camera system
     Camera_Init(&game.camera);
+    
+    // Initialize name entry state
+    game.centerHeldCounter = 0;
 
     inputSetGameState(input,STATE_MENU);
     TraceLog(LOG_INFO, "START");
@@ -311,6 +314,9 @@ int main(void){
                                 game.transitionTarget = TRANSITION_GAME_OVER;
                             }
                             inputSetGameState(input,STATE_GAME_OVER);
+                            // Reset nameString for fresh name entry
+                            sprintf(nameString, "     ");
+                            game.centerHeldCounter = 0;
                         }
                     }
                 }
@@ -397,6 +403,8 @@ int main(void){
                     if (game.waterHeight < 0.0f){
                         game.waterHeight = 0.0f;
                         game.waterPowerupState = 0;
+                        // End water effect, return to in-game visuals
+                        inputSendWaterEffectEnd(input);
                     }
                 }
 

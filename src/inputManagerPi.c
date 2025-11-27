@@ -428,7 +428,7 @@ void inputSendBallReady(InputManager *input){
 
 void inputSendBallLaunched(InputManager *input){
     // Ball launched: transition to in-play visuals
-    sprintf(batchCmd1, "CMD NEO EFFECT NONE\n");
+    sprintf(batchCmd1, "CMD NEO EFFECT RAINBOW_BREATHE\n");
     sprintf(batchCmd2, "CMD BUTTON EFFECT ALL READY_STEADY_GLOW\n");
     sendCommand2(input->fd, batchCmd1, batchCmd2);
 }
@@ -462,4 +462,18 @@ void inputSendCameraIdle(InputManager *input){
     // Return to idle/attract mode after camera
     sprintf(tempString,"CMD NEO EFFECT ATTRACT\n");
     sendCommand(input->fd, tempString);
+}
+
+void inputSendWaterEffectStart(InputManager *input){
+    // Start water NeoPixel and matrix effect
+    sprintf(batchCmd1, "CMD NEO EFFECT WATER\n");
+    sprintf(batchCmd2, "CMD DISP_EFFECT WATER_RIPPLE\n");
+    sendCommand2(input->fd, batchCmd1, batchCmd2);
+}
+
+void inputSendWaterEffectEnd(InputManager *input){
+    // End water effects, return to in-game visuals
+    sprintf(batchCmd1, "CMD NEO EFFECT RAINBOW_BREATHE\n");
+    sprintf(batchCmd2, "CMD DISP_EFFECT NONE\n");
+    sendCommand2(input->fd, batchCmd1, batchCmd2);
 }
