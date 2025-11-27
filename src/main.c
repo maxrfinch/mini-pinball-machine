@@ -450,8 +450,9 @@ int main(void){
                         if (balls[i].active != 1){
                             continue; // Skip inactive balls early
                         }
-                        // Cache position for this ball - used for underwater checks and force calculations
+                        // Cache position and velocity for this ball - used multiple times in this iteration
                         b2Vec2 pos = b2Body_GetPosition(balls[i].body);
+                        b2Vec2 vel = b2Body_GetLinearVelocity(balls[i].body);
                         if (pos.y > waterY){
                             float distUnderwater = fabs(waterY - pos.y);
                             float bVely = -200.0f + -(distUnderwater * 40.0f);
@@ -467,9 +468,6 @@ int main(void){
                                 b2Vec2 flipForce = {0, flipperForce};
                                 b2Body_ApplyForceToCenter(balls[i].body, flipForce, true);
                             }
-                            // Note: underwaterState is now managed by physics.c to ensure
-                            // proper ripple triggering. Sound and impactIntensity are also
-                            // handled via AddWaterImpulse() called from physics.c.
                         }
                     }
 
