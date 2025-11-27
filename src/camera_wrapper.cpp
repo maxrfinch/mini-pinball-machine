@@ -322,27 +322,16 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
     mkdir("Resources", 0755);
     mkdir("Resources/Photos", 0755);
     
-    // Instant capture: Use the current JPEG frame from the preview buffer
-    // This avoids stopping the preview and launching rpicam-still (saves ~1 second)
-    // Note: Thread safety is handled by the single-threaded game loop design.
-    // Camera_UpdatePreview() and Camera_CapturePhoto() are called from the same thread.
-    if (camera->preview_active && g_camera_internal->jpeg_size > 0) {
-        // Decode JPEG from the preview buffer
-        Image img = LoadImageFromMemory(".jpg", g_camera_internal->jpeg_buffer, 
-                                        (int)g_camera_internal->jpeg_size);
+    // Instant capture: Use the preview texture directly
+    // This texture is already decoded, cropped, and resized to 150x150
+    // Using the texture avoids half-written images from the JPEG buffer being written mid-frame
+    if (camera->preview_active && camera->preview_tex.id != 0) {
+        // Get image data from the texture
+        Image img = LoadImageFromTexture(camera->preview_tex);
         if (img.data == NULL) {
-            TraceLog(LOG_ERROR, "CAMERA: Failed to decode JPEG from preview buffer");
+            TraceLog(LOG_ERROR, "CAMERA: Failed to get image from preview texture");
             return 0;
         }
-        
-        // Crop to center square
-        int cropSize = (img.width < img.height) ? img.width : img.height;
-        int cropX = (img.width - cropSize) / 2;
-        int cropY = (img.height - cropSize) / 2;
-        ImageCrop(&img, (Rectangle){(float)cropX, (float)cropY, (float)cropSize, (float)cropSize});
-        
-        // Resize to 150x150
-        ImageResize(&img, 150, 150);
         
         // Save the image (ExportImage auto-detects format from extension)
         if (!ExportImage(img, filename)) {
@@ -358,7 +347,7 @@ int Camera_CapturePhoto(CameraSystem *camera, const char *filename) {
             return 0;
         }
         
-        TraceLog(LOG_INFO, "CAMERA: Photo saved to %s (instant capture from preview)", filename);
+        TraceLog(LOG_INFO, "CAMERA: Photo saved to %s (instant capture from preview texture)", filename);
         return 1;
     }
     

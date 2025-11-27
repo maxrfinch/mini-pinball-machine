@@ -597,10 +597,28 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                     continue;  // Skip this score if name is invalid
                 }
                 
-                // Construct filename: Resources/Photos/<NAME>_<SCORE>.png
+                // Sanitize name for filename (matching capture code in menu.c)
+                // Replace spaces and non-uppercase chars with underscores
+                // Note: Name entry screen only allows uppercase A-Z, so this matches valid input
+                char sanitizedName[64];
+                int nameLen = strlen(score->scoreName);
+                if (nameLen >= (int)sizeof(sanitizedName)) nameLen = sizeof(sanitizedName) - 1;
+                
+                for (int i = 0; i < nameLen; i++) {
+                    char c = score->scoreName[i];
+                    // Replace spaces and non-uppercase (not A-Z) with underscore
+                    if (c == ' ' || c < 'A' || c > 'Z') {
+                        sanitizedName[i] = '_';
+                    } else {
+                        sanitizedName[i] = c;
+                    }
+                }
+                sanitizedName[nameLen] = '\0';
+                
+                // Construct filename: Resources/Photos/<SANITIZED_NAME>_<SCORE>.png
                 char photoPath[256];
                 snprintf(photoPath, sizeof(photoPath), "Resources/Photos/%s_%d.png", 
-                         score->scoreName, score->scoreValue);
+                         sanitizedName, score->scoreValue);
                 
                 // Check if we need to load/reload the texture
                 int cacheIndex = rank - 1;
