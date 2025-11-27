@@ -310,7 +310,7 @@ int main(void){
                         // Uses firmware HELD event (after 500ms) to distinguish tap vs hold
                         // - Release before HELD: Regular full-force launch
                         // - HELD received: Start charging, release launches with charged velocity
-                        const float LAUNCH_CHARGE_TIME = 1.5f;
+                        const float LAUNCH_CHARGE_TIME = 3.0f;
                         
                         if (inputCenter(input)){
                             // Center button is down
@@ -354,7 +354,7 @@ int main(void){
                                 
                                 if (!inputCenterHeld(input)) {
                                     // Released before HELD - regular full-force launch
-                                    launchVel = -250.0f;
+                                    launchVel = -220.0f;
                                 } else {
                                     // Was charging - calculate velocity based on charge
                                     // Minimum velocity: -175 (no charge / just started hold)
