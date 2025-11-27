@@ -65,4 +65,10 @@ void inputSendCameraIdle(InputManager *input);
 void inputSendWaterEffectStart(InputManager *input);
 void inputSendWaterEffectEnd(InputManager *input);
 
+// Matrix display effect functions
+void inputSendIcedUpEffect(InputManager *input);
+void inputSendHighScoreEffect(InputManager *input);
+void inputSendGameOverCurtainEffect(InputManager *input);
+void inputSendMenuEffect(InputManager *input);
+
 #endif

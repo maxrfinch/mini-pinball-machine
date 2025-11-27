@@ -28,7 +28,14 @@ void Powerups_Update(GameStruct *game,
     }
 
     // Update ice overlay based on slow-motion state
+    // Track slow motion state transitions for effect triggering
+    static int lastSlowMotion = 0;
     if (game->slowMotion == 1) {
+        // Trigger ICED_UP matrix effect when slow-mo first activates
+        if (lastSlowMotion == 0) {
+            inputSendIcedUpEffect(input);
+        }
+
         ps->slowMotionFactor = 0.3f;
         ps->iceOverlayAlpha += 0.01f;
         if (ps->iceOverlayAlpha >= 1.0f) {
@@ -46,6 +53,7 @@ void Powerups_Update(GameStruct *game,
             ps->iceOverlayAlpha = 0.0f;
         }
     }
+    lastSlowMotion = game->slowMotion;
 
     // Update slow-motion counter
     if (game->slowMotionCounter > 0) {
