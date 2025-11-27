@@ -782,11 +782,12 @@ void physics_step(GameStruct *game, float dt) {
                 int wasUnderwater = game->balls[i].underwaterState;
                 int isUnderwater = (pos.y >= waterWorldY) ? 1 : 0;
                 
-                // On water entry, create ripple impulse
+                // On water entry, create ripple impulse and play splash sound
                 if (!wasUnderwater && isUnderwater) {
                     // Map ball x-position (0 to worldWidth) to ripple index
                     float impulse = fabsf(vel.y) * 0.0025f;
                     AddWaterImpulse(pos.x, impulse);
+                    playWaterSplash(game->sound);
                 }
                 
                 game->balls[i].underwaterState = isUnderwater;
