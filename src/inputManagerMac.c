@@ -121,3 +121,23 @@ void inputSendWaterEffectEnd(InputManager *input){
     // Stub for Mac - no hardware controller
     (void)input;
 }
+
+void inputSendIcedUpEffect(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendHighScoreEffect(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendGameOverCurtainEffect(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}
+
+void inputSendMenuEffect(InputManager *input){
+    // Stub for Mac - no hardware controller
+    (void)input;
+}

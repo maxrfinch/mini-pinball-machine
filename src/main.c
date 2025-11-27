@@ -312,6 +312,7 @@ int main(void){
                                 // Top 3 score - show special game over screen with photo capture
                                 game.transitionTarget = TRANSITION_GAME_OVER_TOP3;
                                 inputSetGameState(input,STATE_GAME_OVER);
+                                inputSendHighScoreEffect(input);
                                 // Reset nameString for fresh name entry
                                 sprintf(nameString, "     ");
                                 game.centerHeldCounter = 0;
@@ -319,6 +320,7 @@ int main(void){
                                 // Top 10 score - show regular game over screen for name entry
                                 game.transitionTarget = TRANSITION_GAME_OVER;
                                 inputSetGameState(input,STATE_GAME_OVER);
+                                inputSendHighScoreEffect(input);
                                 // Reset nameString for fresh name entry
                                 sprintf(nameString, "     ");
                                 game.centerHeldCounter = 0;
@@ -326,6 +328,7 @@ int main(void){
                                 // Score not in top 10 - go directly to main menu
                                 game.transitionTarget = TRANSITION_TO_MENU;
                                 inputSetGameState(input,STATE_MENU);
+                                inputSendGameOverCurtainEffect(input);
                             }
                         }
                     }
