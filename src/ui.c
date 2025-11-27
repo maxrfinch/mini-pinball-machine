@@ -719,64 +719,8 @@ void UI_DrawGameOverTop3(const GameStruct *game, const Resources *res,
                 char photoPath[256];
                 snprintf(photoPath, sizeof(photoPath), "Resources/Photos/%s_%d.png", 
                          sanitizedName, score->scoreValue);
-
-                // DEBUG: Print what we're looking for
-                printf("DEBUG: Rank %d - Looking for photo: %s\n", rank, photoPath);
-                printf("DEBUG: Original name: '%s', Sanitized: '%s', Score: %d\n", 
-                    score->scoreName, sanitizedName, score->scoreValue);
-
-                // Check if file exists before loading
-                if (access(photoPath, F_OK) == 0) {
-                    printf("DEBUG: Photo file EXISTS: %s\n", photoPath);
-                    Texture2D loadedTex = LoadTexture(photoPath);
-                    if (loadedTex.id != 0) {
-                        printf("DEBUG: Texture loaded successfully!  ID: %d\n", loadedTex.id);
-                        cachedTop3Photos[cacheIndex] = loadedTex;
-                    } else {
-                        printf("DEBUG: Texture load FAILED (id=0)\n");
-                    }
-                } else {
-                    printf("DEBUG: Photo file NOT FOUND: %s\n", photoPath);
-                }
                 
-                if (strcmp(cachedTop3PhotoPaths[cacheIndex], photoPath) != 0) {
-                    // Path changed, unload old texture and try loading new one
-                    if (cachedTop3Photos[cacheIndex].id != 0) {
-                        UnloadTexture(cachedTop3Photos[cacheIndex]);
-                        cachedTop3Photos[cacheIndex] = (Texture2D){0};
-                    }
-                    
-                    // Check if file exists before loading
-                    if (access(photoPath, F_OK) == 0) {
-                        Texture2D loadedTex = LoadTexture(photoPath);
-                        // Verify texture loaded successfully
-                        if (loadedTex.id != 0) {
-                            cachedTop3Photos[cacheIndex] = loadedTex;
-                        }
-                    }
-                    
-                    // Update cached path
-                    strncpy(cachedTop3PhotoPaths[cacheIndex], photoPath, sizeof(cachedTop3PhotoPaths[cacheIndex]) - 1);
-                    cachedTop3PhotoPaths[cacheIndex][sizeof(cachedTop3PhotoPaths[cacheIndex]) - 1] = '\0';
-                }
                 
-                // Draw photo if texture is valid
-                int photoX = photoCenters[cacheIndex][0] - photoSize / 2;
-                int photoY = photoCenters[cacheIndex][1] - photoSize / 2;
-                
-                if (cachedTop3Photos[cacheIndex].id != 0) {
-                    // Draw 2px white border
-                    DrawRectangle(photoX - 2, photoY - 2, photoSize + 4, photoSize + 4, WHITE);
-                    
-                    // Draw the photo
-                    DrawTexturePro(cachedTop3Photos[cacheIndex],
-                                  (Rectangle){0, 0, (float)cachedTop3Photos[cacheIndex].width, (float)cachedTop3Photos[cacheIndex].height},
-                                  (Rectangle){(float)photoX, (float)photoY, (float)photoSize, (float)photoSize},
-                                  (Vector2){0, 0},
-                                  0,
-                                  WHITE);
-                }
-                // If photo doesn't exist, just skip (no placeholder shown)
             }
         }
     }
