@@ -121,8 +121,3 @@ void inputSendWaterEffectEnd(InputManager *input){
     // Stub for Mac - no hardware controller
     (void)input;
 }
-
-void inputSendInGameEffect(InputManager *input){
-    // Stub for Mac - no hardware controller
-    (void)input;
-}

@@ -477,9 +477,3 @@ void inputSendWaterEffectEnd(InputManager *input){
     sprintf(batchCmd2, "CMD DISP_EFFECT NONE\n");
     sendCommand2(input->fd, batchCmd1, batchCmd2);
 }
-
-void inputSendInGameEffect(InputManager *input){
-    // In-game neo effect when ball is active
-    sprintf(tempString, "CMD NEO EFFECT RAINBOW_BREATHE\n");
-    sendCommand(input->fd, tempString);
-}

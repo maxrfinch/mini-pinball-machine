@@ -65,7 +65,4 @@ void inputSendCameraIdle(InputManager *input);
 void inputSendWaterEffectStart(InputManager *input);
 void inputSendWaterEffectEnd(InputManager *input);
 
-// In-game neo effect (when ball is in play)
-void inputSendInGameEffect(InputManager *input);
-
 #endif
