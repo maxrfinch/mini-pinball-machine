@@ -45,6 +45,14 @@ int inputCenterPressed(InputManager* input){
     return IsKeyPressed(KEY_SPACE) || IsGamepadButtonPressed(0, 7);
 }
 
+int inputCenterHeld(InputManager* input){
+    // Stub for Mac - approximate held behavior by checking if key is still down
+    // On Pi, this returns true when firmware sends a HELD event after ~300ms
+    // On Mac, we simulate this by checking current key state (less accurate timing)
+    (void)input;
+    return IsKeyDown(KEY_SPACE) || IsGamepadButtonDown(0, 7);
+}
+
 void inputSetGameState(InputManager* input, InputGameState state){
 
 }
@@ -140,4 +148,16 @@ void inputSendGameOverCurtainEffect(InputManager *input){
 void inputSendMenuEffect(InputManager *input){
     // Stub for Mac - no hardware controller
     (void)input;
+}
+
+void inputSendChargeStatus(InputManager *input, int charge_percent){
+    // Stub for Mac - no hardware controller
+    (void)input;
+    (void)charge_percent;
+}
+
+void inputSendHapticStrength(InputManager *input, int strength_percent){
+    // Stub for Mac - no hardware controller
+    (void)input;
+    (void)strength_percent;
 }
