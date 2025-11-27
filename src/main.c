@@ -338,8 +338,6 @@ int main(void){
                                 // Throttle charge updates - only send when percentage changes by 5%
                                 int chargePercent = (int)(game.launchChargeAmount * 100.0f);
                                 static int lastSentChargePercent = -1;
-                                sprintf(tempString, "CMD NEO EFFECT NONE\n");
-                                sendCommand(input->fd, tempString);
                                 if (chargePercent != lastSentChargePercent && 
                                     (lastSentChargePercent < 0 || abs(chargePercent - lastSentChargePercent) >= 5 || chargePercent == 100)) {
                                     inputSendChargeStatus(input, chargePercent);
