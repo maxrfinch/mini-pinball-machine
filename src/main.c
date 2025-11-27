@@ -78,6 +78,10 @@ int main(void){
     // Initialize a struct encoding data about the game.
     GameStruct game;
     game.gameState = 0;
+    game.waterHeight = 0.0f;           // ADD THIS LINE
+    game.waterHeightTarget = 0.0f;     // ADD THIS LINE
+    game.waterPowerupState = 0;        // ADD THIS LINE
+    game.waterHeightTimer = 0.0f;     
     game.bumpers = NULL;  // Initialize to NULL before physics_init
 
 
