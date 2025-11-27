@@ -179,7 +179,7 @@ InputManager* inputInit(){
     receiveBufferPos = 0;
     
     // Set NeoPixel brightness to 80 out of 255 at startup
-    sprintf(tempString, "CMD NEO BRIGHTNESS 80\n");
+    sprintf(tempString, "CMD NEO BRIGHTNESS 65\n");
     sendCommand(input->fd, tempString);
     
     return input;
