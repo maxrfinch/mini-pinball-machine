@@ -175,7 +175,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
     int showTopThree = 0;
 
     if (game->menuState == 0) {
-        // High scores scene - cycle between all-time (10s) and top 3 (10s)
+        // High scores scene - cycle between top 3 (10s) and top 10 (10s)
         long long currentTime = millis_ui();
         if (game->menuHighScoreTimer == 0) {
             game->menuHighScoreTimer = currentTime;
@@ -185,11 +185,13 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         int cyclePosition = (elapsed / 10000) % 2;  // 10 second intervals, 0 or 1
         
         if (cyclePosition == 0) {
-            currentOverlay = res->menuOverlayHighscores;
-            showTopThree = 0;
-        } else {
+            // Show top 3 first
             currentOverlay = res->menuOverlayTopScores;
             showTopThree = 1;
+        } else {
+            // Then show top 10
+            currentOverlay = res->menuOverlayHighscores;
+            showTopThree = 0;
         }
     } else if (game->menuState == 1) {
         currentOverlay = res->menuOverlaySystem;

@@ -307,16 +307,26 @@ int main(void){
                         // game over condition
                         if (game.transitionState == 0){
                             game.transitionState = 1;
-                            // Check if score is in top 3 to determine which game over screen to show
+                            // Check if score is in top 10 to determine which screen to show
                             if (isScoreInTopN(scores, game.gameScore, 3)) {
+                                // Top 3 score - show special game over screen with photo capture
                                 game.transitionTarget = TRANSITION_GAME_OVER_TOP3;
-                            } else {
+                                inputSetGameState(input,STATE_GAME_OVER);
+                                // Reset nameString for fresh name entry
+                                sprintf(nameString, "     ");
+                                game.centerHeldCounter = 0;
+                            } else if (isScoreInTopN(scores, game.gameScore, 10)) {
+                                // Top 10 score - show regular game over screen for name entry
                                 game.transitionTarget = TRANSITION_GAME_OVER;
+                                inputSetGameState(input,STATE_GAME_OVER);
+                                // Reset nameString for fresh name entry
+                                sprintf(nameString, "     ");
+                                game.centerHeldCounter = 0;
+                            } else {
+                                // Score not in top 10 - go directly to main menu
+                                game.transitionTarget = TRANSITION_TO_MENU;
+                                inputSetGameState(input,STATE_MENU);
                             }
-                            inputSetGameState(input,STATE_GAME_OVER);
-                            // Reset nameString for fresh name entry
-                            sprintf(nameString, "     ");
-                            game.centerHeldCounter = 0;
                         }
                     }
                 }
