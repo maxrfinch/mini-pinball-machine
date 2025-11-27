@@ -446,7 +446,7 @@ int main(void){
                         if (balls[i].active != 1){
                             continue; // Skip inactive balls early
                         }
-                        // Cache position for this ball - used multiple times in this iteration
+                        // Cache position for this ball - used for underwater checks and force calculations
                         b2Vec2 pos = b2Body_GetPosition(balls[i].body);
                         if (pos.y > waterY){
                             float distUnderwater = fabs(waterY - pos.y);
