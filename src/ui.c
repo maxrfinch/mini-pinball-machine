@@ -182,7 +182,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
         }
         
         long long elapsed = currentTime - game->menuHighScoreTimer;
-        int cyclePosition = (elapsed / 10000) % 2;  // 10 second intervals, 0 or 1
+        int cyclePosition = (elapsed / 5000) % 2;  // 10 second intervals, 0 or 1
         
         if (cyclePosition == 0) {
             // Show top 3 first
