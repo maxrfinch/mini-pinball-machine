@@ -190,6 +190,11 @@ int main(void){
     // Initialize name entry state
     game.centerHeldCounter = 0;
 
+    // Initialize launch charge state
+    game.launchCharging = 0;
+    game.launchChargeAmount = 0.0f;
+    game.launchChargeTime = 0.0f;
+
     inputSetGameState(input,STATE_MENU);
     TraceLog(LOG_INFO, "START");
 
@@ -301,11 +306,57 @@ int main(void){
                             game.ballReadyEventSent = 1;
                         }
                         
-                        if (inputCenterPressed(input)){
-                            Game_SpawnBall(&game, 89.5 - ballSize / 2, 160, 0, -220, 0);
-                            // Send ball launched signal to controller
-                            inputSendBallLaunched(input);
-                            game.ballReadyEventSent = 0;  // Reset for next ball
+                        // Charge-up mechanic for ball launch
+                        if (inputCenter(input)){
+                            // Center button is held - charge up
+                            if (game.launchCharging == 0){
+                                // Just started charging
+                                game.launchCharging = 1;
+                                game.launchChargeTime = 0.0f;
+                                game.launchChargeAmount = 0.0f;
+                            }
+                            
+                            // Update charge amount (charge over 1.5 seconds)
+                            const float chargeTime = 1.5f;
+                            game.launchChargeTime += timeStep;
+                            game.launchChargeAmount = game.launchChargeTime / chargeTime;
+                            if (game.launchChargeAmount > 1.0f){
+                                game.launchChargeAmount = 1.0f;
+                            }
+                            
+                            // Send charge status to firmware every frame
+                            int chargePercent = (int)(game.launchChargeAmount * 100.0f);
+                            inputSendChargeStatus(input, chargePercent);
+                            
+                            // Send haptic strength update (stub for future firmware haptic hardware)
+                            inputSendHapticStrength(input, chargePercent);
+                        } else {
+                            // Center button released - launch ball if was charging
+                            if (game.launchCharging == 1){
+                                // Calculate launch velocity based on charge
+                                // Minimum velocity: -220 (no charge)
+                                // Maximum velocity: -400 (full charge)
+                                float minVel = -220.0f;
+                                float maxVel = -400.0f;
+                                float launchVel = minVel + (maxVel - minVel) * game.launchChargeAmount;
+                                
+                                Game_SpawnBall(&game, 89.5 - ballSize / 2, 160, 0, launchVel, 0);
+                                
+                                // Play launch haptic effect
+                                sound_play_haptic_launch(sound);
+                                
+                                // Send ball launched signal to controller
+                                inputSendBallLaunched(input);
+                                game.ballReadyEventSent = 0;  // Reset for next ball
+                                
+                                // Clear charge display
+                                inputSendChargeStatus(input, 0);
+                                
+                                // Reset charge state
+                                game.launchCharging = 0;
+                                game.launchChargeAmount = 0.0f;
+                                game.launchChargeTime = 0.0f;
+                            }
                         }
                     } else {
                         // game over condition

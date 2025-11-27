@@ -178,6 +178,11 @@ struct GameStructData {
     // Name entry held button state
     int centerHeldCounter;           // Counter for fast letter cycling when center held
 
+    // Launch charge mechanic state
+    int launchCharging;              // 0 = not charging, 1 = charging
+    float launchChargeAmount;        // 0.0 to 1.0
+    float launchChargeTime;          // Time button held in seconds
+
 };
 
 #endif

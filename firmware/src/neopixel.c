@@ -25,12 +25,12 @@ static absolute_time_t last_effect_update = 0;
 
 // LED Board configuration
 static const LedBoard boards[NEOPIXEL_BOARDS] = {
-    {1, 0, 7, false, BOARD_POS_REAR},          // Board 1: LEDs 0-7
-    {2, 8, 15, false, BOARD_POS_RIGHT_REAR},   // Board 2: LEDs 8-15
-    {3, 16, 23, false, BOARD_POS_RIGHT_FRONT}, // Board 3: LEDs 16-23
-    {4, 24, 31, false, BOARD_POS_FRONT},       // Board 4: LEDs 24-31
-    {5, 32, 39, true, BOARD_POS_LEFT_FRONT},   // Board 5: LEDs 32-39 (reversed)
-    {6, 40, 47, true, BOARD_POS_LEFT_REAR}     // Board 6: LEDs 40-47 (reversed)
+    {1, 0, 7, false, BOARD_POS_LEFT_REAR},     // Board 1: Left rear (1-8 toward front)
+    {2, 8, 15, false, BOARD_POS_LEFT_FRONT},   // Board 2: Left front (continues forward)
+    {3, 16, 23, false, BOARD_POS_FRONT},       // Board 3: Front (continues right to left)
+    {4, 24, 31, true, BOARD_POS_RIGHT_FRONT},  // Board 4: Right front (front to back, reversed)
+    {5, 32, 39, true, BOARD_POS_RIGHT_REAR},   // Board 5: Right rear (front to back, reversed)
+    {6, 40, 47, false, BOARD_POS_REAR}         // Board 6: Rear (left to right)
 };
 
 static inline void put_pixel(uint32_t pixel_grb) {
@@ -265,5 +265,39 @@ void neopixel_update_effect(void) {
             return;
     }
     
+    neopixel_show();
+}
+
+void neopixel_set_charge_effect(uint8_t charge_percent) {
+    // Clamp charge percentage
+    if (charge_percent > 100) {
+        charge_percent = 100;
+    }
+    
+    // Clear all LEDs first
+    neopixel_clear();
+    
+    // Scale charge (0-100) to number of LEDs on each side (16 LEDs per side)
+    uint8_t num_leds = (charge_percent * 16) / 100;
+    
+    // Orange color for charge indication
+    Color orange = {255, 100, 0};
+    
+    // Left side: boards 1+2 (LEDs 0-15) light up from bottom to top
+    // Board 1 is left rear (LEDs 0-7), Board 2 is left front (LEDs 8-15)
+    // Bottom = rear, so we start from LED 0 going up
+    for (uint8_t i = 0; i < num_leds && i < 16; i++) {
+        neopixel_set_led(i, orange);
+    }
+    
+    // Right side: boards 4+5 (LEDs 24-39) light up from bottom to top
+    // Board 5 is right rear (LEDs 32-39), Board 4 is right front (LEDs 24-31)
+    // Both are reversed, so physical bottom is LED 39 going down to LED 24
+    // We light from LED 39 down (bottom to top in physical space)
+    for (uint8_t i = 0; i < num_leds && i < 16; i++) {
+        neopixel_set_led(39 - i, orange);
+    }
+    
+    // Update the LED display
     neopixel_show();
 }

@@ -71,4 +71,8 @@ void inputSendHighScoreEffect(InputManager *input);
 void inputSendGameOverCurtainEffect(InputManager *input);
 void inputSendMenuEffect(InputManager *input);
 
+// Charge mechanic functions
+void inputSendChargeStatus(InputManager *input, int charge_percent);
+void inputSendHapticStrength(InputManager *input, int strength_percent);
+
 #endif

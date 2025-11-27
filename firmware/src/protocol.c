@@ -168,6 +168,22 @@ static void parse_command(const char* cmd) {
         uint8_t brightness = atoi(cmd + 19);
         neopixel_set_brightness(brightness);
         
+    } else if (strncmp(cmd, "CMD CHARGE ", 11) == 0) {
+        // CMD CHARGE <0-100>
+        int charge = atoi(cmd + 11);
+        if (charge < 0) charge = 0;
+        if (charge > 100) charge = 100;
+        neopixel_set_charge_effect((uint8_t)charge);
+        
+    } else if (strncmp(cmd, "CMD HAPTIC ", 11) == 0) {
+        // CMD HAPTIC <0-100>
+        // Stub for future haptic hardware implementation
+        int strength = atoi(cmd + 11);
+        if (strength < 0) strength = 0;
+        if (strength > 100) strength = 100;
+        // TODO: Connect to haptic motor when hardware is available
+        // printf("DBG: Haptic strength set to %d%%\n", strength);
+        
     // ===== BUTTON EFFECT COMMANDS =====
     } else if (strncmp(cmd, "CMD BUTTON EFFECT ", 18) == 0) {
         // CMD BUTTON EFFECT <LEFT|CENTER|RIGHT|ALL> <EFFECT_NAME>

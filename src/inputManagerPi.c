@@ -503,3 +503,19 @@ void inputSendMenuEffect(InputManager *input){
     sprintf(tempString,"CMD DISP_EFFECT ATTRACT_PINBALL\n");
     sendCommand(input->fd, tempString);
 }
+
+void inputSendChargeStatus(InputManager *input, int charge_percent){
+    // Clamp charge percentage to 0-100
+    if (charge_percent < 0) charge_percent = 0;
+    if (charge_percent > 100) charge_percent = 100;
+    sprintf(tempString,"CMD CHARGE %d\n", charge_percent);
+    sendCommand(input->fd, tempString);
+}
+
+void inputSendHapticStrength(InputManager *input, int strength_percent){
+    // Clamp strength percentage to 0-100
+    if (strength_percent < 0) strength_percent = 0;
+    if (strength_percent > 100) strength_percent = 100;
+    sprintf(tempString,"CMD HAPTIC %d\n", strength_percent);
+    sendCommand(input->fd, tempString);
+}
