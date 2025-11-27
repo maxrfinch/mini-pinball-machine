@@ -332,14 +332,15 @@ int main(void){
                                     game.launchChargeAmount = 1.0f;
                                 }
                                 
+                                // Play haptic charge effect that grows with charge
+                                sound_play_haptic_charge(sound, game.launchChargeAmount);
+                                
                                 // Throttle charge updates - only send when percentage changes by 5%
                                 int chargePercent = (int)(game.launchChargeAmount * 100.0f);
                                 static int lastSentChargePercent = -1;
                                 if (chargePercent != lastSentChargePercent && 
                                     (lastSentChargePercent < 0 || abs(chargePercent - lastSentChargePercent) >= 5 || chargePercent == 100)) {
                                     inputSendChargeStatus(input, chargePercent);
-                                    // Send haptic strength update (stub for future firmware haptic hardware)
-                                    inputSendHapticStrength(input, chargePercent);
                                     lastSentChargePercent = chargePercent;
                                 }
                             }
@@ -348,15 +349,18 @@ int main(void){
                             if (game.launchCharging == 1){
                                 float launchVel;
                                 
+                                // Stop haptic charge effect
+                                sound_stop_haptic_charge(sound);
+                                
                                 if (!inputCenterHeld(input)) {
                                     // Released before HELD - regular full-force launch
-                                    launchVel = -400.0f;
+                                    launchVel = -250.0f;
                                 } else {
                                     // Was charging - calculate velocity based on charge
-                                    // Minimum velocity: -220 (no charge / just started hold)
-                                    // Maximum velocity: -400 (full charge)
-                                    float minVel = -220.0f;
-                                    float maxVel = -400.0f;
+                                    // Minimum velocity: -175 (no charge / just started hold)
+                                    // Maximum velocity: -250 (full charge)
+                                    float minVel = -175.0f;
+                                    float maxVel = -250.0f;
                                     launchVel = minVel + (maxVel - minVel) * game.launchChargeAmount;
                                 }
                                 
