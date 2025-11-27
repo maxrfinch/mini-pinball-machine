@@ -342,7 +342,8 @@ void inputSetGameState(InputManager* input, InputGameState state){
             // Menu state: show menu navigation visuals
             sprintf(batchCmd1, "CMD NEO EFFECT ATTRACT\n");
             sprintf(batchCmd2, "CMD BUTTON EFFECT ALL MENU_NAVIGATION\n");
-            sendCommand2(input->fd, batchCmd1, batchCmd2);
+            sprintf(batchCmd3, "CMD DISP_EFFECT ATTRACT_PINBALL\n");
+            sendCommand3(input->fd, batchCmd1, batchCmd2, batchCmd3);
             break;
         }
         case STATE_GAME: {
@@ -477,4 +478,28 @@ void inputSendWaterEffectEnd(InputManager *input){
     sprintf(batchCmd1, "CMD NEO EFFECT RAINBOW_BREATHE\n");
     sprintf(batchCmd2, "CMD DISP_EFFECT NONE\n");
     sendCommand2(input->fd, batchCmd1, batchCmd2);
+}
+
+void inputSendIcedUpEffect(InputManager *input){
+    // Trigger iced up / slow-mo matrix effect
+    sprintf(tempString,"CMD DISP_EFFECT ICED_UP\n");
+    sendCommand(input->fd, tempString);
+}
+
+void inputSendHighScoreEffect(InputManager *input){
+    // Trigger high score celebration matrix effect
+    sprintf(tempString,"CMD DISP_EFFECT HIGH_SCORE\n");
+    sendCommand(input->fd, tempString);
+}
+
+void inputSendGameOverCurtainEffect(InputManager *input){
+    // Trigger game over curtain matrix effect
+    sprintf(tempString,"CMD DISP_EFFECT GAME_OVER_CURTAIN\n");
+    sendCommand(input->fd, tempString);
+}
+
+void inputSendMenuEffect(InputManager *input){
+    // Trigger menu attract matrix effect
+    sprintf(tempString,"CMD DISP_EFFECT ATTRACT_PINBALL\n");
+    sendCommand(input->fd, tempString);
 }
