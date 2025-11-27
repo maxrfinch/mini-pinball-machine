@@ -2,6 +2,7 @@
 #include "constants.h"
 #include "util.h"
 #include "soundManager.h"
+#include "inputManager.h"
 #include "raylib.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -75,77 +76,14 @@ static float roundToTenth(float value) {
 }
 
 // ============================================================================
-// Mouse Coordinate Transformation
+// Mouse Input Helper
 // ============================================================================
 //
-// Transforms mouse coordinates from physical screen space to virtual canvas space.
-// This is needed because the game renders to a virtual 450x800 canvas which is
-// then scaled to fit the physical screen with letterboxing.
-//
-// The transformation reverses the scaling applied in main.c during rendering:
-//   1. Get physical screen dimensions and calculate scale factor
-//   2. Calculate letterbox offsets
-//   3. Transform mouse position back to virtual canvas coordinates
-//
-// Returns the mouse position in virtual canvas space (0,0 to screenWidth,screenHeight)
+// Returns raw mouse coordinates without any scaling or transformation.
+// The mouse should work with untransformed coordinates.
 // ============================================================================
-static Vector2 UI_GetVirtualMousePosition(void) {
-#if defined(PLATFORM_RPI)
-    // On Pi, GetMousePosition() returns screen coords, but we render to full screen
-    // so we need to scale the mouse position to render space first
-    Vector2 screenMousePos = GetMousePosition();
-    Vector2 mousePos;
-    int screenW = GetScreenWidth();
-    int screenH = GetScreenHeight();
-    if (screenW > 0 && screenH > 0) {
-        mousePos.x = screenMousePos.x * ((float)GetRenderWidth() / (float)screenW);
-        mousePos.y = screenMousePos.y * ((float)GetRenderHeight() / (float)screenH);
-    } else {
-        mousePos = screenMousePos;
-    }
-#else
-    Vector2 mousePos = GetMousePosition();
-#endif
-    
-    // Validate screen dimensions to prevent division by zero
-    if (screenWidth <= 0 || screenHeight <= 0) {
-        // Return mouse position as-is if virtual dimensions are invalid
-        return mousePos;
-    }
-    
-    // Get physical screen dimensions
-    // Use platform-specific functions to match the rendering logic in main.c
-    #if defined(PLATFORM_RPI)
-        int renderW = GetRenderWidth();
-        int renderH = GetRenderHeight();
-    #else
-        int renderW = GetScreenWidth();
-        int renderH = GetScreenHeight();
-    #endif
-    
-    // Calculate the same scale and offset used in main.c rendering
-    float scaleX = (float)renderW / (float)screenWidth;
-    float scaleY = (float)renderH / (float)screenHeight;
-    float scale = (scaleX < scaleY) ? scaleX : scaleY;
-    
-    // Validate scale to prevent division by zero
-    if (scale <= 0.0f) {
-        // Return mouse position as-is if scale is invalid
-        return mousePos;
-    }
-    
-    float drawW = (float)screenWidth * scale;
-    float drawH = (float)screenHeight * scale;
-    
-    float offsetX = (renderW - drawW) * 0.5f;
-    float offsetY = (renderH - drawH) * 0.5f;
-    
-    // Transform mouse position from physical to virtual space
-    Vector2 virtualPos;
-    virtualPos.x = (mousePos.x - offsetX) / scale;
-    virtualPos.y = (mousePos.y - offsetY) / scale;
-    
-    return virtualPos;
+static Vector2 UI_GetMousePosition(void) {
+    return GetMousePosition();
 }
 
 // Debug UI toggle - press Tab to show button hitboxes
@@ -419,7 +357,7 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
 
         // Handle touchscreen button input (transparent overlays)
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 mousePos = UI_GetVirtualMousePosition();
+            Vector2 mousePos = UI_GetMousePosition();
             
             if (CheckCollisionPointRec(mousePos, volMinusRect)) {
                 // Volume down by 10%
@@ -444,6 +382,8 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
                 // Note: Requires passwordless sudo for shutdown command
                 // Configure with: echo "pi ALL=(ALL) NOPASSWD: /sbin/shutdown" | sudo tee /etc/sudoers.d/shutdown
                 playClick(game->sound);
+                // Turn off all KB2040 effects before shutdown
+                inputShutdownEffects(game->input);
                 #if defined(PLATFORM_RPI) || defined(PLATFORM_LINUX)
                 int result = system("sudo shutdown -h now");
                 if (result != 0) {
@@ -454,6 +394,8 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             } else if (CheckCollisionPointRec(mousePos, quitRect)) {
                 // Quit to desktop
                 playClick(game->sound);
+                // Turn off all KB2040 effects before quitting
+                inputShutdownEffects(game->input);
                 game->quitRequested = 1;
             }
         }
@@ -528,16 +470,16 @@ void UI_DrawMenu(GameStruct *game, const Resources *res,
             DrawTextEx(res->font1, "QUIT", (Vector2){quitRect.x + 2, quitRect.y + 2}, 12.0f, 1.0f, GREEN);
             
             // Draw mouse cursor position for debugging
-            Vector2 virtualMousePos = UI_GetVirtualMousePosition();
+            Vector2 mousePos = UI_GetMousePosition();
             char mouseDebugText[64];
-            sprintf(mouseDebugText, "Mouse: %.0f, %.0f", virtualMousePos.x, virtualMousePos.y);
+            sprintf(mouseDebugText, "Mouse: %.0f, %.0f", mousePos.x, mousePos.y);
             DrawTextEx(res->font1, mouseDebugText, (Vector2){10, 10}, 14.0f, 1.0f, YELLOW);
             
-            // Draw a crosshair at the transformed mouse position
-            DrawLineEx((Vector2){virtualMousePos.x - 10, virtualMousePos.y}, 
-                      (Vector2){virtualMousePos.x + 10, virtualMousePos.y}, 2, YELLOW);
-            DrawLineEx((Vector2){virtualMousePos.x, virtualMousePos.y - 10}, 
-                      (Vector2){virtualMousePos.x, virtualMousePos.y + 10}, 2, YELLOW);
+            // Draw a crosshair at the mouse position
+            DrawLineEx((Vector2){mousePos.x - 10, mousePos.y}, 
+                      (Vector2){mousePos.x + 10, mousePos.y}, 2, YELLOW);
+            DrawLineEx((Vector2){mousePos.x, mousePos.y - 10}, 
+                      (Vector2){mousePos.x, mousePos.y + 10}, 2, YELLOW);
         }
         
     }

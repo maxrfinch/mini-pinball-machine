@@ -158,6 +158,16 @@ static void sendCommand2(int fd, const char *cmd1, const char *cmd2)
     sendCommandBatch(fd, commands, 2);
 }
 
+// Helper to send a 3-command batch
+static void sendCommand3(int fd, const char *cmd1, const char *cmd2, const char *cmd3)
+{
+    const char *commands[3] = {cmd1, cmd2, cmd3};
+    sendCommandBatch(fd, commands, 3);
+}
+
+// Shared buffer for shutdown command
+static char batchCmd3[TEMP_STRING_SIZE];
+
 InputManager* inputInit(){
     InputManager *input = malloc(sizeof(InputManager));
     input->fd = serialOpen("/dev/ttyACM0",9600);
@@ -175,8 +185,27 @@ InputManager* inputInit(){
     return input;
 }
 
+void inputShutdownEffects(InputManager* input){
+    if (input == NULL || input->fd < 0) {
+        return;
+    }
+    
+    // Turn off all NeoPixel effects
+    sprintf(batchCmd1, "CMD NEO EFFECT NONE\n");
+    // Turn off all button LED effects
+    sprintf(batchCmd2, "CMD BUTTON EFFECT ALL OFF\n");
+    // Clear display
+    sprintf(batchCmd3, "CMD DISPLAY CLEAR\n");
+    
+    sendCommand3(input->fd, batchCmd1, batchCmd2, batchCmd3);
+    
+    // Small delay to ensure commands are sent
+    usleep(100000); // 100ms
+}
+
 void inputShutdown(InputManager* input){
     if (input != NULL) {
+        inputShutdownEffects(input);
         serialClose(input->fd);
         free(input);
     }

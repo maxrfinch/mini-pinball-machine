@@ -31,6 +31,7 @@ typedef enum {
 
 InputManager* inputInit();
 void inputShutdown(InputManager* input);
+void inputShutdownEffects(InputManager* input);
 void inputUpdate(InputManager* input);
 int inputLeft(InputManager* input);
 int inputRight(InputManager* input);
