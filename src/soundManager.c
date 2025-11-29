@@ -102,6 +102,13 @@ typedef struct {
     float chargeIntensity;  // 0.0 to 1.0 for charge effect
 } HapticState;
 
+// Simple half-sine envelope for short "knock" pulses (start and end at 0)
+static inline float haptic_knock_env(float t, float duration) {
+    if (t <= 0.0f || t >= duration) return 0.0f;
+    float p = t / duration;
+    return sinf(PI * p);
+}
+
 static HapticState g_haptics = {0};
 
 // Generate one haptic sample for the left channel
@@ -135,7 +142,7 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_FLIPPER_HIT: {
             // Thumpy hit: ~120 Hz, ~40ms (shortened from 64ms), stronger peak
-            const float duration = 0.035f;  // Shortened to reduce buzz
+            const float duration = 0.045f;  // Shortened to reduce buzz
             const float freq = 60.0f;
             const float baseAmp = 1.5f;  // Overdriven for clipping
 
@@ -154,19 +161,20 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_LAUNCH: {
-            // Sweep from 35Hz to 80Hz over 120ms (shortened from 190ms), amplitude ramps up then down
-            const float duration = 0.120f;  // Shortened to reduce buzz
+            // Short, punchy sweep: 35Hz -> 60Hz over ~80ms with knock-shaped envelope
+            const float duration   = 0.080f;
             const float freq_start = 35.0f;
-            const float freq_end = 80.0f;
-            const float peak_amp = 1.5f;  // Overdriven for clipping
-            
+            const float freq_end   = 60.0f;
+            const float peak_amp   = 1.6f;  // Overdriven for clipping
+
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;
                 float freq = freq_start + (freq_end - freq_start) * progress;
-                
-                // Amplitude envelope: ramp up to middle, then down
-                float amp = peak_amp * sinf(PI * progress);
-                
+
+                // Half-sine envelope makes this feel like a single "thump"
+                float env = haptic_knock_env(g_haptics.t, duration);
+                float amp = peak_amp * env;
+
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else {
@@ -176,15 +184,14 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_BUMPER_LIGHT: {
-            // Light bumper: ~60 Hz, ~50ms (shortened from 80ms), decaying sine tap
-            const float duration = 0.050f;  // Shortened to reduce buzz
-            const float freq = 60.0f;
-            const float baseAmp = 1.5f;  // Overdriven for clipping
-            
+            // Light bumper: single knock at ~55Hz, ~22ms (about one cycle)
+            const float duration = 0.022f;
+            const float freq     = 55.0f;
+            const float peak_amp = 1.6f;  // Overdriven for clipping
+
             if (g_haptics.t < duration) {
-                float progress = g_haptics.t / duration;
-                float env = 1.0f - progress * progress;
-                float amp = baseAmp * env;
+                float env = haptic_knock_env(g_haptics.t, duration);
+                float amp = peak_amp * env;
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else {
@@ -194,32 +201,31 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_BUMPER_SOLID: {
-            // Double knock: sine-based pulses with envelopes to avoid buzz
-            const float pulse1_duration = 0.070f;  // Shortened from 0.104f
-            const float gap_duration   = 0.008f;   // Shortened from 0.012f
-            const float pulse2_duration = 0.022f;  // Shortened from 0.032f
-            const float freq = 50.0f;
-            const float baseAmp1 = 1.5f;  // Overdriven for clipping
-            const float baseAmp2 = 1.5f;  // Overdriven for clipping
+            // Solid bumper: two short knocks (45Hz then 60Hz) with a small gap
+            const float pulse1_duration = 0.026f;  // ~1.2 cycles @ 45Hz
+            const float gap_duration    = 0.010f;
+            const float pulse2_duration = 0.020f;  // ~1.2 cycles @ 60Hz
+            const float pulse1_freq     = 45.0f;
+            const float pulse2_freq     = 60.0f;
+            const float peak_amp1       = 1.7f;
+            const float peak_amp2       = 1.7f;
 
             if (g_haptics.t < pulse1_duration) {
-                // First pulse with fast decay envelope
-                float progress = g_haptics.t / pulse1_duration;
-                float env = 1.0f - progress * progress;
-                float amp = baseAmp1 * env;
+                // First knock
+                float env = haptic_knock_env(g_haptics.t, pulse1_duration);
+                float amp = peak_amp1 * env;
                 output = amp * sinf(g_haptics.phase);
-                g_haptics.phase += 2.0f * PI * freq * dt;
+                g_haptics.phase += 2.0f * PI * pulse1_freq * dt;
             } else if (g_haptics.t < pulse1_duration + gap_duration) {
                 // Gap (silence)
                 output = 0.0f;
             } else if (g_haptics.t < pulse1_duration + gap_duration + pulse2_duration) {
-                // Second pulse with its own envelope
+                // Second knock
                 float local_t = g_haptics.t - (pulse1_duration + gap_duration);
-                float progress = local_t / pulse2_duration;
-                float env = 1.0f - progress * progress;
-                float amp = baseAmp2 * env;
+                float env = haptic_knock_env(local_t, pulse2_duration);
+                float amp = peak_amp2 * env;
                 output = amp * sinf(g_haptics.phase);
-                g_haptics.phase += 2.0f * PI * freq * dt;
+                g_haptics.phase += 2.0f * PI * pulse2_freq * dt;
             } else {
                 g_haptics.active = 0;
             }
@@ -227,36 +233,31 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_EXCITEMENT: {
-            // Rising energy buzz: ~270ms total (shortened from 420ms)
-            // Segment 1: 30->70Hz sweep, 200ms (shortened from 300ms), amp 1.5
-            // Segment 2: 60Hz sustain, 50ms (shortened from 80ms), amp 1.5
-            // Segment 3: 40Hz tail, 20ms (shortened from 40ms), amp 1.5
-            const float seg1_duration = 0.200f;  // Shortened to reduce buzz
-            const float seg2_duration = 0.050f;  // Shortened to reduce buzz
-            const float seg3_duration = 0.020f;  // Shortened to reduce buzz
-            
-            if (g_haptics.t < seg1_duration) {
-                // Segment 1: frequency sweep with overdriven amplitude
-                float progress = g_haptics.t / seg1_duration;
-                float freq = 30.0f + (70.0f - 30.0f) * progress;
-                float amp = 1.5f;  // Overdriven for clipping
-                
-                output = amp * sinf(g_haptics.phase);
-                g_haptics.phase += 2.0f * PI * freq * dt;
-            } else if (g_haptics.t < seg1_duration + seg2_duration) {
-                // Segment 2: sustain at 60Hz
-                float freq = 60.0f;
-                float amp = 1.5f;  // Overdriven for clipping
-                
-                output = amp * sinf(g_haptics.phase);
-                g_haptics.phase += 2.0f * PI * freq * dt;
-            } else if (g_haptics.t < seg1_duration + seg2_duration + seg3_duration) {
-                // Segment 3: tail at 40Hz
-                float freq = 40.0f;
-                float amp = 1.5f;  // Overdriven for clipping
-                
-                output = amp * sinf(g_haptics.phase);
-                g_haptics.phase += 2.0f * PI * freq * dt;
+            // Excitement: train of 4 short knocks that rise slightly in frequency and level
+            const float pulse_duration = 0.022f;
+            const float gap_duration   = 0.012f;
+            const int   num_pulses     = 4;
+            const float total_duration = num_pulses * (pulse_duration + gap_duration);
+
+            if (g_haptics.t < total_duration) {
+                float cycle = fmodf(g_haptics.t, pulse_duration + gap_duration);
+                if (cycle < pulse_duration) {
+                    // Within a pulse
+                    float local_t = cycle;
+                    float env = haptic_knock_env(local_t, pulse_duration);
+
+                    // As time goes on, sweep frequency and amplitude slightly
+                    float progress = g_haptics.t / total_duration;
+                    float freq = 40.0f + 30.0f * progress;       // 40Hz -> 70Hz
+                    float peak_amp = 1.3f + 0.4f * progress;     // 1.3 -> 1.7
+
+                    float amp = peak_amp * env;
+                    output = amp * sinf(g_haptics.phase);
+                    g_haptics.phase += 2.0f * PI * freq * dt;
+                } else {
+                    // Gap between pulses
+                    output = 0.0f;
+                }
             } else {
                 g_haptics.active = 0;
             }
@@ -291,6 +292,10 @@ static float haptics_generate_sample(float sampleRate) {
             break;
     }
     
+    // Safety clamp: keep overdrive within a reasonable range
+    if (output > 1.2f)  output = 1.2f;
+    if (output < -1.2f) output = -1.2f;
+
     return output;
 }
 
