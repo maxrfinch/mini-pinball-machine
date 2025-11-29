@@ -726,6 +726,36 @@ CMD DISPLAY BALLS 3
 
 ---
 
+### Example 14: Safe Shutdown / Reset Sequence
+```
+# When the Pi game quits, shuts down, or needs to leave the controller
+# in a safe state, send explicit 'all off' commands to ensure no LEDs
+# or effects are left running:
+
+# Turn off all NeoPixel effects
+CMD NEO EFFECT NONE
+
+# Turn off all button LED effects
+CMD BUTTON EFFECT CLEAR
+
+# Clear all matrix display effects
+CMD DISP_EFFECT NONE
+
+# Clear the display content (optional - blanks the display)
+CMD DISPLAY CLEAR
+```
+
+**Important Safety Practice:** The Pi should always send these shutdown commands when:
+- The game process exits (normal quit)
+- The Pi is shutting down or rebooting
+- The game ends and the system should be left idle
+- An error condition requires resetting the display state
+
+This ensures the KB2040 controller is left in a safe, non-distracting state
+rather than potentially leaving LEDs or effects running indefinitely.
+
+---
+
 # 7. Button Input & LED Effects (Full Consolidated Reference)
 
 ### Button Input Behavior
