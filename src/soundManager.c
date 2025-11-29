@@ -347,7 +347,7 @@ SoundManager *initSound(){
     // Create dedicated AudioStream for haptics (dedicated left channel)
     SetAudioStreamBufferSizeDefault(AUDIO_BUFFER_SIZE);
     g_hapticsStream = LoadAudioStream(SAMPLE_RATE, 16, CHANNELS);
-    SetAudioStreamVolume(g_hapticsStream, 1.0f);
+    SetAudioStreamVolume(g_hapticsStream, 1.5f);
     // No need to set pan: we write explicit stereo samples (left=haptics, right=0.0)
     PlayAudioStream(g_hapticsStream);
     g_audioInitialized = 1;
