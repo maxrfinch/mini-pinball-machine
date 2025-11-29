@@ -23,6 +23,9 @@ You will receive multiple flat panels that must be chemically welded together us
 3. Position blocks firmly so the acrylic panel cannot shift during welding.
 4. Press everything down so securely that the acrylic and blocks will not move even if the board is lifted.
 
+### When you're done it should look like this:
+![Preparing first wall weld](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2400.JPG)
+
 ## Step 1: Identify Left vs. Right Panels
 It is easy to accidentally make two left panels or two right panels. Ensure:
 - You know which is your **left** wall and which is your **right** wall.
