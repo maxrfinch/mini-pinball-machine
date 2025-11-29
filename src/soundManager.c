@@ -117,9 +117,9 @@ static float haptics_generate_sample(float sampleRate) {
     switch (g_haptics.type) {
         case HAPTIC_FLIPPER_EMPTY: {
             // Light but noticeable tap: ~110 Hz, ~30ms (shortened from 50ms), small decay envelope
-            const float duration = 0.030f;  // Shortened to reduce buzz
-            const float freq = 110.0f;
-            const float baseAmp = 1.5f;  // Overdriven for clipping
+            const float duration = 0.020f;  // Shortened to reduce buzz
+            const float freq = 80.0f;
+            const float baseAmp = 1.2f;  // Overdriven for clipping
 
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;
@@ -135,8 +135,8 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_FLIPPER_HIT: {
             // Thumpy hit: ~120 Hz, ~40ms (shortened from 64ms), stronger peak
-            const float duration = 0.040f;  // Shortened to reduce buzz
-            const float freq = 120.0f;
+            const float duration = 0.035f;  // Shortened to reduce buzz
+            const float freq = 90.0f;
             const float baseAmp = 1.5f;  // Overdriven for clipping
 
             if (g_haptics.t < duration) {
