@@ -1,4 +1,5 @@
 # Cabinet Build Guide
+![Mini Pinball Cabinet In Progress](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2406.JPG)
 
 This document provides the high‑level process for assembling the acrylic cabinet for the Mini Pinball Machine. It is *not* exhaustive and should be used alongside professional acrylic fabrication tutorials. YouTube walkthroughs from experienced acrylic fabricators are highly recommended.
 
