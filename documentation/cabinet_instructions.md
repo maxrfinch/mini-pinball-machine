@@ -3,6 +3,11 @@
 
 This document provides the high‑level process for assembling the acrylic cabinet for the Mini Pinball Machine. It is *not* exhaustive and should be used alongside professional acrylic fabrication tutorials. YouTube walkthroughs from experienced acrylic fabricators are highly recommended.
 
+### Recommended Acrylic Welding Tutorials
+- https://www.youtube.com/watch?v=M4K8yo-_hSc
+- https://www.youtube.com/watch?v=8KECEPwkKvk
+- https://www.youtube.com/watch?v=fa2h-xSespI
+
 ## Overview
 This build assumes you ordered laser‑cut acrylic panels from SendCutSend. If you 3D‑printed your panels instead, the welding steps do not apply.
 
@@ -142,20 +147,8 @@ This completes the cabinet shell. You are now ready to plan wire routing and ins
 
 ## Reference Media
 
-### Placeholder Image
-![Cabinet Build Placeholder](../assets/placeholder_cabinet.jpg)
-*(Replace this with your actual GitHub asset once uploaded.)*
-
-### Recommended Acrylic Welding Tutorials
-- https://www.youtube.com/watch?v=M4K8yo-_hSc
-- https://www.youtube.com/watch?v=8KECEPwkKvk
-- https://www.youtube.com/watch?v=fa2h-xSespI
+![Final product with hardware for reference](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2410.JPG)
 
 ## Next Steps
 Proceed to the Hardware Build Guide after the cabinet is finished.
-
-A future update will include:
-- Linked YouTube tutorials
-- Image examples from the GitHub `/assets` folder
-- Close‑up examples of seam quality
 
