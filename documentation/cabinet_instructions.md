@@ -1,4 +1,5 @@
 # Cabinet Build Guide
+![Mini Pinball Cabinet In Progress](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2406.JPG)
 
 This document provides the high‑level process for assembling the acrylic cabinet for the Mini Pinball Machine. It is *not* exhaustive and should be used alongside professional acrylic fabrication tutorials. YouTube walkthroughs from experienced acrylic fabricators are highly recommended.
 
@@ -21,6 +22,9 @@ You will receive multiple flat panels that must be chemically welded together us
 2. Apply VHB tape to your alignment blocks.
 3. Position blocks firmly so the acrylic panel cannot shift during welding.
 4. Press everything down so securely that the acrylic and blocks will not move even if the board is lifted.
+
+### When you're done it should look like this:
+![Preparing first wall weld](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2400.JPG)
 
 ## Step 1: Identify Left vs. Right Panels
 It is easy to accidentally make two left panels or two right panels. Ensure:
