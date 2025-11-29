@@ -118,7 +118,7 @@ static float haptics_generate_sample(float sampleRate) {
         case HAPTIC_FLIPPER_EMPTY: {
             // Light but noticeable tap: ~120 Hz, ~50 ms, small decay envelope (slightly stronger)
             const float duration = 0.050f;
-            const float freq = 120.0f;
+            const float freq = 90.0f;
             const float baseAmp = 1.0f;
 
             if (g_haptics.t < duration) {
@@ -135,8 +135,8 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_FLIPPER_HIT: {
             // Thumpy hit: ~130 Hz, ~64 ms, stronger peak to approach launch feel (~100%)
-            const float duration = 0.064f;
-            const float freq = 130.0f;
+            const float duration = 0.074f;
+            const float freq = 100.0f;
             const float baseAmp = 1.0f;
 
             if (g_haptics.t < duration) {
@@ -155,9 +155,9 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_LAUNCH: {
             // Sweep from 45Hz to 90Hz over 190ms, amplitude ramps up then down
-            const float duration = 0.190f;
-            const float freq_start = 45.0f;
-            const float freq_end = 90.0f;
+            const float duration = 0.210f;
+            const float freq_start = 35.0f;
+            const float freq_end = 80.0f;
             const float peak_amp = 1.0f;
             
             if (g_haptics.t < duration) {
@@ -178,7 +178,7 @@ static float haptics_generate_sample(float sampleRate) {
         case HAPTIC_BUMPER_LIGHT: {
             // Light bumper: ~150 Hz, ~40ms, decaying sine tap
             const float duration = 0.080f;
-            const float freq = 70.0f;
+            const float freq = 60.0f;
             const float baseAmp = 1.0f;
             
             if (g_haptics.t < duration) {
@@ -198,7 +198,7 @@ static float haptics_generate_sample(float sampleRate) {
             const float pulse1_duration = 0.104f;
             const float gap_duration   = 0.012f;
             const float pulse2_duration = 0.032f;
-            const float freq = 60.0f;      // more tactile for limited power
+            const float freq = 40.0f;      // more tactile for limited power
             const float baseAmp1 = 1.0f;
             const float baseAmp2 = 1.0f;
 
