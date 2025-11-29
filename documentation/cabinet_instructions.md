@@ -47,6 +47,7 @@ Insert M5 screws through the alignment holes in the outer wall and inner wall. T
 3. Place the outer ring/bezel on top.
 
 Everything should now be dry‑fit and ready for adhesive.
+![Outer, Inner, and bezel wall lined up with jenga blocks and screws](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2403.JPG)
 
 ## Step 3: Welding the First Panel
 Weld‑On behaves like a solvent — it *melts* the acrylic surfaces and fuses them.
@@ -88,6 +89,7 @@ Peel the protective backing from:
 - Matrix LED panel
 
 Dry‑fit all of them to verify tolerance before welding.
+![Full panel fit test](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2405.JPG)
 
 ## Step 6: Attach Structural Interior Panels
 These panels **will be permanently welded**:
