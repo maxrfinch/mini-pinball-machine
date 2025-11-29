@@ -112,6 +112,10 @@ These must remain removable to service wiring and hardware.
 4. Remove serviceable panels.
 5. Complete all permanent seam welds.
 
+**PICTURED:** Structural wall, roof, back, floor, and front panel are welded all together to form one large piece. Matrix, camera, and screen panels are not!
+
+![Outer, Inner, and bezel wall lined up with jenga blocks and screws](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2403.JPG)
+
 ## Step 7: Screen Panel Assembly
 The screen requires two stacked acrylic frames for thickness.
 - Align them using Jenga blocks on the poster board.
