@@ -89,6 +89,7 @@ Peel the protective backing from:
 - Matrix LED panel
 
 Dry‑fit all of them to verify tolerance before welding.
+![Full panel fit test](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2405.JPG)
 
 ## Step 6: Attach Structural Interior Panels
 These panels **will be permanently welded**:
