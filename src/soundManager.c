@@ -1,4 +1,3 @@
-
 /*
  * soundManager.c
  * 
@@ -117,14 +116,14 @@ static float haptics_generate_sample(float sampleRate) {
     
     switch (g_haptics.type) {
         case HAPTIC_FLIPPER_EMPTY: {
-            // Light but noticeable tap: ~110 Hz (was 120), ~50 ms, small decay envelope
-            const float duration = 0.050f;
-            const float freq = 110.0f;  // Dropped by 10Hz
+            // Light but noticeable tap: ~110 Hz, ~30ms (shortened from 50ms), small decay envelope
+            const float duration = 0.030f;  // Shortened to reduce buzz
+            const float freq = 110.0f;
             const float baseAmp = 1.5f;  // Overdriven for clipping
 
             if (g_haptics.t < duration) {
-                float progress = g_haptics.t / duration;           // 0..1
-                float env = 1.0f - progress;                       // simple decay
+                float progress = g_haptics.t / duration;
+                float env = 1.0f - progress;
                 float amp = baseAmp * env;
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
@@ -135,15 +134,15 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_FLIPPER_HIT: {
-            // Thumpy hit: ~120 Hz (was 130), ~64 ms, stronger peak
-            const float duration = 0.064f;
-            const float freq = 120.0f;  // Dropped by 10Hz
+            // Thumpy hit: ~120 Hz, ~40ms (shortened from 64ms), stronger peak
+            const float duration = 0.040f;  // Shortened to reduce buzz
+            const float freq = 120.0f;
             const float baseAmp = 1.5f;  // Overdriven for clipping
 
             if (g_haptics.t < duration) {
-                float progress = g_haptics.t / duration;   // 0..1
+                float progress = g_haptics.t / duration;
                 // Fast decay so it feels like a knock, not a buzz
-                float env = 1.0f - progress * progress;    // quadratic decay
+                float env = 1.0f - progress * progress;
                 float amp = baseAmp * env;
 
                 output = amp * sinf(g_haptics.phase);
@@ -155,11 +154,11 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_LAUNCH: {
-            // Sweep from 35Hz to 80Hz (was 45-90) over 190ms, amplitude ramps up then down
-            const float duration = 0.190f;
-            const float freq_start = 35.0f;  // Dropped by 10Hz
-            const float freq_end = 80.0f;    // Dropped by 10Hz
-            const float peak_amp = 1.5f;     // Overdriven for clipping
+            // Sweep from 35Hz to 80Hz over 120ms (shortened from 190ms), amplitude ramps up then down
+            const float duration = 0.120f;  // Shortened to reduce buzz
+            const float freq_start = 35.0f;
+            const float freq_end = 80.0f;
+            const float peak_amp = 1.5f;  // Overdriven for clipping
             
             if (g_haptics.t < duration) {
                 float progress = g_haptics.t / duration;
@@ -177,14 +176,14 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_BUMPER_LIGHT: {
-            // Light bumper: ~60 Hz (was 70), ~40ms, decaying sine tap
-            const float duration = 0.080f;
-            const float freq = 60.0f;        // Dropped by 10Hz
-            const float baseAmp = 1.5f;      // Overdriven for clipping
+            // Light bumper: ~60 Hz, ~50ms (shortened from 80ms), decaying sine tap
+            const float duration = 0.050f;  // Shortened to reduce buzz
+            const float freq = 60.0f;
+            const float baseAmp = 1.5f;  // Overdriven for clipping
             
             if (g_haptics.t < duration) {
-                float progress = g_haptics.t / duration;   // 0..1
-                float env = 1.0f - progress * progress;    // quick decay
+                float progress = g_haptics.t / duration;
+                float env = 1.0f - progress * progress;
                 float amp = baseAmp * env;
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
@@ -196,16 +195,16 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_BUMPER_SOLID: {
             // Double knock: sine-based pulses with envelopes to avoid buzz
-            const float pulse1_duration = 0.104f;
-            const float gap_duration   = 0.012f;
-            const float pulse2_duration = 0.032f;
-            const float freq = 50.0f;        // Dropped by 10Hz
-            const float baseAmp1 = 1.5f;     // Overdriven for clipping
-            const float baseAmp2 = 1.5f;     // Overdriven for clipping
+            const float pulse1_duration = 0.070f;  // Shortened from 0.104f
+            const float gap_duration   = 0.008f;   // Shortened from 0.012f
+            const float pulse2_duration = 0.022f;  // Shortened from 0.032f
+            const float freq = 50.0f;
+            const float baseAmp1 = 1.5f;  // Overdriven for clipping
+            const float baseAmp2 = 1.5f;  // Overdriven for clipping
 
             if (g_haptics.t < pulse1_duration) {
                 // First pulse with fast decay envelope
-                float progress = g_haptics.t / pulse1_duration;   // 0..1
+                float progress = g_haptics.t / pulse1_duration;
                 float env = 1.0f - progress * progress;
                 float amp = baseAmp1 * env;
                 output = amp * sinf(g_haptics.phase);
@@ -216,7 +215,7 @@ static float haptics_generate_sample(float sampleRate) {
             } else if (g_haptics.t < pulse1_duration + gap_duration + pulse2_duration) {
                 // Second pulse with its own envelope
                 float local_t = g_haptics.t - (pulse1_duration + gap_duration);
-                float progress = local_t / pulse2_duration;       // 0..1
+                float progress = local_t / pulse2_duration;
                 float env = 1.0f - progress * progress;
                 float amp = baseAmp2 * env;
                 output = amp * sinf(g_haptics.phase);
@@ -228,33 +227,33 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_EXCITEMENT: {
-            // Rising energy buzz: ~420ms total
-            // Segment 1: 30->70Hz sweep (was 40-80), 300ms, amp 1.5
-            // Segment 2: 60Hz sustain (was 70), 80ms, amp 1.5
-            // Segment 3: 40Hz tail (was 50), 40ms, amp 1.5
-            const float seg1_duration = 0.300f;
-            const float seg2_duration = 0.080f;
-            const float seg3_duration = 0.040f;
+            // Rising energy buzz: ~270ms total (shortened from 420ms)
+            // Segment 1: 30->70Hz sweep, 200ms (shortened from 300ms), amp 1.5
+            // Segment 2: 60Hz sustain, 50ms (shortened from 80ms), amp 1.5
+            // Segment 3: 40Hz tail, 20ms (shortened from 40ms), amp 1.5
+            const float seg1_duration = 0.200f;  // Shortened to reduce buzz
+            const float seg2_duration = 0.050f;  // Shortened to reduce buzz
+            const float seg3_duration = 0.020f;  // Shortened to reduce buzz
             
             if (g_haptics.t < seg1_duration) {
                 // Segment 1: frequency sweep with overdriven amplitude
                 float progress = g_haptics.t / seg1_duration;
-                float freq = 30.0f + (70.0f - 30.0f) * progress;  // Dropped by 10Hz
+                float freq = 30.0f + (70.0f - 30.0f) * progress;
                 float amp = 1.5f;  // Overdriven for clipping
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < seg1_duration + seg2_duration) {
-                // Segment 2: sustain at 60Hz (was 70Hz)
-                float freq = 60.0f;  // Dropped by 10Hz
-                float amp = 1.5f;    // Overdriven for clipping
+                // Segment 2: sustain at 60Hz
+                float freq = 60.0f;
+                float amp = 1.5f;  // Overdriven for clipping
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
             } else if (g_haptics.t < seg1_duration + seg2_duration + seg3_duration) {
-                // Segment 3: tail at 40Hz (was 50Hz)
-                float freq = 40.0f;  // Dropped by 10Hz
-                float amp = 1.5f;    // Overdriven for clipping
+                // Segment 3: tail at 40Hz
+                float freq = 40.0f;
+                float amp = 1.5f;  // Overdriven for clipping
                 
                 output = amp * sinf(g_haptics.phase);
                 g_haptics.phase += 2.0f * PI * freq * dt;
@@ -266,14 +265,14 @@ static float haptics_generate_sample(float sampleRate) {
         
         case HAPTIC_CHARGE: {
             // Continuous charging rumble that grows in intensity
-            // Frequency increases with charge (30Hz -> 70Hz, was 40-80)
+            // Frequency increases with charge (30Hz -> 70Hz)
             // Amplitude increases with charge (0.3 -> 1.5, overdriven)
             float intensity = g_haptics.chargeIntensity;
             if (intensity < 0.0f) intensity = 0.0f;
             if (intensity > 1.0f) intensity = 1.0f;
             
             // Base frequency that rises with charge
-            float freq = 30.0f + 40.0f * intensity;  // 30Hz to 70Hz (dropped by 10Hz)
+            float freq = 30.0f + 40.0f * intensity;  // 30Hz to 70Hz
             
             // Amplitude grows with charge, with slight pulsing
             float baseAmp = 0.3f + 1.2f * intensity;  // 0.3 to 1.5 (overdriven at top)
@@ -348,7 +347,7 @@ SoundManager *initSound(){
     // Create dedicated AudioStream for haptics (dedicated left channel)
     SetAudioStreamBufferSizeDefault(AUDIO_BUFFER_SIZE);
     g_hapticsStream = LoadAudioStream(SAMPLE_RATE, 16, CHANNELS);
-    SetAudioStreamVolume(g_hapticsStream, 1.5f);
+    SetAudioStreamVolume(g_hapticsStream, 1.2f);
     // No need to set pan: we write explicit stereo samples (left=haptics, right=0.0)
     PlayAudioStream(g_hapticsStream);
     g_audioInitialized = 1;
