@@ -141,19 +141,33 @@ static float haptics_generate_sample(float sampleRate) {
         }
         
         case HAPTIC_FLIPPER_HIT: {
-            // Thumpy hit: ~120 Hz, ~40ms (shortened from 64ms), stronger peak
-            const float duration = 0.045f;  // Shortened to reduce buzz
-            const float freq = 60.0f;
-            const float baseAmp = 1.5f;  // Overdriven for clipping
+            // Flipper hit: strong knock at 60Hz plus a small follow-up tap
+            const float primary_duration = 0.035f;  // main hit
+            const float gap_duration     = 0.008f;  // short silence
+            const float tap_duration     = 0.015f;  // small tail tap
 
-            if (g_haptics.t < duration) {
-                float progress = g_haptics.t / duration;
-                // Fast decay so it feels like a knock, not a buzz
-                float env = 1.0f - progress * progress;
-                float amp = baseAmp * env;
+            const float freq_primary = 60.0f;
+            const float freq_tap     = 70.0f;  // slightly higher pitch for the tail
 
+            const float peak_amp_primary = 1.6f;  // overdriven for clipping
+            const float peak_amp_tap     = 1.2f;  // softer secondary tap
+
+            if (g_haptics.t < primary_duration) {
+                // Primary knock
+                float env = haptic_knock_env(g_haptics.t, primary_duration);
+                float amp = peak_amp_primary * env;
                 output = amp * sinf(g_haptics.phase);
-                g_haptics.phase += 2.0f * PI * freq * dt;
+                g_haptics.phase += 2.0f * PI * freq_primary * dt;
+            } else if (g_haptics.t < primary_duration + gap_duration) {
+                // Short gap (silence)
+                output = 0.0f;
+            } else if (g_haptics.t < primary_duration + gap_duration + tap_duration) {
+                // Follow-up tap
+                float local_t = g_haptics.t - (primary_duration + gap_duration);
+                float env = haptic_knock_env(local_t, tap_duration);
+                float amp = peak_amp_tap * env;
+                output = amp * sinf(g_haptics.phase);
+                g_haptics.phase += 2.0f * PI * freq_tap * dt;
             } else {
                 g_haptics.active = 0;
             }
