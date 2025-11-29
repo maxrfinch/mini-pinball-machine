@@ -165,8 +165,16 @@ static void sendCommand3(int fd, const char *cmd1, const char *cmd2, const char 
     sendCommandBatch(fd, commands, 3);
 }
 
-// Shared buffer for shutdown command
+// Helper to send a 4-command batch
+static void sendCommand4(int fd, const char *cmd1, const char *cmd2, const char *cmd3, const char *cmd4)
+{
+    const char *commands[4] = {cmd1, cmd2, cmd3, cmd4};
+    sendCommandBatch(fd, commands, 4);
+}
+
+// Shared buffers for shutdown commands
 static char batchCmd3[TEMP_STRING_SIZE];
+static char batchCmd4[TEMP_STRING_SIZE];
 
 InputManager* inputInit(){
     InputManager *input = malloc(sizeof(InputManager));
@@ -186,6 +194,18 @@ InputManager* inputInit(){
     return input;
 }
 
+/**
+ * inputShutdownEffects - Safety shutdown function for KB2040 controller
+ * 
+ * Sends explicit 'all off' commands to the KB2040 to ensure all hardware effects
+ * are disabled cleanly. This function should be called:
+ * - On game quit or shutdown
+ * - When the Pi process exits (normal or unexpected)
+ * - When transitioning to a safe/idle state
+ * 
+ * This ensures the KB2040 is always left in a safe, non-distracting state,
+ * instead of possibly leaving LEDs or effects running.
+ */
 void inputShutdownEffects(InputManager* input){
     if (input == NULL || input->fd < 0) {
         return;
@@ -194,11 +214,13 @@ void inputShutdownEffects(InputManager* input){
     // Turn off all NeoPixel effects
     sprintf(batchCmd1, "CMD NEO EFFECT NONE\n");
     // Turn off all button LED effects
-    sprintf(batchCmd2, "CMD BUTTON EFFECT ALL OFF\n");
-    // Clear display
-    sprintf(batchCmd3, "CMD DISPLAY CLEAR\n");
+    sprintf(batchCmd2, "CMD BUTTON EFFECT CLEAR\n");
+    // Clear all matrix display effects
+    sprintf(batchCmd3, "CMD DISP_EFFECT NONE\n");
+    // Clear the display content
+    sprintf(batchCmd4, "CMD DISPLAY CLEAR\n");
     
-    sendCommand3(input->fd, batchCmd1, batchCmd2, batchCmd3);
+    sendCommand4(input->fd, batchCmd1, batchCmd2, batchCmd3, batchCmd4);
     
     // Small delay to ensure commands are sent
     usleep(100000); // 100ms
