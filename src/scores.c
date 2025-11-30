@@ -3,6 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "scores.h"
+#include <unistd.h>  // for access() and unlink()
 
 ScoreHelper *initScores(){
     ScoreHelper *helper = malloc(sizeof(ScoreHelper));
@@ -72,6 +73,42 @@ void submitScore(ScoreHelper *helper, char *name, int score){
         rc = sqlite3_step(helper->insertStatement);
         sqlite3_finalize(helper->insertStatement);
         printf("submitted score status = %d\n",rc);
+        
+        // NEW CODE: Check if we need to delete the old 3rd place photo
+        // Query for the 4th place entry (if it exists, it was displaced from 3rd)
+        sqlite3_stmt *checkStmt;
+        const char *checkSql = "SELECT name, score FROM Score ORDER BY score DESC LIMIT 1 OFFSET 3;";
+        if (sqlite3_prepare_v2(helper->db, checkSql, -1, &checkStmt, NULL) == SQLITE_OK) {
+            if (sqlite3_step(checkStmt) == SQLITE_ROW) {
+                // There's a 4th place entry - it was bumped from 3rd
+                const char *oldName = (const char*)sqlite3_column_text(checkStmt, 0);
+                int oldScore = sqlite3_column_int(checkStmt, 1);
+                
+                // Sanitize the name the same way as in menu.c
+                char sanitizedName[64];
+                int nameLen = strlen(oldName);
+                if (nameLen >= 64) nameLen = 63;
+                
+                for (int i = 0; i < nameLen; i++) {
+                    char c = toupper(oldName[i]);
+                    if (c == ' ' || c < 'A' || c > 'Z') {
+                        sanitizedName[i] = '_';
+                    } else {
+                        sanitizedName[i] = c;
+                    }
+                }
+                sanitizedName[nameLen] = '\0';
+                
+                // Delete the old photo
+                char photoPath[256];
+                snprintf(photoPath, sizeof(photoPath), "Resources/Photos/%s_%d.png", sanitizedName, oldScore);
+                if (access(photoPath, F_OK) == 0) {
+                    unlink(photoPath);
+                    printf("Deleted old 3rd place photo: %s\n", photoPath);
+                }
+            }
+            sqlite3_finalize(checkStmt);
+        }
     }
 }
 
