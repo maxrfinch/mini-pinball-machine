@@ -1,6 +1,7 @@
 #include "game.h"
 #include "constants.h"
 #include "physics.h"
+#include "gameMode.h"
 
 void Game_Init(GameStruct *game, Bumper *bumpers) {
     game->currentScene = SCENE_RAYLIB_TITLE;
@@ -13,6 +14,9 @@ void Game_Init(GameStruct *game, Bumper *bumpers) {
     game->transitionAlpha = 0;
     game->transitionTarget = TRANSITION_TO_MENU;
     game->ballReadyEventSent = 0;
+    
+    // Initialize mode-specific data pointer
+    game->modeData = NULL;
     
     // Initialize water/powerup state to prevent menu activation
     game->powerupScore = 0;
@@ -28,51 +32,16 @@ void Game_Init(GameStruct *game, Bumper *bumpers) {
 }
 
 void Game_StartGame(GameStruct *game, Bumper *bumpers) {
-    game->gameState = 1;
-    game->currentScene = SCENE_GAME;
-    game->numLives = 3;
-    game->gameScore = 0;
-    game->oldGameScore = 0;
-    game->powerupScore = 0;
-    game->powerupScoreDisplay = 0;
-    game->bumperPowerupState = 0;
-    game->ballPowerupState = 0;
-    game->waterHeight = 0.0f;
-    game->waterPowerupState = 0;
-    game->redPowerupOverlay = 0;
-    game->bluePowerupOverlay = 0;
-    game->slowMotion = 0;
-    game->slowMotionCounter = 0;
-    game->leftFlipperState = 0;
-    game->rightFlipperState = 0;
-    game->ballReadyEventSent = 0;
+    const GameModeConfig *config = GetModeConfig(game->pendingMode);
+    game->currentMode = game->pendingMode;
     
-    // Initialize slow-mo powerup cooldown state (available at game start)
-    game->slowMoPowerupAvailable = 1;
-    game->slowMoCooldownTimer = 0.0f;
-    game->slowMoCooldownBaselineLives = game->numLives;
-    game->slowMoExplosionEffect = 0.0f;
-    
-    // Initialize launch charge state
-    game->launchCharging = 0;
-    game->launchChargeAmount = 0.0f;
-    game->launchChargeTime = 0.0f;
+    if (config->init) {
+        config->init(game, bumpers);
+    }
     
     inputSetScore(game->input, 0);
     inputSetGameState(game->input, STATE_GAME);
     inputSetNumBalls(game->input, game->numLives);
-    
-    // Enable/disable bumpers for game start
-    bumpers[4].enabled = 1;
-    bumpers[5].enabled = 1;
-    bumpers[6].enabled = 1;
-    bumpers[7].enabled = 1;
-    bumpers[8].enabled = 1;
-    bumpers[9].enabled = 1;
-    bumpers[10].enabled = 0;
-    bumpers[11].enabled = 0;
-    bumpers[12].enabled = 0;
-    bumpers[13].enabled = 0;
 }
 
 void Game_SpawnBall(GameStruct *game, float x, float y, float vx, float vy, int type) {
@@ -153,6 +122,12 @@ void Game_Update(GameStruct *game,
         }
     } else {
         game->transitionAlpha = 0;
+    }
+    
+    // Mode update hook - call mode-specific update logic if defined
+    const GameModeConfig *config = GetModeConfig(game->currentMode);
+    if (config->update) {
+        config->update(game, dt);
     }
     
     // Handle raylib title screen transition
