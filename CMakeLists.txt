@@ -49,22 +49,25 @@ add_executable(${PROJECT_NAME} ${SRC_FILES})
 # Dependencies: raylib + Box2D (prefer system/apt installs)
 # ---------------------------------------------------------------------------
 
-# raylib: prefer system packages; also search Homebrew locations on macOS
+# raylib: prefer system packages; also allow custom RAYLIB_ROOT (e.g. ~/raylib/src on Pi)
+if (DEFINED RAYLIB_ROOT)
+    set(RAYLIB_SEARCH_INCLUDE "${RAYLIB_ROOT}")
+    set(RAYLIB_SEARCH_LIB     "${RAYLIB_ROOT}")
+else()
+    set(RAYLIB_SEARCH_INCLUDE
+        "/usr/include;/usr/local/include;/opt/homebrew/include;/usr/local/opt/raylib/include"
+    )
+    set(RAYLIB_SEARCH_LIB
+        "/usr/lib;/usr/local/lib;/opt/homebrew/lib;/usr/local/opt/raylib/lib"
+    )
+endif()
+
 find_path(RAYLIB_INCLUDE_DIR raylib.h
-    PATHS
-        /usr/include
-        /usr/local/include
-        /opt/homebrew/include          # Homebrew (Apple Silicon)
-        /usr/local/opt/raylib/include  # Homebrew (Intel/macOS)
-    PATH_SUFFIXES
-        "" raylib
+    PATHS ${RAYLIB_SEARCH_INCLUDE}
+    PATH_SUFFIXES "" raylib
 )
 find_library(RAYLIB_LIB NAMES raylib
-    PATHS
-        /usr/lib
-        /usr/local/lib
-        /opt/homebrew/lib              # Homebrew (Apple Silicon)
-        /usr/local/opt/raylib/lib      # Homebrew (Intel/macOS)
+    PATHS ${RAYLIB_SEARCH_LIB}
 )
 
 if (NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIB)
