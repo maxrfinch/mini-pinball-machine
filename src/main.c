@@ -254,7 +254,7 @@ int main(void){
             updateSound(sound,&game);
 
             // Update game state machine and transitions
-            Game_Update(&game, bumpers, input, scores, sound, timeStep);
+            Game_Update(&game, bumpers, input, scores, sound, &resources, timeStep);
 
             // Update menu if in menu state
             if (game.gameState == 0){

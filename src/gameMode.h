@@ -40,6 +40,53 @@ typedef struct {
 } MenuTheme;
 
 // ---------------------------------------------------------------------------
+// Mode-specific texture paths
+// ---------------------------------------------------------------------------
+
+typedef struct {
+    // Gameplay textures
+    const char *backgroundTexture;
+    const char *ballTexture;
+    const char *beachBallTexture;
+    const char *trailTexture;
+    const char *flipperLeftTexture;
+    const char *flipperRightTexture;
+    const char *bumperTexture;
+    const char *bumperLightTexture;
+    const char *iceBumperTexture;
+    const char *bumper3Texture;
+    const char *shockwaveTexture;
+    const char *lowerBumperShockTexture;
+    
+    // Menu textures
+    const char *menuBackgroundTexture;
+    const char *titleOverlayTexture;
+    const char *menuOverlaySystemTexture;
+    const char *menuOverlayControlsTexture;
+    const char *menuOverlayHighscoresTexture;
+    const char *menuOverlayTopScoresTexture;
+    
+    // Game over textures
+    const char *gameOverOverlay1Texture;
+    const char *gameOverOverlay2Texture;
+    const char *gameOverOverlay1Top3Texture;
+    const char *gameOverOverlay2Top3Texture;
+    
+    // Powerup/effect textures
+    const char *waterTexture;
+    const char *waterOverlayTexture;
+    const char *iceOverlayTexture;
+    const char *redPowerupOverlayTexture;
+    const char *particleTexture;
+    
+    // UI textures
+    const char *arrowRightTexture;
+    const char *menuControlsTexture;
+    const char *transitionTexture;
+    const char *debugTexture;
+} ModeTextures;
+
+// ---------------------------------------------------------------------------
 // Game mode configuration structure
 // ---------------------------------------------------------------------------
 
@@ -59,6 +106,9 @@ typedef struct {
     
     // Menu theming data
     MenuTheme menuTheme;
+    
+    // Mode-specific texture paths
+    ModeTextures textures;
     
     // Score tracking
     const char *scoreTableName;
