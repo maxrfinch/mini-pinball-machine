@@ -62,7 +62,7 @@ No jumper wires are required for core power delivery.
 
 ### 1.2 Insert the 21700 Batteries
 
-The UPS requires four 21700 cells (e.g., Samsung 5E). Ensure correct polarity as marked on the PCB. All four cells must be installed for proper operation.
+The UPS requires four 21700 cells (e.g., Samsung 50E). Ensure correct polarity as marked on the PCB. All four cells must be installed for proper operation.
 
 Once installed, the UPS LED indicators will display charge status during initial power-up.
 
@@ -226,11 +226,8 @@ The I/O board has STEMMA QT in and out ports.
 You will:
 - Feed I²C into this port from the last matrix display (Section 3.2).
 
-#### 3.1.4 Placeholder Image – Arcade Button Board
-
-![Arcade Button IO Board Wiring](../assets/placeholder_button_io.jpg)
-
-(Replace with your annotated photo.)
+![Arcade Buttons](https://cdn-shop.adafruit.com/970x728/3490-02.jpg)
+![Adafruit Stemma Arcade Breakout Board](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/adafruit_stemma_arcade_breakout.jpg)
 
 For more details, see Adafruit’s documentation:
 - https://learn.adafruit.com/adafruit-led-arcade-button-qt/overview
@@ -255,6 +252,9 @@ Correct alignment:
 - Printed side of the LED matrix should face toward you.
 - The filled-in circle on the backpack should align at the bottom-left under the start of the printed text.
 
+![8x8 Matrix Display Alignment](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2361.JPG)
+![8x8 Matrix Display Alignment](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2362.JPG)
+
 Dry-fit everything first; if soldered wrong, the display won’t function.
 
 #### 3.2.2 Soldering Notes
@@ -278,6 +278,8 @@ Leave A2 open on all displays.
 
 Ensure A0 and A1 are separate bridges—do not short them.
 
+![8x8 Matrix Display Address Assignent](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2363.JPG)
+
 #### 3.2.4 Daisy-Chaining the Four Matrices
 
 Each backpack includes STEMMA QT connectors.
@@ -292,12 +294,6 @@ Chain order:
 This is the full chain:
 
 Controller → 1 → 2 → 3 → 4 → Button Board
-
-#### 3.2.5 Placeholder Image – Matrix Orientation
-
-![Matrix Backpack Orientation](../assets/placeholder_matrix_orientation.jpg)
-
-(Replace with your actual orientation photo.)
 
 More details:
 - https://learn.adafruit.com/adafruit-led-backpack/0-8-8x8-matrix-assembly
@@ -369,11 +365,7 @@ This allows you to later cover the entire strip (including connectors) with clea
 
 Soldering JSTs is fiddly—take your time. The BOM includes extra connectors in case you need to redo a few.
 
-#### 4.2.2 Placeholder Image – NeoPixel Connector Orientation
-
-![NeoPixel Strip JST Orientation](../assets/placeholder_neopixel_jst.jpg)
-
-(Replace with your annotated NeoPixel photo.)
+![Neopixel 8RGB strip setup](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2395.JPG)
 
 ---
 
@@ -493,6 +485,8 @@ Both speakers share the same right‑channel output.
 Wire length can be kept short; this is easier once the cabinet is assembled and you can measure spacing.
 
 ---
+
+![Finished speaker setup](https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2397.JPG)
 
 ### 5.5 Software Setup for the I2S Bonnet
 
@@ -634,11 +628,19 @@ So your 3‑pin JST should be arranged left to right like this:
 Black   |   Yellow   |   Red  
 5V      |   GND      |   DATA
 
+**PI 5 Pins**
+Pin 7   | Pin 5 | Pin 3 | Pin 1
+<span style="color:orange">Pin 8</span>   | <span style="color:orange">Pin 6</span> | <span style="color:red">Pin 4</span> | Pin 2
+
+**RGB Connector Pins**
+Red (Pin 8)  | Yellow (Pin 6)   | Black (Pin 4)
+DATA         | GND              | 5V
+
 This ensures proper power and signal alignment with the bonnet’s 4/6/8 pin cluster.
 
 #### 7.2.3 Recommended Wiring Strategy
 
-Because the button is mounted on the front panel:
+Because the button is mounted on the rear panel:
 - Add a 5-pin disconnect near the button.
 - Split this 5‑pin harness into:
   - 2‑pin JST → UPS (switch)
@@ -685,8 +687,6 @@ If:
 - Software and controller firmware are loaded
 - Cabinet panels are completed
 
-…you can now mount all electronics into the cabinet, route cables neatly, close the enclosure, and begin full play.
-
-Your Mini Pinball Machine hardware is now fully assembled.
+…you can now mount all electronics into the cabinet, route cables neatly, close the enclosure.
 
 ---
