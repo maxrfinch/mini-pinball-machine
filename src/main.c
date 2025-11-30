@@ -36,11 +36,13 @@ static WaterSystem waterSystem;
 
 // AddWaterImpulse: Called from physics.c when ball hits water
 void AddWaterImpulse(float x, float impulse) {
+    TraceLog(LOG_DEBUG, "[WATER] AddWaterImpulse called: x=%.2f, impulse=%.4f", x, impulse);
     Water_AddImpulse(&waterSystem, x, impulse);
     waterSystem.impactIntensity += 0.6f;
     if (waterSystem.impactIntensity > 1.5f) {
         waterSystem.impactIntensity = 1.5f;
     }
+    TraceLog(LOG_DEBUG, "[WATER] AddWaterImpulse: impactIntensity updated to %.4f", waterSystem.impactIntensity);
 }
 
 void redirect_logs_to_file(void) {

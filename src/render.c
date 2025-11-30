@@ -219,9 +219,12 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
         Color tint = (Color){ 255, 255, 255, 120 };
 
         // Enable water shader with ripple effects
+        TraceLog(LOG_DEBUG, "[RENDER] BeginShaderMode(waterShader): waterHeight=%.4f, waterY=%.2f, rippleX=%.2f, rippleY=%.2f",
+                 game->waterHeight, waterY, rippleX, rippleY);
         BeginShaderMode(res->waterShader);
         DrawTexturePro(res->waterOverlayTex, src, dst, origin, 0.0f, tint);
         EndShaderMode();
+        TraceLog(LOG_DEBUG, "[RENDER] EndShaderMode(waterShader) completed");
     }
 
     if (game->bluePowerupOverlay > 0.0f){
