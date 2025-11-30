@@ -12,8 +12,12 @@ void Water_Init(WaterSystem *ws) {
 
 void Water_AddImpulse(WaterSystem *ws, float xWorld, float impulse) {
     int idx = (int)((xWorld - WATER_LEFT) / WATER_WIDTH * RIPPLE_SAMPLES);
+    TraceLog(LOG_DEBUG, "[WATER] Water_AddImpulse: xWorld=%.2f, impulse=%.4f, idx=%d", xWorld, impulse, idx);
     if (idx >= 0 && idx < RIPPLE_SAMPLES) {
         ws->rippleVelocity[idx] += impulse;
+        TraceLog(LOG_DEBUG, "[WATER] Water_AddImpulse: velocity[%d] updated to %.4f", idx, ws->rippleVelocity[idx]);
+    } else {
+        TraceLog(LOG_DEBUG, "[WATER] Water_AddImpulse: idx %d out of bounds [0, %d)", idx, RIPPLE_SAMPLES);
     }
 }
 
@@ -54,5 +58,26 @@ void Water_Update(WaterSystem *ws, Resources *res, float dt) {
         rippleData[i * 4 + 2] = (unsigned char)val;
         rippleData[i * 4 + 3] = 255;
     }
+
+    // Log ripple height, velocity, and texture data periodically (every ~1 second)
+    static float lastLogTime = 0.0f;
+    if (t - lastLogTime > 1.0f) {
+        int midIdx = RIPPLE_SAMPLES / 2;
+        int lastIdx = RIPPLE_SAMPLES - 1;
+        TraceLog(LOG_DEBUG, "[WATER] Water_Update: rippleHeight sample values: [0]=%.4f, [%d]=%.4f, [%d]=%.4f",
+                 ws->rippleHeight[0], midIdx, ws->rippleHeight[midIdx], lastIdx, ws->rippleHeight[lastIdx]);
+        TraceLog(LOG_DEBUG, "[WATER] Water_Update: rippleVelocity sample values: [0]=%.4f, [%d]=%.4f, [%d]=%.4f",
+                 ws->rippleVelocity[0], midIdx, ws->rippleVelocity[midIdx], lastIdx, ws->rippleVelocity[lastIdx]);
+        TraceLog(LOG_DEBUG, "[WATER] Water_Update: impactIntensity=%.4f", ws->impactIntensity);
+        
+        // Log ripple data sample values before texture update
+        int midDataIdx = midIdx * 4;
+        int lastDataIdx = lastIdx * 4;
+        TraceLog(LOG_DEBUG, "[WATER] UpdateTexture: rippleData sample values: [0]=%d, [%d]=%d, [%d]=%d",
+                 rippleData[0], midDataIdx, rippleData[midDataIdx], lastDataIdx, rippleData[lastDataIdx]);
+        
+        lastLogTime = t;
+    }
+
     UpdateTexture(res->rippleTexture, rippleData);
 }

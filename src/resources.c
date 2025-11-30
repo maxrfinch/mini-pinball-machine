@@ -87,6 +87,13 @@ void Resources_Init(Resources *res) {
     SetShaderValue(res->swirlShader, res->swirlSpeedXLoc, speedXVec, SHADER_UNIFORM_VEC2);
     SetShaderValue(res->swirlShader, res->swirlSpeedYLoc, speedYVec, SHADER_UNIFORM_VEC2);
 
+    // Log shader parameter values during initialization
+    TraceLog(LOG_DEBUG, "[SHADER] Swirl shader initialized: freqX=%.2f, freqY=%.2f, ampX=%.2f, ampY=%.2f, speedX=%.2f, speedY=%.2f",
+             freqX, freqY, ampX, ampY, speedX, speedY);
+    TraceLog(LOG_DEBUG, "[SHADER] Swirl shader locations: seconds=%d, freqX=%d, freqY=%d, ampX=%d, ampY=%d, speedX=%d, speedY=%d",
+             res->swirlSecondsLoc, res->swirlFreqXLoc, res->swirlFreqYLoc, 
+             res->swirlAmpXLoc, res->swirlAmpYLoc, res->swirlSpeedXLoc, res->swirlSpeedYLoc);
+
     // Load water shader with ripple support
     res->waterShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/water.fs", GLSL_VERSION));
     res->waterSecondsLoc = GetShaderLocation(res->waterShader, "secondes");
@@ -106,6 +113,14 @@ void Resources_Init(Resources *res) {
     SetShaderValue(res->waterShader, res->waterAmpYLoc,   ampYVec,   SHADER_UNIFORM_VEC2);
     SetShaderValue(res->waterShader, res->waterSpeedXLoc, speedXVec, SHADER_UNIFORM_VEC2);
     SetShaderValue(res->waterShader, res->waterSpeedYLoc, speedYVec, SHADER_UNIFORM_VEC2);
+
+    // Log water shader parameter values during initialization
+    TraceLog(LOG_DEBUG, "[SHADER] Water shader initialized: freqX=%.2f, freqY=%.2f, ampX=%.2f, ampY=%.2f, speedX=%.2f, speedY=%.2f",
+             freqX, freqY, ampX, ampY, speedX, speedY);
+    TraceLog(LOG_DEBUG, "[SHADER] Water shader locations: seconds=%d, freqX=%d, freqY=%d, ampX=%d, ampY=%d, speedX=%d, speedY=%d, rippleTex=%d, waterLevel=%d",
+             res->waterSecondsLoc, res->waterFreqXLoc, res->waterFreqYLoc, 
+             res->waterAmpXLoc, res->waterAmpYLoc, res->waterSpeedXLoc, res->waterSpeedYLoc,
+             res->waterRippleTexLoc, res->waterLevelLoc);
 
     // Create ripple texture (25x1 R32F)
     Image rippleImage = GenImageColor(RIPPLE_SAMPLES, 1, (Color){0, 0, 0, 255});

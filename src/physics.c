@@ -786,6 +786,8 @@ void physics_step(GameStruct *game, float dt) {
                 if (!wasUnderwater && isUnderwater) {
                     // Map ball x-position (0 to worldWidth) to ripple index
                     float impulse = fabsf(vel.y) * 0.0025f;
+                    TraceLog(LOG_DEBUG, "[PHYSICS] Ball %d entering water: pos=(%.2f, %.2f), vel=(%.2f, %.2f), waterY=%.2f, impulse=%.4f",
+                             i, pos.x, pos.y, vel.x, vel.y, waterWorldY, impulse);
                     AddWaterImpulse(pos.x, impulse);
                     playWaterSplash(game->sound);
                 }
