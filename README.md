@@ -56,7 +56,7 @@ This BOM is the source of truth for quantities, vendor links, part swaps, and to
 
 **I recommend obtaining all your hardware and parts at once. This will make the build process enjoyable and fast. However, if this is not plausible - I recommend obtaining hardware first, then your cabinet so you can iterate and play with the code.**
 
-### 1) Hardware / Electronics Build - [Hardware Build Instructions Here]
+### 1) [Hardware / Electronics Build](/documentation/hardware_instructions.md)
 Start by assembling your hardware first. This step requires soldering and assembling connectors & components. Please take your time.
 
 ### 2) Software / Firmware Setup [Software Setup Instructions]
