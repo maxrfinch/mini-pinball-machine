@@ -75,6 +75,9 @@ typedef struct Resources {
 // Initialize all resources (textures, shaders, fonts)
 void Resources_Init(Resources *res);
 
+// Load mode-specific textures from a GameModeConfig
+void Resources_LoadModeTextures(Resources *res, const void *modeConfig);
+
 // Unload all resources
 void Resources_Unload(Resources *res);
 

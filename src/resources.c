@@ -1,4 +1,5 @@
 #include "resources.h"
+#include "gameMode.h"
 #include <stdio.h>
 
 #if defined(PLATFORM_RPI)
@@ -10,44 +11,45 @@
 #define RIPPLE_SAMPLES 25
 
 void Resources_Init(Resources *res) {
-    // Load textures
-    res->bgTex = LoadTexture("Resources/Textures/background2.png");
-    res->ballTex = LoadTexture("Resources/Textures/ball.png");
-    res->beachBallTex = LoadTexture("Resources/Textures/beachBall.png");
-    res->trailTex = LoadTexture("Resources/Textures/trail.png");
-    res->bumperTex = LoadTexture("Resources/Textures/bumper.png");
-    res->bumperLightTex = LoadTexture("Resources/Textures/bumperLight.png");
-    res->iceBumperTex = LoadTexture("Resources/Textures/iceBumper.png");
-    res->shockwaveTex = LoadTexture("Resources/Textures/shockwave.png");
-    res->debugTex = LoadTexture("Resources/Textures/debugSmall.png");
-    res->leftFlipperTex = LoadTexture("Resources/Textures/flipperL.png");
-    res->rightFlipperTex = LoadTexture("Resources/Textures/flipperR.png");
-    res->bgMenu = LoadTexture("Resources/Textures/bgMenu.png");
-    res->titleOverlay = LoadTexture("Resources/Textures/titleOverlay.png");
-    res->menuOverlaySystem = LoadTexture("Resources/Textures/menuOverlaySystem.png");
-    res->menuOverlayControls = LoadTexture("Resources/Textures/menuOverlayControls.png");
-    res->menuOverlayHighscores = LoadTexture("Resources/Textures/menuOverlayHighscores.png");
-    res->menuOverlayTopScores = LoadTexture("Resources/Textures/menuOverlayTopScores.png");
-    res->gameOverOverlay1 = LoadTexture("Resources/Textures/gameOverOverlay1.png");
-    res->gameOverOverlay2 = LoadTexture("Resources/Textures/gameOverOverlay2.png");
-    res->gameOverOverlay1Top3 = LoadTexture("Resources/Textures/gameOverOverlay1Top3.png");
-    res->gameOverOverlay2Top3 = LoadTexture("Resources/Textures/gameOverOverlay2Top3.png");
-    res->arrowRight = LoadTexture("Resources/Textures/arrowRight.png");
-    res->menuControls = LoadTexture("Resources/Textures/menuControls.png");
-    res->transitionTex = LoadTexture("Resources/Textures/transition.png");
-    res->waterTex = LoadTexture("Resources/Textures/waterTex.png");
-    res->waterOverlayTex = LoadTexture("Resources/Textures/waterOverlayTex.png");
-    res->particleTex = LoadTexture("Resources/Textures/particle.png");
-    res->iceOverlay = LoadTexture("Resources/Textures/iceOverlay.png");
-    res->bumper3 = LoadTexture("Resources/Textures/bumper3.png");
-    res->lowerBumperShock = LoadTexture("Resources/Textures/lowerBumperShock.png");
-    res->redPowerupOverlay = LoadTexture("Resources/Textures/redPowerupOverlay.png");
-
-    // Load fonts
+    // Load fonts (shared across all modes)
     res->font1 = LoadFontEx("Resources/Fonts/Avenir-Black.ttf", 80, 0, 0);
     res->font2 = LoadFontEx("Resources/Fonts/Avenir-Black.ttf", 120, 0, 0);
 
-    // Load shaders
+    // Load mode-specific textures for default mode (Classic)
+    const GameModeConfig *defaultConfig = GetModeConfig(MODE_CLASSIC);
+    res->bgTex = LoadTexture(defaultConfig->textures.backgroundTexture);
+    res->ballTex = LoadTexture(defaultConfig->textures.ballTexture);
+    res->beachBallTex = LoadTexture(defaultConfig->textures.beachBallTexture);
+    res->trailTex = LoadTexture(defaultConfig->textures.trailTexture);
+    res->bumperTex = LoadTexture(defaultConfig->textures.bumperTexture);
+    res->bumperLightTex = LoadTexture(defaultConfig->textures.bumperLightTexture);
+    res->iceBumperTex = LoadTexture(defaultConfig->textures.iceBumperTexture);
+    res->shockwaveTex = LoadTexture(defaultConfig->textures.shockwaveTexture);
+    res->debugTex = LoadTexture(defaultConfig->textures.debugTexture);
+    res->leftFlipperTex = LoadTexture(defaultConfig->textures.flipperLeftTexture);
+    res->rightFlipperTex = LoadTexture(defaultConfig->textures.flipperRightTexture);
+    res->bgMenu = LoadTexture(defaultConfig->textures.menuBackgroundTexture);
+    res->titleOverlay = LoadTexture(defaultConfig->textures.titleOverlayTexture);
+    res->menuOverlaySystem = LoadTexture(defaultConfig->textures.menuOverlaySystemTexture);
+    res->menuOverlayControls = LoadTexture(defaultConfig->textures.menuOverlayControlsTexture);
+    res->menuOverlayHighscores = LoadTexture(defaultConfig->textures.menuOverlayHighscoresTexture);
+    res->menuOverlayTopScores = LoadTexture(defaultConfig->textures.menuOverlayTopScoresTexture);
+    res->gameOverOverlay1 = LoadTexture(defaultConfig->textures.gameOverOverlay1Texture);
+    res->gameOverOverlay2 = LoadTexture(defaultConfig->textures.gameOverOverlay2Texture);
+    res->gameOverOverlay1Top3 = LoadTexture(defaultConfig->textures.gameOverOverlay1Top3Texture);
+    res->gameOverOverlay2Top3 = LoadTexture(defaultConfig->textures.gameOverOverlay2Top3Texture);
+    res->arrowRight = LoadTexture(defaultConfig->textures.arrowRightTexture);
+    res->menuControls = LoadTexture(defaultConfig->textures.menuControlsTexture);
+    res->transitionTex = LoadTexture(defaultConfig->textures.transitionTexture);
+    res->waterTex = LoadTexture(defaultConfig->textures.waterTexture);
+    res->waterOverlayTex = LoadTexture(defaultConfig->textures.waterOverlayTexture);
+    res->particleTex = LoadTexture(defaultConfig->textures.particleTexture);
+    res->iceOverlay = LoadTexture(defaultConfig->textures.iceOverlayTexture);
+    res->bumper3 = LoadTexture(defaultConfig->textures.bumper3Texture);
+    res->lowerBumperShock = LoadTexture(defaultConfig->textures.lowerBumperShockTexture);
+    res->redPowerupOverlay = LoadTexture(defaultConfig->textures.redPowerupOverlayTexture);
+
+    // Load shaders (shared across all modes)
     res->alphaTestShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/alphaTest.fs", GLSL_VERSION));
 
     res->swirlShader = LoadShader(0, TextFormat("Resources/Shaders/glsl%i/wave.fs", GLSL_VERSION));
@@ -128,6 +130,76 @@ void Resources_Init(Resources *res) {
     UnloadImage(rippleImage);
     SetTextureFilter(res->rippleTexture, TEXTURE_FILTER_BILINEAR);
     SetTextureWrap(res->rippleTexture, TEXTURE_WRAP_CLAMP);
+}
+
+void Resources_LoadModeTextures(Resources *res, const void *modeConfigPtr) {
+    const GameModeConfig *config = (const GameModeConfig *)modeConfigPtr;
+    
+    // Unload existing mode-specific textures
+    UnloadTexture(res->bgTex);
+    UnloadTexture(res->ballTex);
+    UnloadTexture(res->beachBallTex);
+    UnloadTexture(res->trailTex);
+    UnloadTexture(res->leftFlipperTex);
+    UnloadTexture(res->rightFlipperTex);
+    UnloadTexture(res->bumperTex);
+    UnloadTexture(res->bumperLightTex);
+    UnloadTexture(res->iceBumperTex);
+    UnloadTexture(res->bumper3);
+    UnloadTexture(res->shockwaveTex);
+    UnloadTexture(res->lowerBumperShock);
+    UnloadTexture(res->bgMenu);
+    UnloadTexture(res->titleOverlay);
+    UnloadTexture(res->menuOverlaySystem);
+    UnloadTexture(res->menuOverlayControls);
+    UnloadTexture(res->menuOverlayHighscores);
+    UnloadTexture(res->menuOverlayTopScores);
+    UnloadTexture(res->gameOverOverlay1);
+    UnloadTexture(res->gameOverOverlay2);
+    UnloadTexture(res->gameOverOverlay1Top3);
+    UnloadTexture(res->gameOverOverlay2Top3);
+    UnloadTexture(res->waterTex);
+    UnloadTexture(res->waterOverlayTex);
+    UnloadTexture(res->iceOverlay);
+    UnloadTexture(res->redPowerupOverlay);
+    UnloadTexture(res->particleTex);
+    UnloadTexture(res->arrowRight);
+    UnloadTexture(res->menuControls);
+    UnloadTexture(res->transitionTex);
+    UnloadTexture(res->debugTex);
+    
+    // Load mode-specific textures
+    res->bgTex = LoadTexture(config->textures.backgroundTexture);
+    res->ballTex = LoadTexture(config->textures.ballTexture);
+    res->beachBallTex = LoadTexture(config->textures.beachBallTexture);
+    res->trailTex = LoadTexture(config->textures.trailTexture);
+    res->leftFlipperTex = LoadTexture(config->textures.flipperLeftTexture);
+    res->rightFlipperTex = LoadTexture(config->textures.flipperRightTexture);
+    res->bumperTex = LoadTexture(config->textures.bumperTexture);
+    res->bumperLightTex = LoadTexture(config->textures.bumperLightTexture);
+    res->iceBumperTex = LoadTexture(config->textures.iceBumperTexture);
+    res->bumper3 = LoadTexture(config->textures.bumper3Texture);
+    res->shockwaveTex = LoadTexture(config->textures.shockwaveTexture);
+    res->lowerBumperShock = LoadTexture(config->textures.lowerBumperShockTexture);
+    res->bgMenu = LoadTexture(config->textures.menuBackgroundTexture);
+    res->titleOverlay = LoadTexture(config->textures.titleOverlayTexture);
+    res->menuOverlaySystem = LoadTexture(config->textures.menuOverlaySystemTexture);
+    res->menuOverlayControls = LoadTexture(config->textures.menuOverlayControlsTexture);
+    res->menuOverlayHighscores = LoadTexture(config->textures.menuOverlayHighscoresTexture);
+    res->menuOverlayTopScores = LoadTexture(config->textures.menuOverlayTopScoresTexture);
+    res->gameOverOverlay1 = LoadTexture(config->textures.gameOverOverlay1Texture);
+    res->gameOverOverlay2 = LoadTexture(config->textures.gameOverOverlay2Texture);
+    res->gameOverOverlay1Top3 = LoadTexture(config->textures.gameOverOverlay1Top3Texture);
+    res->gameOverOverlay2Top3 = LoadTexture(config->textures.gameOverOverlay2Top3Texture);
+    res->waterTex = LoadTexture(config->textures.waterTexture);
+    res->waterOverlayTex = LoadTexture(config->textures.waterOverlayTexture);
+    res->iceOverlay = LoadTexture(config->textures.iceOverlayTexture);
+    res->redPowerupOverlay = LoadTexture(config->textures.redPowerupOverlayTexture);
+    res->particleTex = LoadTexture(config->textures.particleTexture);
+    res->arrowRight = LoadTexture(config->textures.arrowRightTexture);
+    res->menuControls = LoadTexture(config->textures.menuControlsTexture);
+    res->transitionTex = LoadTexture(config->textures.transitionTexture);
+    res->debugTex = LoadTexture(config->textures.debugTexture);
 }
 
 void Resources_Unload(Resources *res) {

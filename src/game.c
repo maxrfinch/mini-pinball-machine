@@ -2,6 +2,7 @@
 #include "constants.h"
 #include "physics.h"
 #include "gameMode.h"
+#include "resources.h"
 
 void Game_Init(GameStruct *game, Bumper *bumpers) {
     game->currentScene = SCENE_RAYLIB_TITLE;
@@ -31,9 +32,12 @@ void Game_Init(GameStruct *game, Bumper *bumpers) {
     game->slowMotionCounter = 0;
 }
 
-void Game_StartGame(GameStruct *game, Bumper *bumpers) {
+void Game_StartGame(GameStruct *game, Bumper *bumpers, Resources *res) {
     const GameModeConfig *config = GetModeConfig(game->pendingMode);
     game->currentMode = game->pendingMode;
+    
+    // Load mode-specific textures
+    Resources_LoadModeTextures(res, config);
     
     if (config->init) {
         config->init(game, bumpers);
@@ -61,6 +65,7 @@ void Game_Update(GameStruct *game,
                  InputManager *input,
                  ScoreHelper *scores,
                  SoundManager *sound,
+                 Resources *res,
                  float dt) {
     
     // Handle transition state machine
@@ -76,7 +81,7 @@ void Game_Update(GameStruct *game,
         // HANDLE LOAD
         switch (game->transitionTarget) {
             case TRANSITION_TO_GAME:
-                Game_StartGame(game, bumpers);
+                Game_StartGame(game, bumpers, res);
                 break;
             case TRANSITION_TO_MENU:
                 // Ensure camera is stopped when leaving game over scenes

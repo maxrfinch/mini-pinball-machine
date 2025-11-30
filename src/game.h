@@ -5,6 +5,7 @@
 #include "inputManager.h"
 #include "soundManager.h"
 #include "scores.h"
+#include "resources.h"
 
 // Initialize game state machine
 void Game_Init(GameStruct *game, Bumper *bumpers);
@@ -15,10 +16,11 @@ void Game_Update(GameStruct *game,
                  InputManager *input,
                  ScoreHelper *scores,
                  SoundManager *sound,
+                 Resources *res,
                  float dt);
 
 // Start a new game
-void Game_StartGame(GameStruct *game, Bumper *bumpers);
+void Game_StartGame(GameStruct *game, Bumper *bumpers, Resources *res);
 
 // Spawn a single ball at the given position with initial velocity and type
 void Game_SpawnBall(GameStruct *game, float x, float y, float vx, float vy, int type);

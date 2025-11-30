@@ -81,6 +81,50 @@ const GameModeConfig MODE_CONFIG_CLASSIC = {
         .accentColor = {255, 183, 0, 255}
     },
     
+    // Mode-specific texture paths
+    .textures = {
+        // Gameplay textures
+        .backgroundTexture = "Resources/Textures/background2.png",
+        .ballTexture = "Resources/Textures/ball.png",
+        .beachBallTexture = "Resources/Textures/beachBall.png",
+        .trailTexture = "Resources/Textures/trail.png",
+        .flipperLeftTexture = "Resources/Textures/flipperL.png",
+        .flipperRightTexture = "Resources/Textures/flipperR.png",
+        .bumperTexture = "Resources/Textures/bumper.png",
+        .bumperLightTexture = "Resources/Textures/bumperLight.png",
+        .iceBumperTexture = "Resources/Textures/iceBumper.png",
+        .bumper3Texture = "Resources/Textures/bumper3.png",
+        .shockwaveTexture = "Resources/Textures/shockwave.png",
+        .lowerBumperShockTexture = "Resources/Textures/lowerBumperShock.png",
+        
+        // Menu textures
+        .menuBackgroundTexture = "Resources/Textures/bgMenu.png",
+        .titleOverlayTexture = "Resources/Textures/titleOverlay.png",
+        .menuOverlaySystemTexture = "Resources/Textures/menuOverlaySystem.png",
+        .menuOverlayControlsTexture = "Resources/Textures/menuOverlayControls.png",
+        .menuOverlayHighscoresTexture = "Resources/Textures/menuOverlayHighscores.png",
+        .menuOverlayTopScoresTexture = "Resources/Textures/menuOverlayTopScores.png",
+        
+        // Game over textures
+        .gameOverOverlay1Texture = "Resources/Textures/gameOverOverlay1.png",
+        .gameOverOverlay2Texture = "Resources/Textures/gameOverOverlay2.png",
+        .gameOverOverlay1Top3Texture = "Resources/Textures/gameOverOverlay1Top3.png",
+        .gameOverOverlay2Top3Texture = "Resources/Textures/gameOverOverlay2Top3.png",
+        
+        // Powerup/effect textures
+        .waterTexture = "Resources/Textures/waterTex.png",
+        .waterOverlayTexture = "Resources/Textures/waterOverlayTex.png",
+        .iceOverlayTexture = "Resources/Textures/iceOverlay.png",
+        .redPowerupOverlayTexture = "Resources/Textures/redPowerupOverlay.png",
+        .particleTexture = "Resources/Textures/particle.png",
+        
+        // UI textures
+        .arrowRightTexture = "Resources/Textures/arrowRight.png",
+        .menuControlsTexture = "Resources/Textures/menuControls.png",
+        .transitionTexture = "Resources/Textures/transition.png",
+        .debugTexture = "Resources/Textures/debugSmall.png"
+    },
+    
     // Score tracking
     .scoreTableName = "scores_classic",
     
