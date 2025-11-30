@@ -62,7 +62,7 @@ Start by assembling your hardware first. This step requires soldering and assemb
 ### 2) Software / Firmware Setup [Software Setup Instructions]
 Raspberry Pi 5 & KB 2040 setup, building code.
 
-### 3) Case / Cabinet Build [Cabinet Instructions]
+### 3) [Case / Cabinet Build](/documentation/cabinet_instructions.md)
 Includes 3D print instructions, Acrylic Welding, etc. Take your time!
 
 ### Notes
