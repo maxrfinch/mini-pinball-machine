@@ -46,17 +46,6 @@ void Water_Update(WaterSystem *ws, Resources *res, float dt) {
         ws->rippleHeight[i] += ws->rippleVelocity[i];
     }
 
-    // Log ripple height and velocity values periodically (every ~60 frames based on time)
-    static float lastLogTime = 0.0f;
-    if (t - lastLogTime > 1.0f) {
-        TraceLog(LOG_DEBUG, "[WATER] Water_Update: rippleHeight sample values: [0]=%.4f, [12]=%.4f, [24]=%.4f",
-                 ws->rippleHeight[0], ws->rippleHeight[RIPPLE_SAMPLES/2], ws->rippleHeight[RIPPLE_SAMPLES-1]);
-        TraceLog(LOG_DEBUG, "[WATER] Water_Update: rippleVelocity sample values: [0]=%.4f, [12]=%.4f, [24]=%.4f",
-                 ws->rippleVelocity[0], ws->rippleVelocity[RIPPLE_SAMPLES/2], ws->rippleVelocity[RIPPLE_SAMPLES-1]);
-        TraceLog(LOG_DEBUG, "[WATER] Water_Update: impactIntensity=%.4f", ws->impactIntensity);
-        lastLogTime = t;
-    }
-
     // Update ripple texture
     unsigned char rippleData[RIPPLE_SAMPLES * 4];
     for (int i = 0; i < RIPPLE_SAMPLES; i++) {
@@ -69,11 +58,26 @@ void Water_Update(WaterSystem *ws, Resources *res, float dt) {
         rippleData[i * 4 + 2] = (unsigned char)val;
         rippleData[i * 4 + 3] = 255;
     }
-    
-    // Log ripple data before texture update (sample values)
-    TraceLog(LOG_DEBUG, "[WATER] UpdateTexture: rippleData sample values: [0]=%d, [%d]=%d, [%d]=%d",
-             rippleData[0], (RIPPLE_SAMPLES/2)*4, rippleData[(RIPPLE_SAMPLES/2)*4], 
-             (RIPPLE_SAMPLES-1)*4, rippleData[(RIPPLE_SAMPLES-1)*4]);
-    
+
+    // Log ripple height, velocity, and texture data periodically (every ~1 second)
+    static float lastLogTime = 0.0f;
+    if (t - lastLogTime > 1.0f) {
+        int midIdx = RIPPLE_SAMPLES / 2;
+        int lastIdx = RIPPLE_SAMPLES - 1;
+        TraceLog(LOG_DEBUG, "[WATER] Water_Update: rippleHeight sample values: [0]=%.4f, [%d]=%.4f, [%d]=%.4f",
+                 ws->rippleHeight[0], midIdx, ws->rippleHeight[midIdx], lastIdx, ws->rippleHeight[lastIdx]);
+        TraceLog(LOG_DEBUG, "[WATER] Water_Update: rippleVelocity sample values: [0]=%.4f, [%d]=%.4f, [%d]=%.4f",
+                 ws->rippleVelocity[0], midIdx, ws->rippleVelocity[midIdx], lastIdx, ws->rippleVelocity[lastIdx]);
+        TraceLog(LOG_DEBUG, "[WATER] Water_Update: impactIntensity=%.4f", ws->impactIntensity);
+        
+        // Log ripple data sample values before texture update
+        int midDataIdx = midIdx * 4;
+        int lastDataIdx = lastIdx * 4;
+        TraceLog(LOG_DEBUG, "[WATER] UpdateTexture: rippleData sample values: [0]=%d, [%d]=%d, [%d]=%d",
+                 rippleData[0], midDataIdx, rippleData[midDataIdx], lastDataIdx, rippleData[lastDataIdx]);
+        
+        lastLogTime = t;
+    }
+
     UpdateTexture(res->rippleTexture, rippleData);
 }
