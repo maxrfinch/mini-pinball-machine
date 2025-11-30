@@ -44,52 +44,56 @@ endif()
 add_executable(${PROJECT_NAME} ${SRC_FILES})
 
 # ---------------------------------------------------------------------------
-# Dependencies: raylib + Box2D
+# Dependencies: raylib + Box2D (prefer system/apt installs)
 # ---------------------------------------------------------------------------
 
-# Allow caller to override via -DRAYLIB_INCLUDE_DIR / -DRAYLIB_LIB
-if (NOT DEFINED RAYLIB_INCLUDE_DIR OR NOT DEFINED RAYLIB_LIB)
-    find_path(RAYLIB_INCLUDE_DIR raylib.h
-        PATHS /usr/local/include /usr/include
-        PATH_SUFFIXES raylib
-    )
-    find_library(RAYLIB_LIB NAMES raylib
-        PATHS /usr/local/lib /usr/lib
-    )
-endif()
+# raylib: prefer system packages; also search Homebrew locations on macOS
+find_path(RAYLIB_INCLUDE_DIR raylib.h
+    PATHS
+        /usr/include
+        /usr/local/include
+        /opt/homebrew/include          # Homebrew (Apple Silicon)
+        /usr/local/opt/raylib/include  # Homebrew (Intel/macOS)
+    PATH_SUFFIXES
+        "" raylib
+)
+find_library(RAYLIB_LIB NAMES raylib
+    PATHS
+        /usr/lib
+        /usr/local/lib
+        /opt/homebrew/lib              # Homebrew (Apple Silicon)
+        /usr/local/opt/raylib/lib      # Homebrew (Intel/macOS)
+)
 
 if (NOT RAYLIB_INCLUDE_DIR OR NOT RAYLIB_LIB)
     message(FATAL_ERROR
         "raylib not found.\n"
-        "On macOS (Homebrew):    brew install raylib\n"
-        "On Debian/Raspberry Pi: build/install raylib from source, then rerun cmake with:\n"
-        "  -DRAYLIB_INCLUDE_DIR=/usr/local/include -DRAYLIB_LIB=/usr/local/lib/libraylib.a"
+        "Install it with your package manager, for example on Debian/Raspberry Pi:\n"
+        "  sudo apt install libraylib-dev"
     )
 endif()
 
-# Allow caller to override via -DBOX2D_INCLUDE_DIR / -DBOX2D_LIB
-if (NOT DEFINED BOX2D_INCLUDE_DIR OR NOT DEFINED BOX2D_LIB)
-    find_path(BOX2D_INCLUDE_DIR box2d/box2d.h
-        PATHS
-            /usr/local/include
-            /usr/include
-            /usr/local/opt/box2d/include   # Homebrew (Intel macOS)
-            /opt/homebrew/include          # Homebrew (Apple Silicon)
-    )
-    find_library(BOX2D_LIB NAMES box2d
-        PATHS
-            /usr/local/lib
-            /usr/lib
-            /usr/local/opt/box2d/lib       # Homebrew (Intel macOS)
-            /opt/homebrew/lib              # Homebrew (Apple Silicon)
-    )
-endif()
+# Box2D: prefer system packages; also search Homebrew locations on macOS
+find_path(BOX2D_INCLUDE_DIR box2d/box2d.h
+    PATHS
+        /usr/include
+        /usr/local/include
+        /opt/homebrew/include             # Homebrew (Apple Silicon)
+        /usr/local/opt/box2d/include      # Homebrew (Intel/macOS)
+)
+find_library(BOX2D_LIB NAMES box2d
+    PATHS
+        /usr/lib
+        /usr/local/lib
+        /opt/homebrew/lib                 # Homebrew (Apple Silicon)
+        /usr/local/opt/box2d/lib          # Homebrew (Intel/macOS)
+)
 
 if (NOT BOX2D_INCLUDE_DIR OR NOT BOX2D_LIB)
     message(FATAL_ERROR
         "Box2D not found.\n"
-        "Build/install Box2D 3.x and rerun cmake with, for example:\n"
-        "  -DBOX2D_INCLUDE_DIR=/usr/local/opt/box2d/include -DBOX2D_LIB=/usr/local/opt/box2d/lib/libbox2d.dylib"
+        "Install it with your package manager, for example on Debian/Raspberry Pi:\n"
+        "  sudo apt install libbox2d-dev"
     )
 endif()
 
