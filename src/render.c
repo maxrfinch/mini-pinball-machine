@@ -1,5 +1,6 @@
 #include "render.h"
 #include "constants.h"
+#include "gameMode.h"
 #include <math.h>
 #include <sys/time.h>
 
@@ -281,5 +282,11 @@ void Render_Gameplay(const GameStruct *game, const Resources *res,
     // Draw physics debug visualization if enabled
     if (debugDrawEnabled) {
         physics_debug_draw(game);
+    }
+    
+    // Mode overlay hook - call mode-specific rendering if defined
+    const GameModeConfig *config = GetModeConfig(game->currentMode);
+    if (config->renderOverlay) {
+        config->renderOverlay(game, res, shaderSeconds);
     }
 }
