@@ -16,6 +16,7 @@ set(SRC_FILES
     src/constants.c
     src/gameStruct.c
     src/game.c
+    src/gameMode.c
     src/main.c
     src/menu.c
     src/physics.c
@@ -30,6 +31,7 @@ set(SRC_FILES
     src/util.c
     src/water.c
     src/camera_wrapper.cpp
+    src/modes/classicMode.c
 )
 
 # Platform-specific input manager implementation

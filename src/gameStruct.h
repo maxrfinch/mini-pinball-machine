@@ -183,6 +183,9 @@ struct GameStructData {
     float launchChargeAmount;        // 0.0 to 1.0
     float launchChargeTime;          // Time button held in seconds
 
+    // Mode-specific data pointer (for future mode-specific state)
+    void *modeData;
+
 };
 
 #endif
