@@ -34,10 +34,13 @@ void Game_Init(GameStruct *game, Bumper *bumpers) {
 
 void Game_StartGame(GameStruct *game, Bumper *bumpers, Resources *res) {
     const GameModeConfig *config = GetModeConfig(game->pendingMode);
-    game->currentMode = game->pendingMode;
     
-    // Load mode-specific textures
-    Resources_LoadModeTextures(res, config);
+    // Only reload textures if switching to a different mode
+    if (game->currentMode != game->pendingMode) {
+        Resources_LoadModeTextures(res, config);
+    }
+    
+    game->currentMode = game->pendingMode;
     
     if (config->init) {
         config->init(game, bumpers);
