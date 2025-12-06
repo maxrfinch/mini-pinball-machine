@@ -59,7 +59,7 @@ This BOM is the source of truth for quantities, vendor links, part swaps, and to
 ### 1) [Hardware / Electronics Build](/documentation/hardware_instructions.md)
 Start by assembling your hardware first. This step requires soldering and assembling connectors & components. Please take your time.
 
-### 2) Software / Firmware Setup [Software Setup Instructions]
+### 2) [Software / Firmware Setup](/documentation/software_setup.md)
 Raspberry Pi 5 & KB 2040 setup, building code.
 
 ### 3) [Case / Cabinet Build](/documentation/cabinet_instructions.md)
