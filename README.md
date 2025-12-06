@@ -3,7 +3,7 @@
 
 ## Project Overview
 
-This fork is intended as a full modernization of the original Chris Dalke mini pinball machine. While not necessarily easier to build, this version focuses on cleaner wiring, a fully self‑contained power system (no external wall supply), tighter component packaging, and vastly improved maintainability.
+This fork is intended as a full modernization of the original Chris Dalke mini pinball machine featuring a fully self‑contained battery pack, NEOPixel RGB LED support, camera support, haptics, and updated Box2D code (formerly Chipmunk).
 
 The original project did not include 3D body/cabinet files or controller firmware. This fork includes both — along with upgraded physics, cabinet files designed around 3 mm SendCutSend acrylic, and a rewritten controller system based on the Adafruit KB2040.
 
