@@ -1,7 +1,7 @@
 # Mini Pinball Machine
 <a href="https://www.buymeacoffee.com/maxrfinch" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 
-[![In Action!]((https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2466.JPG))(https://youtube.com/shorts/l3aY2dgjTA8?si=OKbuUUBv_qXfasDv)
+[![In Action!]((https://raw.githubusercontent.com/maxrfinch/mini-pinball-machine/master/documentation/images/IMG_2466.JPG)](https://youtube.com/shorts/l3aY2dgjTA8?si=OKbuUUBv_qXfasDv)
 
 ## Project Overview
 
